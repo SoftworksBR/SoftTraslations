@@ -35,7 +35,7 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 ---
 
-## 📚 <span id="documeents">Manuais e Documentação</span>
+## 📚 <span id="documents">Manuais e Documentação</span>
 
 - 📖 [Manual de Instalação](Em produção ...)  
 - 👨‍💻 [Manual do Usuário](Em produção...)
@@ -45,7 +45,7 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 # 📋 <span id="backlog">Backlog do Produto</span>
 
 | Rank | User Story | Sprint |
-|---|---|---|---|---:|---|
+|---:|---|---|
 | 1 | Como administrador, quero cadastrar os funcionários internos, informando seus dados e o grupo de permissão associado, para organizar o acesso da equipe ao sistema. | Sprint 1 |
 | 2 | Como gestor de projeto, quero pré-cadastrar um freelancer com seus dados básicos, para convidá-lo a completar o cadastro e se juntar à equipe de prestadores. |  Sprint 1 |
 | 3 | Como freelancer, quero completar meu cadastro informando tipo (tradutor/revisor/formatador/intérprete), habilidades, idiomas e documentos comprobatórios, para finalizar minha entrada na base de prestadores. | Sprint 1 |
@@ -96,7 +96,7 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 ### 📈 Backlog da Sprint 1
 
 | Rank | User Story | Sprint |
-|---|---|---|---|---:|---|
+|---:|---|---|
 | 1 | Como administrador, quero cadastrar os funcionários internos, informando seus dados e o grupo de permissão associado, para organizar o acesso da equipe ao sistema. | Sprint 1 |
 | 2 | Como gestor de projeto, quero pré-cadastrar um freelancer com seus dados básicos, para convidá-lo a completar o cadastro e se juntar à equipe de prestadores. |  Sprint 1 |
 | 3 | Como freelancer, quero completar meu cadastro informando tipo (tradutor/revisor/formatador/intérprete), habilidades, idiomas e documentos comprobatórios, para finalizar minha entrada na base de prestadores. | Sprint 1 |
@@ -159,6 +159,12 @@ Em andamento...
       <td>Desenvolvedor</td>
       <td><a href="https://github.com/HelionLight"><img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"></a></td>
       <td><a href="https://www.linkedin.com/in/tiago-bortolini-772b162b6/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"></a></td>
+    </tr>
+    <tr>
+      <td>Fábio Nawa</td>
+      <td>Desenvolvedor</td>
+      <td><a href="https://github.com/FabioNawa"><img src="https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white"></a></td>
+      <td><a href="https://www.linkedin.com/in/fábiohnawa/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"></a></td>
     </tr>
   </table>
 </div>
