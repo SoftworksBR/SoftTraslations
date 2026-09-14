@@ -1,0 +1,32 @@
+[project]
+name = "softtranslations-backend"
+version = "0.1.0"
+description = "Backend for Softtranslates application"
+readme = "README.md"
+authors = [
+    { name = "Fabio", email = "fbnawa@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "bcrypt>=5.0.0",
+    "fastapi>=0.141.1",
+    "pyjwt>=2.14.0",
+    "sqlalchemy>=2.0.52",
+]
+
+[project.scripts]
+backend = "backend:main"
+
+[tool.uv]
+package = false
+
+[build-system]
+requires = ["uv_build>=0.12.13,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.7",
+]
