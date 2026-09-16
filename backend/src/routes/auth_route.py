@@ -1,31 +1,25 @@
-from http import HTTPStatus
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.controllers.auth_controller import AuthController
 from src.database import get_session
-from src.models.user_model import User
+from src.repositories.user_repository import UserRepository
 from src.schemas.auth_schema import TokenSchema
-from src.security import create_access_token, verify_password
-
-router = APIRouter(prefix='/auth', tags=['Auth'])
 
 
-@router.post('/', response_model=TokenSchema)
+router = APIRouter(
+    prefix="/auth",
+    tags=["Auth"],
+)
+
+
+@router.post("/", response_model=TokenSchema)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
 ):
-    user = await session.scalar(
-        select(User).where(User.email == form_data.username)
-    )
-    if not user or not verify_password(form_data.password, user.password):
-        raise HTTPException(
-            status_code=HTTPStatus.UNAUTHORIZED,
-            detail='Incorrect username or password',
-        )
+    user_repository = UserRepository(session)
+    controller = AuthController(user_repository)
 
-    access_token = create_access_token(data={'sub': user.email})
-    return {'access_token': access_token, 'token_type': 'bearer'}
+    return await controller.login(form_data)
