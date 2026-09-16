@@ -1,15 +1,15 @@
 """Banco de dados temporario
 
 Revision ID: a4aedeb41c64
-Revises: 
+Revises:
 Create Date: 2026-09-15 20:37:33.424397
 
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'a4aedeb41c64'
@@ -26,7 +26,12 @@ def upgrade() -> None:
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('password', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+    sa.Column(
+        'created_at',
+        sa.DateTime(),
+        server_default=sa.text('now()'),
+        nullable=False
+    ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     sa.UniqueConstraint('username')

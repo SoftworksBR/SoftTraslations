@@ -8,9 +8,9 @@ from pwdlib import PasswordHash
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_session
-from models.user_model import User
-from settings import Settings
+from src.database import get_session
+from src.models.user_model import User
+from src.settings import Settings
 
 pwd_context = PasswordHash.recommended()
 settings = Settings()
