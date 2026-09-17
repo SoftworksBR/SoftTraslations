@@ -1,5 +1,6 @@
-from fastapi import HTTPException
 from http import HTTPStatus
+
+from fastapi import HTTPException
 
 from src.repositories.user_repository import UserRepository
 from src.security import create_access_token, verify_password
@@ -23,14 +24,12 @@ class AuthService:
         ):
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED,
-                detail="Incorrect username or password",
+                detail='Incorrect username or password',
             )
 
-        access_token = create_access_token(
-            data={"sub": user.email}
-        )
+        access_token = create_access_token(data={'sub': user.email})
 
         return {
-            "access_token": access_token,
-            "token_type": "bearer",
+            'access_token': access_token,
+            'token_type': 'bearer',
         }

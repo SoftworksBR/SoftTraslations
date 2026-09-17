@@ -7,14 +7,13 @@ from src.database import get_session
 from src.repositories.user_repository import UserRepository
 from src.schemas.auth_schema import TokenSchema
 
-
 router = APIRouter(
-    prefix="/auth",
-    tags=["Auth"],
+    prefix='/auth',
+    tags=['Auth'],
 )
 
 
-@router.post("/", response_model=TokenSchema)
+@router.post('/', response_model=TokenSchema)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
