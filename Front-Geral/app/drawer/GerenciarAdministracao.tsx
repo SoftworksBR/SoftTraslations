@@ -7,14 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-
-// aqui é pra puxar do banco
-const administradores = [
-  {
-    id: 8670,
-    nome: 'Caio Romano',
-  },
-];
+import { administradores } from '@/data/administradores';
 
 export default function GerenciamentoAdministracao() {
   // Abrir ficha do administrador

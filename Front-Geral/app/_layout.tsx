@@ -7,7 +7,7 @@ export default function RootLayout() {
     <>
       <Stack>
         <Stack.Screen
-          name="(drawer)"
+          name="drawer"
           options={{
             headerShown: false,
           }}
