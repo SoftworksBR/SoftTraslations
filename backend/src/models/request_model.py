@@ -1,12 +1,14 @@
-from sqlalchemy import Enum as SQLEnum, ForeignKey
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, registry
 
 from enums.enums import Translations
 
 table_registry = registry()
 
+
 @table_registry.mapped_as_dataclass
-class Request():
+class Request:
     __tablename__ = 'requests'
 
     id: Mapped[int] = mapped_column(
@@ -19,16 +21,13 @@ class Request():
     phone: Mapped[str] = mapped_column(nullable=False)
     company: Mapped[str] = mapped_column()
     translate_from: Mapped[Translations] = mapped_column(
-        SQLEnum(Translations),
-        nullable=False
+        SQLEnum(Translations), nullable=False
     )
     translate_to: Mapped[Translations] = mapped_column(
-        SQLEnum(Translations),
-        nullable=False
+        SQLEnum(Translations), nullable=False
     )
     observations: Mapped[str]
 
     employee_id: Mapped[int] = mapped_column(
-        ForeignKey('employees.id'),
-        nullable=False
+        ForeignKey('employees.id'), nullable=False
     )

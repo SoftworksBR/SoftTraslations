@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class Translations(Enum):
     PORTUGUESE = 'portuguese'
     ENGLISH = 'english'
@@ -8,6 +9,7 @@ class Translations(Enum):
     ITALIAN = 'italian'
     FRANCH = 'french'
     OTHER = 'other'
+
 
 class Status(Enum):
     READY = 'ready'
