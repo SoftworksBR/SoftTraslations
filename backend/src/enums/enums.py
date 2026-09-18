@@ -11,6 +11,6 @@ class Translations(Enum):
 
 class Status(Enum):
     READY = 'ready'
-    DEVELOPING = 'developing'
+    IN_PROGRESS = 'in_progress'
     TESTING = 'testing'
     DONE = 'done'
