@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.user_model import User
+from backend.src.models.employee_model import User
 from src.schemas.user_schema import (
     UserSchema,
 )

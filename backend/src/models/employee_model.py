@@ -8,13 +8,13 @@ table_registry = registry()
 
 
 @table_registry.mapped_as_dataclass
-class User:
-    __tablename__ = 'workers'
+class Employee:
+    __tablename__ = 'employees'
 
     id: Mapped[int] = mapped_column(
         init=False, primary_key=True, autoincrement=True
     )
-    username: Mapped[str] = mapped_column(unique=True, nullable=False)
+    username: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[EmailStr] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     role: Mapped[str] = mapped_column(nullable=False)

@@ -10,7 +10,7 @@ from src.controllers.user_controller import (
     update_user,
 )
 from src.database import get_session
-from src.models.user_model import User
+from backend.src.models.employee_model import User
 from src.schemas.user_schema import (
     UserListSchema,
     UserPublicSchema,
