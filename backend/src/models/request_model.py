@@ -1,10 +1,10 @@
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, registry
+from sqlalchemy.orm import Mapped, mapped_column
 
-from enums.enums import Translations
+from src.enums.enums import Translations
 
-table_registry = registry()
+from .base import table_registry
 
 
 @table_registry.mapped_as_dataclass
