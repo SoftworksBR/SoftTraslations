@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { administradores } from '@/data/administradores';
 
 import {
   Pressable,
@@ -18,12 +19,12 @@ export default function Modal() {
 
   const editando = !!params.id;
 
-  const [nome, setNome] = useState(
-    editando ? 'Caio Romano' : ''
+  const administrador = administradores.find(
+    (item) => item.id.toString() === params.id
   );
 
+  const [nome, setNome] = useState(administrador?.nome ?? '');
   const [email, setEmail] = useState('');
-
   const [senha, setSenha] = useState('');
 
   function salvar() {

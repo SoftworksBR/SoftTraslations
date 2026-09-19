@@ -7,14 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-
-// aqui é pra puxar do banco
-const atendentes = [
-  {
-    id: 145,
-    nome: 'Elena',
-  },
-];
+import { atendentes } from '@/data/atendentes';
 
 export default function GerenciamentoAtendimento() {
   // Abrir ficha do atendente

@@ -7,14 +7,7 @@ import {
   Text,
   View,
 } from 'react-native';
-
-// aqui é pra puxar do banco
-const gestores = [
-  {
-    id: 8,
-    nome: 'Dweyne',
-  },
-];
+import { gestores } from '@/data/gestores';
 
 export default function GerenciamentoGestor() {
   // Abrir ficha do grstor
