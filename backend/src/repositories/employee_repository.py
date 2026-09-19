@@ -1,17 +1,17 @@
-from backend.src.models.employee_model import User
+from src.models.employee_model import Employee
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-class UserRepository:
+class EmployeeRepository:
     @staticmethod
-    async def get_users(
+    async def get_employees(
         session: AsyncSession,
         limit: int,
         offset: int,
     ):
         result = await session.scalars(
-            select(User).offset(offset).limit(limit)
+            select(Employee).offset(offset).limit(limit)
         )
 
         return result.all()
@@ -23,39 +23,39 @@ class UserRepository:
         username: str,
     ):
         return await session.scalar(
-            select(User).where(
-                (User.email == email) | (User.username == username)
+            select(Employee).where(
+                (Employee.email == email) | (Employee.username == username)
             )
         )
 
     @staticmethod
     async def create(
         session: AsyncSession,
-        user: User,
+        employee: Employee,
     ):
-        session.add(user)
+        session.add(employee)
 
         await session.commit()
-        await session.refresh(user)
+        await session.refresh(employee)
 
-        return user
+        return employee
 
     @staticmethod
     async def update(
         session: AsyncSession,
-        user: User,
+        employee: Employee,
     ):
-        session.add(user)
+        session.add(employee)
 
         await session.commit()
-        await session.refresh(user)
+        await session.refresh(employee)
 
-        return user
+        return employee
 
     @staticmethod
     async def delete(
         session: AsyncSession,
-        user: User,
+        employee: Employee,
     ):
-        await session.delete(user)
+        await session.delete(employee)
         await session.commit()

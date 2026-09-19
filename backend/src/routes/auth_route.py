@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.auth_controller import AuthController
 from src.database import get_session
-from src.repositories.user_repository import UserRepository
+from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.auth_schema import TokenSchema
 
 router = APIRouter(
@@ -18,7 +18,7 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_session),
 ):
-    user_repository = UserRepository(session)
-    controller = AuthController(user_repository)
+    employee_repository = EmployeeRepository(session)
+    controller = AuthController(employee_repository)
 
     return await controller.login(form_data)

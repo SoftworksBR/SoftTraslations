@@ -1,11 +1,11 @@
 from fastapi.security import OAuth2PasswordRequestForm
 
-from src.repositories.user_repository import UserRepository
+from src.repositories.employee_repository import EmployeeRepository
 from src.services.auth_service import AuthService
 
 
 class AuthController:
-    def __init__(self, user_repository: UserRepository):
+    def __init__(self, user_repository: EmployeeRepository):
         self.auth_service = AuthService(user_repository)
 
     async def login(

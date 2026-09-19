@@ -2,13 +2,13 @@ from http import HTTPStatus
 
 from fastapi import HTTPException
 
-from src.repositories.user_repository import UserRepository
+from src.repositories.employee_repository import EmployeeRepository
 from src.security import create_access_token, verify_password
 
 
 class AuthService:
-    def __init__(self, user_repository: UserRepository):
-        self.user_repository = user_repository
+    def __init__(self, employee_repository: EmployeeRepository):
+        self.employee_repository = employee_repository
 
     async def authenticate(
         self,
@@ -16,18 +16,18 @@ class AuthService:
         password: str,
     ) -> dict:
 
-        user = await self.user_repository.get_by_email(email)
+        employee = await self.employee_repository.get_by_email(email)
 
-        if not user or not verify_password(
+        if not employee or not verify_password(
             password,
-            user.password,
+            employee.password,
         ):
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED,
                 detail='Incorrect username or password',
             )
 
-        access_token = create_access_token(data={'sub': user.email})
+        access_token = create_access_token(data={'sub': employee.email})
 
         return {
             'access_token': access_token,
