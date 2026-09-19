@@ -17,6 +17,7 @@ class Status(Enum):
     TESTING = 'testing'
     DONE = 'done'
 
+
 class Roles(Enum):
     ADMIN = 'admin'
     PROJETOS = 'projetos'

@@ -1,10 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import func, Enum as SQLEnum
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import table_registry
 from src.enums.enums import Roles
+
+from .base import table_registry
+
 
 @table_registry.mapped_as_dataclass
 class Employee:
@@ -16,10 +19,7 @@ class Employee:
     username: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
-    role: Mapped[Roles] = mapped_column(
-        SQLEnum(Roles),
-        nullable=False
-    )
+    role: Mapped[Roles] = mapped_column(SQLEnum(Roles), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )

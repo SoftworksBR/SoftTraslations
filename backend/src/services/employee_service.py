@@ -1,6 +1,6 @@
-from src.models.employee_model import Employee
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import EmployeeSchema
 from src.security import get_password_hash

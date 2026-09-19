@@ -1,6 +1,5 @@
 from http import HTTPStatus
 
-from src.models.employee_model import Employee
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +10,7 @@ from src.controllers.employee_controller import (
     update_employee,
 )
 from src.database import get_session
+from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeListSchema,
     EmployeePublicSchema,

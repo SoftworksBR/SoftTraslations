@@ -1,10 +1,10 @@
 from http import HTTPStatus
 
-from src.models.employee_model import Employee
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeSchema,
 )

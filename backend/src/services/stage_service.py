@@ -3,42 +3,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
-from src.schemas.stage_schema import (
-    StageCreate,
-    StageUpdate
-)
+from src.schemas.stage_schema import StageCreate, StageUpdate
 
 
 class StageService:
-
     def __init__(self, session: AsyncSession):
         self.repository = StageRepository(session)
 
-    async def create(
-        self,
-        data: StageCreate
-    ) -> Stage:
+    async def create(self, data: StageCreate) -> Stage:
 
-        stage = Stage(
-            freelancer_id=data.freelancer_id,
-            status=data.status
-        )
+        stage = Stage(freelancer_id=data.freelancer_id, status=data.status)
 
         return await self.repository.create(stage)
 
-    async def get_by_id(
-        self,
-        stage_id: int
-    ) -> Stage:
+    async def get_by_id(self, stage_id: int) -> Stage:
 
-        stage = await self.repository.get_by_id(
-            stage_id
-        )
+        stage = await self.repository.get_by_id(stage_id)
 
         if stage is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Etapa não encontrada"
+                detail='Etapa não encontrada',
             )
 
         return stage
@@ -47,11 +32,7 @@ class StageService:
 
         return await self.repository.get_all()
 
-    async def update(
-        self,
-        stage_id: int,
-        data: StageUpdate
-    ) -> Stage:
+    async def update(self, stage_id: int, data: StageUpdate) -> Stage:
 
         stage = await self.get_by_id(stage_id)
 
@@ -63,10 +44,7 @@ class StageService:
 
         return await self.repository.update(stage)
 
-    async def delete(
-        self,
-        stage_id: int
-    ) -> None:
+    async def delete(self, stage_id: int) -> None:
 
         stage = await self.get_by_id(stage_id)
 

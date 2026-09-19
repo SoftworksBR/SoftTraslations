@@ -5,11 +5,12 @@ Revises: 34538850aabc
 Create Date: 2026-09-19 07:47:19.478780
 
 """
+
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'b94c0423bc60'
@@ -25,7 +26,7 @@ def upgrade() -> None:
         'ATENDIMENTO',
         'FREELANCER',
         'ORCAMENTO',
-        name='roles'
+        name='roles',
     )
 
     roles_enum.create(op.get_bind(), checkfirst=True)
@@ -36,8 +37,9 @@ def upgrade() -> None:
         existing_type=sa.VARCHAR(),
         type_=roles_enum,
         existing_nullable=False,
-        postgresql_using='role::text::roles'
+        postgresql_using='role::text::roles',
     )
+
 
 def downgrade() -> None:
     roles_enum = sa.Enum(
@@ -46,7 +48,7 @@ def downgrade() -> None:
         'ATENDIMENTO',
         'FREELANCER',
         'ORCAMENTO',
-        name='roles'
+        name='roles',
     )
 
     op.alter_column(
@@ -54,7 +56,7 @@ def downgrade() -> None:
         'role',
         existing_type=roles_enum,
         type_=sa.VARCHAR(),
-        existing_nullable=False
+        existing_nullable=False,
     )
 
     roles_enum.drop(op.get_bind(), checkfirst=True)
