@@ -22,7 +22,12 @@ export default function GerenciamentoAtendimento() {
 
   // Abrir formulário para adicionar
   function adicionarAtendente() {
-    router.push('/modal');
+    router.push({
+      pathname: '/modal',
+      params: {
+        tipo: 'atendente',
+      },
+    });
   }
 
   // Abrir formulário para editar
@@ -32,6 +37,7 @@ export default function GerenciamentoAtendimento() {
       params: {
         id: id.toString(),
         modo: 'editar',
+        tipo: 'atendente',
       },
     });
   }

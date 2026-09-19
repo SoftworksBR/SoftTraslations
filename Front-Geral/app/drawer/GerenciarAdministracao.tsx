@@ -22,7 +22,12 @@ export default function GerenciamentoAdministracao() {
 
   // Abrir formulário para adicionar
   function adicionarAdministrador() {
-    router.push('/modal');
+    router.push({
+      pathname: '/modal',
+      params: {
+        tipo: 'administrador',
+      },
+    });
   }
 
   // Abrir formulário para editar
@@ -32,6 +37,7 @@ export default function GerenciamentoAdministracao() {
       params: {
         id: id.toString(),
         modo: 'editar',
+        tipo: 'administrador',
       },
     });
   }

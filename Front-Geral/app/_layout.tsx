@@ -6,8 +6,16 @@ export default function RootLayout() {
   return (
     <>
       <Stack>
+
         <Stack.Screen
           name="drawer"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="gestor"
           options={{
             headerShown: false,
           }}
@@ -17,9 +25,9 @@ export default function RootLayout() {
           name="modal"
           options={{
             presentation: 'modal',
-            title: 'Administrador',
           }}
         />
+
       </Stack>
 
       <StatusBar style="auto" />

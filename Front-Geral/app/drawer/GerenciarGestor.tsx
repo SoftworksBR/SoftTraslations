@@ -22,7 +22,12 @@ export default function GerenciamentoGestor() {
 
   // Abrir formulário para adicionar
   function adicionarGestor() {
-    router.push('/modal');
+    router.push({
+      pathname: '/modal',
+      params: {
+        tipo: 'gestor',
+      },
+    });
   }
 
   // Abrir formulário para editar
@@ -32,6 +37,7 @@ export default function GerenciamentoGestor() {
       params: {
         id: id.toString(),
         modo: 'editar',
+        tipo: 'gestor',
       },
     });
   }
