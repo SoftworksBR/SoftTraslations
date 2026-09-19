@@ -2,12 +2,14 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.project_controller import ProjectController
+from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.schemas.project_schema import (
     ProjectCreate,
     ProjectResponse,
     ProjectUpdate,
 )
+from src.schemas.stage_schema import ProjectStageCreate, StageResponse
 from src.security import get_current_employee
 
 router = APIRouter(
@@ -24,6 +26,23 @@ async def create_project(
     data: ProjectCreate, session: AsyncSession = Depends(get_session)
 ):
     return await ProjectController.create(data, session)
+
+
+@router.post(
+    '/{project_id}/stages',
+    response_model=StageResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_project_stage(
+    project_id: int,
+    data: ProjectStageCreate,
+    session: AsyncSession = Depends(get_session),
+):
+    return await StageController.create_for_project(
+        project_id,
+        data,
+        session,
+    )
 
 
 @router.get('/', response_model=list[ProjectResponse])

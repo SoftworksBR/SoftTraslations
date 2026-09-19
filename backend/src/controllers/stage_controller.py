@@ -1,6 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.schemas.stage_schema import StageCreate, StageUpdate
+from src.schemas.stage_schema import (
+    ProjectStageCreate,
+    StageCreate,
+    StageUpdate,
+)
 from src.services.stage_service import StageService
 
 
@@ -10,6 +14,16 @@ class StageController:
         service = StageService(session)
 
         return await service.create(data)
+
+    @staticmethod
+    async def create_for_project(
+        project_id: int,
+        data: ProjectStageCreate,
+        session: AsyncSession,
+    ):
+        service = StageService(session)
+
+        return await service.create_for_project(project_id, data)
 
     @staticmethod
     async def get_by_id(stage_id: int, session: AsyncSession):

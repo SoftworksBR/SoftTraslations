@@ -2,11 +2,16 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import Status
 from src.models.employee_model import Employee
 from src.models.project_model import Project
 from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
-from src.schemas.stage_schema import StageCreate, StageUpdate
+from src.schemas.stage_schema import (
+    ProjectStageCreate,
+    StageCreate,
+    StageUpdate,
+)
 
 
 class StageService:
@@ -14,8 +19,31 @@ class StageService:
         self.repository = StageRepository(session)
 
     async def create(self, data: StageCreate) -> Stage:
+        return await self._create_for_project(
+            data.project_id,
+            data.freelancer_id,
+            data.status,
+        )
+
+    async def create_for_project(
+        self,
+        project_id: int,
+        data: ProjectStageCreate,
+    ) -> Stage:
+        return await self._create_for_project(
+            project_id,
+            data.freelancer_id,
+            data.status,
+        )
+
+    async def _create_for_project(
+        self,
+        project_id: int,
+        freelancer_id: int,
+        stage_status: Status,
+    ) -> Stage:
         project = await self.repository.session.scalar(
-            select(Project).where(Project.id == data.project_id)
+            select(Project).where(Project.id == project_id)
         )
         if project is None:
             raise HTTPException(
@@ -24,7 +52,7 @@ class StageService:
             )
 
         freelancer = await self.repository.session.scalar(
-            select(Employee).where(Employee.id == data.freelancer_id)
+            select(Employee).where(Employee.id == freelancer_id)
         )
         if freelancer is None:
             raise HTTPException(
@@ -32,7 +60,7 @@ class StageService:
                 detail='Freelancer not found',
             )
 
-        stage = Stage(freelancer_id=data.freelancer_id, status=data.status)
+        stage = Stage(freelancer_id=freelancer_id, status=stage_status)
         stage.projects.append(project)
 
         return await self.repository.create(stage)

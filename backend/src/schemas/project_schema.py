@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.enums.enums import Status
+from src.schemas.stage_schema import StageResponse
 
 
 class ProjectCreate(BaseModel):
@@ -20,5 +21,6 @@ class ProjectResponse(BaseModel):
     name: str
     status: Status
     creator_id: int
+    stages: list[StageResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
