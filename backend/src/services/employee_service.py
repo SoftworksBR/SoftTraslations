@@ -37,9 +37,10 @@ class EmployeeService:
             if db_employee.username == employee.username:
                 raise ValueError('employeename already registered')
 
-        db_employee = employee(
+        db_employee = Employee(
             username=employee.username,
             email=employee.email,
+            role=employee.role,
             password=get_password_hash(employee.password),
         )
 

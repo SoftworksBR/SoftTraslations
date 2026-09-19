@@ -1,11 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from src.security import get_current_employee
 
 from .auth_route import router as auth_route
-from .project_route import router as project_route
 from .employee_route import router as employee_route
+from .project_route import router as project_route
 
-router = APIRouter()
+public_router = APIRouter()
+protected_router = APIRouter(
+    dependencies=[Depends(get_current_employee)],
+)
 
-router.include_router(auth_route)
-router.include_router(employee_route)
-router.include_router(project_route)
+public_router.include_router(auth_route)
+protected_router.include_router(employee_route)
+protected_router.include_router(project_route)

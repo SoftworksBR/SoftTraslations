@@ -1,7 +1,6 @@
 from src.models.employee_model import Employee
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 class EmployeeRepository:
     @staticmethod
@@ -19,13 +18,22 @@ class EmployeeRepository:
     @staticmethod
     async def get_by_email_or_username(
         session: AsyncSession,
-        email: str,
-        username: str,
+        email: str | None = None,
+        username: str | None = None,
     ):
+        conditions = []
+
+        if email is not None:
+            conditions.append(Employee.email == email)
+
+        if username is not None:
+            conditions.append(Employee.username == username)
+
+        if not conditions:
+            return None
+
         return await session.scalar(
-            select(Employee).where(
-                (Employee.email == email) | (Employee.username == username)
-            )
+            select(Employee).where(or_(*conditions))
         )
 
     @staticmethod

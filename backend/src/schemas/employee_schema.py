@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from src.enums.enums import Roles
 
 class EmployeePublicSchema(BaseModel):
     id: int
@@ -12,6 +13,7 @@ class EmployeePublicSchema(BaseModel):
 class EmployeeSchema(BaseModel):
     username: str
     email: EmailStr
+    role: Roles
     password: str
 
 
