@@ -4,6 +4,7 @@ from src.enums.enums import Status
 
 
 class StageCreate(BaseModel):
+    project_id: int
     freelancer_id: int
     status: Status
 

@@ -1,6 +1,9 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.employee_model import Employee
+from src.models.project_model import Project
 from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import StageCreate, StageUpdate
@@ -11,8 +14,26 @@ class StageService:
         self.repository = StageRepository(session)
 
     async def create(self, data: StageCreate) -> Stage:
+        project = await self.repository.session.scalar(
+            select(Project).where(Project.id == data.project_id)
+        )
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project not found',
+            )
+
+        freelancer = await self.repository.session.scalar(
+            select(Employee).where(Employee.id == data.freelancer_id)
+        )
+        if freelancer is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Freelancer not found',
+            )
 
         stage = Stage(freelancer_id=data.freelancer_id, status=data.status)
+        stage.projects.append(project)
 
         return await self.repository.create(stage)
 
@@ -23,7 +44,7 @@ class StageService:
         if stage is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Etapa não encontrada',
+                detail='Stage not found',
             )
 
         return stage
