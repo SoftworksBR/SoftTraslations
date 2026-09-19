@@ -3,21 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.request_model import Request
 from src.repositories.request_repository import RequestRepository
-from src.schemas.request_schema import (
-    RequestCreate,
-    RequestUpdate
-)
+from src.schemas.request_schema import RequestCreate, RequestUpdate
 
 
 class RequestService:
-
     def __init__(self, session: AsyncSession):
         self.repository = RequestRepository(session)
 
-    async def create(
-        self,
-        data: RequestCreate
-    ) -> Request:
+    async def create(self, data: RequestCreate) -> Request:
 
         request = Request(
             username=data.username,
@@ -27,24 +20,19 @@ class RequestService:
             translate_from=data.translate_from,
             translate_to=data.translate_to,
             observations=data.observations,
-            employee_id=data.employee_id
+            employee_id=data.employee_id,
         )
 
         return await self.repository.create(request)
 
-    async def get_by_id(
-        self,
-        request_id: int
-    ) -> Request:
+    async def get_by_id(self, request_id: int) -> Request:
 
-        request = await self.repository.get_by_id(
-            request_id
-        )
+        request = await self.repository.get_by_id(request_id)
 
         if request is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Solicitação não encontrada"
+                detail='Solicitação não encontrada',
             )
 
         return request
@@ -53,15 +41,9 @@ class RequestService:
 
         return await self.repository.get_all()
 
-    async def update(
-        self,
-        request_id: int,
-        data: RequestUpdate
-    ) -> Request:
+    async def update(self, request_id: int, data: RequestUpdate) -> Request:
 
-        request = await self.get_by_id(
-            request_id
-        )
+        request = await self.get_by_id(request_id)
 
         if data.username is not None:
             request.username = data.username
@@ -89,13 +71,8 @@ class RequestService:
 
         return await self.repository.update(request)
 
-    async def delete(
-        self,
-        request_id: int
-    ) -> None:
+    async def delete(self, request_id: int) -> None:
 
-        request = await self.get_by_id(
-            request_id
-        )
+        request = await self.get_by_id(request_id)
 
         await self.repository.delete(request)

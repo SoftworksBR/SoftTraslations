@@ -8,8 +8,13 @@ from src.schemas.project_schema import (
     ProjectResponse,
     ProjectUpdate,
 )
+from src.security import get_current_employee
 
-router = APIRouter(prefix='/projects', tags=['Projects'])
+router = APIRouter(
+    prefix='/projects',
+    tags=['Projects'],
+    dependencies=[Depends(get_current_employee)],
+)
 
 
 @router.post(

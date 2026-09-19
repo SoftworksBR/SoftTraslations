@@ -4,7 +4,9 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import Roles
 from src.models.employee_model import Employee
+from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
 )
@@ -50,16 +52,29 @@ async def update_employee(
     session: AsyncSession,
     current_employee: Employee,
 ):
-    if current_employee.id != employee_id:
+    if (
+        current_employee.role != Roles.ADMIN
+        and current_employee.id != employee_id
+    ):
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
             detail='You can only update your own employee',
         )
 
+    target_employee = await EmployeeRepository.get_by_id(
+        session,
+        employee_id,
+    )
+    if target_employee is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Employee not found',
+        )
+
     try:
         return await service.update_employee(
             session,
-            current_employee,
+            target_employee,
             employee,
         )
 
@@ -75,13 +90,26 @@ async def delete_employee(
     session: AsyncSession,
     current_employee: Employee,
 ):
-    if current_employee.id != employee_id:
+    if (
+        current_employee.role != Roles.ADMIN
+        and current_employee.id != employee_id
+    ):
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
             detail='You can only delete your own employee',
         )
 
+    target_employee = await EmployeeRepository.get_by_id(
+        session,
+        employee_id,
+    )
+    if target_employee is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail='Employee not found',
+        )
+
     await service.delete_employee(
         session,
-        current_employee,
+        target_employee,
     )
