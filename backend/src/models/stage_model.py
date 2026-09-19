@@ -28,5 +28,7 @@ class Stage:
     status: Mapped[Status] = mapped_column(SQLEnum(Status), nullable=False)
 
     projects: Mapped[list['Project']] = relationship(
-        secondary=project_stages, back_populates='stages'
+        secondary=project_stages,
+        back_populates='stages',
+        default_factory=list,
     )
