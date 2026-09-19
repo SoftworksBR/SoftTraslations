@@ -24,7 +24,7 @@ class EmployeeService:
         session: AsyncSession,
         employee: EmployeeSchema,
     ):
-        db_employee = await EmployeeRepository.get_by_email_or_employeename(
+        db_employee = await EmployeeRepository.get_by_email_or_username(
             session,
             employee.email,
             employee.username,
