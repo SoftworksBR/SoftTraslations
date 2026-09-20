@@ -2,9 +2,12 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { TradutorProvider } from '@/context/TradutorContext';
+
 export default function RootLayout() {
   return (
-    <>
+    <TradutorProvider>
+
       <Stack>
 
         <Stack.Screen
@@ -44,10 +47,8 @@ export default function RootLayout() {
 
       </Stack>
 
-      <StatusBar
-        style="dark"
-        backgroundColor="#FFFFFF"
-      />
-    </>
+      <StatusBar style="auto" />
+
+    </TradutorProvider>
   );
 }
