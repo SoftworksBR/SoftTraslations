@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 from src.enums.enums import Roles
 
+
 class EmployeePublicSchema(BaseModel):
     id: int
     username: str

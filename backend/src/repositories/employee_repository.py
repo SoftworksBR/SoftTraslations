@@ -1,6 +1,8 @@
-from src.models.employee_model import Employee
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.models.employee_model import Employee
+
 
 class EmployeeRepository:
     @staticmethod
@@ -32,9 +34,7 @@ class EmployeeRepository:
         if not conditions:
             return None
 
-        return await session.scalar(
-            select(Employee).where(or_(*conditions))
-        )
+        return await session.scalar(select(Employee).where(or_(*conditions)))
 
     @staticmethod
     async def create(
