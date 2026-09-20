@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import { tradutores } from '@/data/tradutores';
+import { useState } from 'react';
 
 import {
   View,
@@ -8,18 +10,8 @@ import {
   FlatList,
 } from 'react-native';
 
-const tradutores = [
-  {
-    id: 1,
-    nome: 'João Silva',
-    status: 'aguardando_perfil',
-  },
-  {
-    id: 2,
-    nome: 'Maria Souza',
-    status: 'autorizado',
-  },
-];
+const [listaTradutores, setListaTradutores] =
+  useState([...tradutores]);
 
 function textoStatus(status: string) {
   switch (status) {
@@ -46,6 +38,36 @@ export default function Tradutores() {
     router.push('/gestor/tradutores/novo');
   }
 
+  function aprovarTradutor(id: number) {
+
+    const tradutor = tradutores.find(
+      (item) => item.id === id
+    );
+
+    if (!tradutor) return;
+
+    tradutor.status = 'autorizado';
+
+    setListaTradutores([
+      ...tradutores,
+    ]);
+  }
+
+  function reprovarTradutor(id: number) {
+
+    const tradutor = tradutores.find(
+      (item) => item.id === id
+    );
+
+    if (!tradutor) return;
+
+    tradutor.status = 'reprovado';
+
+    setListaTradutores([
+      ...tradutores,
+    ]);
+  }
+
   return (
     <View style={styles.container}>
 
@@ -54,7 +76,7 @@ export default function Tradutores() {
       </Text>
 
       <FlatList
-        data={tradutores}
+        data={listaTradutores}
         keyExtractor={(item) =>
           item.id.toString()
         }
@@ -74,6 +96,34 @@ export default function Tradutores() {
               <Text style={styles.status}>
                 {textoStatus(item.status)}
               </Text>
+
+              {item.status === 'aguardando_aprovacao' && (
+                <View style={styles.aprovacao}>
+
+                  <Pressable
+                    style={styles.aprovar}
+                    onPress={() =>
+                      aprovarTradutor(item.id)
+                    }
+                  >
+                    <Text style={styles.aprovarTexto}>
+                      APROVAR
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    style={styles.reprovar}
+                    onPress={() =>
+                      reprovarTradutor(item.id)
+                    }
+                  >
+                    <Text style={styles.reprovarTexto}>
+                      REPROVAR
+                    </Text>
+                  </Pressable>
+
+                </View>
+              )}
 
             </View>
 
@@ -177,5 +227,38 @@ const styles = StyleSheet.create({
   botaoText: {
     fontWeight: 'bold',
     fontSize: 15,
+  },
+
+  //aprovação
+
+  aprovacao: {
+    flexDirection: 'row',
+    marginTop: 12,
+    gap: 10,
+  },
+
+  aprovar: {
+    backgroundColor: '#000',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+
+  aprovarTexto: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+
+  reprovar: {
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+
+  reprovarTexto: {
+    color: '#000',
+    fontWeight: 'bold',
   },
 });
