@@ -11,7 +11,9 @@ from .base import table_registry
 class Project:
     __tablename__ = 'projects'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True, init=False, autoincrement=True
+    )
     name: Mapped[str] = mapped_column(nullable=False)
     status: Mapped[Status] = mapped_column(SQLEnum(Status), nullable=False)
     creator_id: Mapped[int] = mapped_column(

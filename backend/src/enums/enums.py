@@ -16,3 +16,10 @@ class Status(Enum):
     IN_PROGRESS = 'in_progress'
     TESTING = 'testing'
     DONE = 'done'
+
+class Roles(Enum):
+    ADMIN = 'admin'
+    PROJETOS = 'projetos'
+    ATENDIMENTO = 'atendimento'
+    FREELANCER = 'freelancer'
+    ORCAMENTO = 'orcamento'

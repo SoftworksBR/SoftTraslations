@@ -1,7 +1,8 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
 
+from src.enums.enums import Roles
 
-class UserPublicSchema(BaseModel):
+class EmployeePublicSchema(BaseModel):
     id: int
     username: str
     email: EmailStr
@@ -9,11 +10,12 @@ class UserPublicSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserSchema(BaseModel):
+class EmployeeSchema(BaseModel):
     username: str
     email: EmailStr
+    role: Roles
     password: str
 
 
-class UserListSchema(BaseModel):
-    users: list[UserPublicSchema]
+class EmployeeListSchema(BaseModel):
+    employees: list[EmployeePublicSchema]

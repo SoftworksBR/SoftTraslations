@@ -1,7 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 
-from backend.src.models.employee_model import User
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, decode, encode
@@ -10,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
+from src.models.employee_model import Employee
 from src.settings import Settings
 
 pwd_context = PasswordHash.recommended()
@@ -41,7 +41,7 @@ def create_access_token(data: dict):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth')
 
 
-async def get_current_user(
+async def get_current_employee(
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_session),
 ):
@@ -62,10 +62,10 @@ async def get_current_user(
     except (DecodeError, ExpiredSignatureError):
         raise credentials_exception from None
 
-    user = await session.scalar(
-        select(User).where(User.email == subject_email)
+    employee = await session.scalar(
+        select(Employee).where(Employee.email == subject_email)
     )
-    if not user:
+    if not employee:
         raise credentials_exception
 
-    return user
+    return employee
