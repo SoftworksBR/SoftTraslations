@@ -1,15 +1,19 @@
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
+
 import {
   DrawerContentScrollView,
   DrawerItem,
 } from '@react-navigation/drawer';
-import { View, Text, StyleSheet } from 'react-native';
+
+import {
+  View,
+  Text,
+  StyleSheet,
+} from 'react-native';
 
 function CustomDrawerContent(props: any) {
   function deslogar() {
-    // Futuramente podemos limpar o token/sessão aqui
-
     router.replace('/');
   }
 
@@ -18,36 +22,36 @@ function CustomDrawerContent(props: any) {
       {...props}
       contentContainerStyle={styles.drawerContent}
     >
-      {/* Opções do menu */}
       <View>
-        <Text style={styles.titulo}>Menu</Text>
+        <Text style={styles.titulo}>
+          Menu Gestor
+        </Text>
 
         <DrawerItem
-          label="Gerenciar Atendimento"
-          onPress={() =>
-            router.push('/drawer/GerenciarAtendimento')
-          }
+          label="Orçamentos"
+          onPress={() => router.push('/gestor/orcamentos')}
           labelStyle={styles.label}
         />
 
         <DrawerItem
-          label="Gerenciar Administradores"
-          onPress={() =>
-            router.push('/drawer/GerenciarAdministracao')
-          }
+          label="Projetos"
+          onPress={() => router.push('/gestor/projetos')}
           labelStyle={styles.label}
         />
 
         <DrawerItem
-          label="Gerenciar Gestores"
-          onPress={() =>
-            router.push('/drawer/GerenciarGestor')
-          }
+          label="Tradutores"
+          onPress={() => router.push('/gestor/tradutores')}
+          labelStyle={styles.label}
+        />
+
+        <DrawerItem
+          label="Workflow"
+          onPress={() => router.push('/gestor/workflow')}
           labelStyle={styles.label}
         />
       </View>
 
-      {/* Deslogar */}
       <View style={styles.rodape}>
         <DrawerItem
           label="Deslogar"
@@ -59,10 +63,12 @@ function CustomDrawerContent(props: any) {
   );
 }
 
-export default function DrawerLayout() {
+export default function GestorLayout() {
   return (
     <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={(props) => (
+        <CustomDrawerContent {...props} />
+      )}
       screenOptions={{
         drawerStyle: {
           backgroundColor: '#000',
@@ -80,26 +86,44 @@ export default function DrawerLayout() {
       }}
     >
       <Drawer.Screen
-        name="GerenciarAtendimento"
+        name="index"
         options={{
-          drawerLabel: 'Gerenciar Atendentes',
-          title: 'Gerenciar Atendimento',
+          drawerItemStyle: {
+            display: 'none',
+          },
+          title: 'Área do Gestor',
         }}
       />
 
       <Drawer.Screen
-        name="GerenciarAdministracao"
+        name="orcamentos"
         options={{
-          drawerLabel: 'Administradores',
-          title: 'Gerenciar Administradores',
+          drawerLabel: 'Orçamentos',
+          title: 'Orçamentos',
         }}
       />
 
       <Drawer.Screen
-        name="GerenciarGestor"
+        name="projetos"
         options={{
-          drawerLabel: 'Gerenciar Gestores',
-          title: 'Gerenciar Gestores',
+          drawerLabel: 'Projetos',
+          title: 'Projetos',
+        }}
+      />
+
+      <Drawer.Screen
+        name="tradutores"
+        options={{
+          drawerLabel: 'Tradutores',
+          title: 'Tradutores',
+        }}
+      />
+
+      <Drawer.Screen
+        name="workflow"
+        options={{
+          drawerLabel: 'Workflow',
+          title: 'Workflow',
         }}
       />
     </Drawer>
