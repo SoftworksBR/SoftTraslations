@@ -7,6 +7,13 @@ export default function RootLayout() {
     <>
       <Stack>
         <Stack.Screen
+          name="landingPage"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
           name="login"
           options={{
             headerShown: false,
@@ -29,7 +36,10 @@ export default function RootLayout() {
         />
       </Stack>
 
-      <StatusBar style="auto" />
+      <StatusBar
+        style="dark"
+        backgroundColor="#FFFFFF"
+      />
     </>
   );
 }
