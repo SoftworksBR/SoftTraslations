@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 
+from backend.src.models.employee_model import User
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, decode, encode
@@ -9,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
-from src.models.user_model import User
 from src.settings import Settings
 
 pwd_context = PasswordHash.recommended()
