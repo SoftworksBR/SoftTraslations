@@ -37,6 +37,15 @@ class EmployeeRepository:
         return await session.scalar(select(Employee).where(or_(*conditions)))
 
     @staticmethod
+    async def get_by_id(
+        session: AsyncSession,
+        employee_id: int,
+    ) -> Employee | None:
+        return await session.scalar(
+            select(Employee).where(Employee.id == employee_id)
+        )
+
+    @staticmethod
     async def create(
         session: AsyncSession,
         employee: Employee,

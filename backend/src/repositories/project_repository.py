@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models.project_model import Project
 
@@ -14,17 +15,28 @@ class ProjectRepository:
         await self.session.commit()
         await self.session.refresh(project)
 
-        return project
+        result = await self.session.execute(
+            select(Project)
+            .options(selectinload(Project.stages))
+            .where(Project.id == project.id)
+        )
+
+        return result.scalar_one()
 
     async def get_by_id(self, project_id: int) -> Project | None:
         result = await self.session.execute(
-            select(Project).where(Project.id == project_id)
+            select(Project)
+            .options(selectinload(Project.stages))
+            .where(Project.id == project_id)
         )
 
         return result.scalar_one_or_none()
 
     async def get_all(self) -> list[Project]:
-        result = await self.session.execute(select(Project))
+        result = await self.session.execute(
+            select(Project)
+            .options(selectinload(Project.stages))
+        )
 
         return list(result.scalars().all())
 

@@ -23,7 +23,7 @@ class ProjectService:
         if project is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Projeto não encontrado',
+                detail='Project not found',
             )
 
         return project

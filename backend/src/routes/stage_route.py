@@ -4,8 +4,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.schemas.stage_schema import StageCreate, StageResponse, StageUpdate
+from src.security import get_current_employee
 
-router = APIRouter(prefix='/stages', tags=['Stages'])
+router = APIRouter(
+    prefix='/stages',
+    tags=['Stages'],
+    dependencies=[Depends(get_current_employee)],
+)
 
 
 @router.post(

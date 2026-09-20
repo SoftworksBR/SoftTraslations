@@ -37,5 +37,7 @@ class Project:
     )
 
     stages: Mapped[list['Stage']] = relationship(
-        secondary=project_stages, back_populates='projects'
+        secondary=project_stages,
+        back_populates='projects',
+        default_factory=list,
     )
