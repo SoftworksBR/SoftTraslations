@@ -39,6 +39,13 @@ export default function RootLayout() {
         />
 
         <Stack.Screen
+          name="atendente"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
           name="modal"
           options={{
             presentation: 'modal',
