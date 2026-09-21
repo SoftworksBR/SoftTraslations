@@ -69,3 +69,16 @@ async def get_current_employee(
         raise credentials_exception
 
     return employee
+
+
+def require_roles(*allowed_roles):
+    """Restringe a rota aos cargos explicitamente autorizados."""
+    async def role_checker(employee=Depends(get_current_employee)):
+        if employee.role not in allowed_roles:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Insufficient permissions',
+            )
+        return employee
+
+    return role_checker

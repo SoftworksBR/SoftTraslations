@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.enums.enums import Status
+from src.enums.enums import Roles, Status
 from src.models.employee_model import Employee
 from src.models.project_model import Project
 from src.models.stage_model import Stage
@@ -60,6 +60,12 @@ class StageService:
                 detail='Freelancer not found',
             )
 
+        if freelancer.role != Roles.FREELANCER:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='The selected employee is not a freelancer',
+            )
+
         stage = Stage(freelancer_id=freelancer_id, status=stage_status)
         stage.projects.append(project)
 
@@ -86,6 +92,19 @@ class StageService:
         stage = await self.get_by_id(stage_id)
 
         if data.freelancer_id is not None:
+            freelancer = await self.repository.session.scalar(
+                select(Employee).where(Employee.id == data.freelancer_id)
+            )
+            if freelancer is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail='Freelancer not found',
+                )
+            if freelancer.role != Roles.FREELANCER:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail='The selected employee is not a freelancer',
+                )
             stage.freelancer_id = data.freelancer_id
 
         if data.status is not None:

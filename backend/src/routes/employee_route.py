@@ -16,11 +16,13 @@ from src.schemas.employee_schema import (
     EmployeePublicSchema,
     EmployeeSchema,
 )
-from src.security import get_current_employee
+from src.security import get_current_employee, require_roles
+from src.enums.enums import Roles
 
 router = APIRouter(
     prefix='/employee',
     tags=['Employees'],
+    dependencies=[Depends(require_roles(Roles.ADMIN))],
 )
 
 

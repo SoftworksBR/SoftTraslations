@@ -10,12 +10,13 @@ from src.schemas.project_schema import (
     ProjectUpdate,
 )
 from src.schemas.stage_schema import ProjectStageCreate, StageResponse
-from src.security import get_current_employee
+from src.security import get_current_employee, require_roles
+from src.enums.enums import Roles
 
 router = APIRouter(
     prefix='/projects',
     tags=['Projects'],
-    dependencies=[Depends(get_current_employee)],
+    dependencies=[Depends(require_roles(Roles.ADMIN, Roles.PROJETOS))],
 )
 
 

@@ -8,12 +8,13 @@ from src.schemas.request_schema import (
     RequestResponse,
     RequestUpdate,
 )
-from src.security import get_current_employee
+from src.security import get_current_employee, require_roles
+from src.enums.enums import Roles
 
 router = APIRouter(
     prefix='/requests',
     tags=['Requests'],
-    dependencies=[Depends(get_current_employee)],
+    dependencies=[Depends(require_roles(Roles.ADMIN, Roles.ATENDIMENTO))],
 )
 
 

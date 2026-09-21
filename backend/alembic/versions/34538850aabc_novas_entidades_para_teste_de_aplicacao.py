@@ -149,7 +149,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint('id'),
     )
-    op.drop_table('users')
+    # Preserve the legacy users table; this migration must not delete it.
     # ### end Alembic commands ###
 
 
