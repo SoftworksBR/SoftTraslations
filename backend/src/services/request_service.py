@@ -12,11 +12,7 @@ class RequestService:
     def __init__(self, session: AsyncSession):
         self.repository = RequestRepository(session)
 
-    async def create(
-        self, data: RequestCreate, current_employee: Employee
-    ) -> Request:
-        self._require_projects_role(current_employee)
-
+    async def create(self, data: RequestCreate) -> Request:
         request = Request(
             username=data.username,
             email=data.email,
@@ -43,7 +39,7 @@ class RequestService:
         return request
 
     async def get_all(self, current_employee: Employee) -> list[Request]:
-        self._require_projects_role(current_employee)
+        self._require_atendimento_role(current_employee)
 
         return await self.repository.get_all()
 
@@ -53,7 +49,7 @@ class RequestService:
         data: RequestUpdate,
         current_employee: Employee,
     ) -> Request:
-        self._require_projects_role(current_employee)
+        self._require_atendimento_role(current_employee)
 
         request = await self.get_by_id(request_id)
 
@@ -86,16 +82,16 @@ class RequestService:
     async def delete(
         self, request_id: int, current_employee: Employee
     ) -> None:
-        self._require_projects_role(current_employee)
+        self._require_atendimento_role(current_employee)
 
         request = await self.get_by_id(request_id)
 
         await self.repository.delete(request)
 
     @staticmethod
-    def _require_projects_role(current_employee: Employee) -> None:
-        if current_employee.role != Roles.PROJETOS:
+    def _require_atendimento_role(current_employee: Employee) -> None:
+        if current_employee.role != Roles.ATENDIMENTO:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail='Only projetos can use this endpoint',
+                detail='Only atendimento can use this endpoint',
             )

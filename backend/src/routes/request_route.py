@@ -11,26 +11,25 @@ from src.schemas.request_schema import (
 )
 from src.security import get_current_employee
 
-router = APIRouter(
+public_router = APIRouter(
     prefix='/requests',
     tags=['Requests'],
-    dependencies=[Depends(get_current_employee)],
 )
+protected_router = APIRouter(prefix='/requests', tags=['Requests'])
 
 
-@router.post(
+@public_router.post(
     '/', response_model=RequestResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_request(
     data: RequestCreate,
     session: AsyncSession = Depends(get_session),
-    current_employee: Employee = Depends(get_current_employee),
 ):
 
-    return await RequestController.create(data, session, current_employee)
+    return await RequestController.create(data, session)
 
 
-@router.get('/', response_model=list[RequestResponse])
+@protected_router.get('/', response_model=list[RequestResponse])
 async def get_requests(
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
@@ -39,7 +38,7 @@ async def get_requests(
     return await RequestController.get_all(session, current_employee)
 
 
-@router.put('/{request_id}', response_model=RequestResponse)
+@protected_router.put('/{request_id}', response_model=RequestResponse)
 async def update_request(
     request_id: int,
     data: RequestUpdate,
@@ -52,7 +51,9 @@ async def update_request(
     )
 
 
-@router.delete('/{request_id}', status_code=status.HTTP_204_NO_CONTENT)
+@protected_router.delete(
+    '/{request_id}', status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_request(
     request_id: int,
     session: AsyncSession = Depends(get_session),

@@ -10,12 +10,11 @@ class RequestController:
     async def create(
         data: RequestCreate,
         session: AsyncSession,
-        current_employee: Employee,
     ):
 
         service = RequestService(session)
 
-        return await service.create(data, current_employee)
+        return await service.create(data)
 
     @staticmethod
     async def get_all(session: AsyncSession, current_employee: Employee):
