@@ -39,7 +39,7 @@ class ProjectService:
         return project
 
     async def get_all(self, current_employee: Employee) -> list[Project]:
-        self._require_project_reader_role(current_employee)
+        self._require_projects_role(current_employee)
 
         return await self.repository.get_all()
 
@@ -89,12 +89,4 @@ class ProjectService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only projetos can use this endpoint',
-            )
-
-    @staticmethod
-    def _require_project_reader_role(current_employee: Employee) -> None:
-        if current_employee.role not in {Roles.ADMIN, Roles.PROJETOS}:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Only admin and projetos can use this endpoint',
             )

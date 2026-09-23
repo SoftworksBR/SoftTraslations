@@ -58,13 +58,6 @@ async def get_projects(
     return await ProjectController.get_all(session, current_employee)
 
 
-# @router.get('/{project_id}', response_model=ProjectResponse)
-# async def get_project(
-#     project_id: int, session: AsyncSession = Depends(get_session)
-# ):
-#     return await ProjectController.get_by_id(project_id, session)
-
-
 @router.put('/{project_id}', response_model=ProjectResponse)
 async def update_project(
     project_id: int,

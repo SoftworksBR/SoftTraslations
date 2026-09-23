@@ -17,16 +17,6 @@ class ProjectController:
         return await service.create(data, current_employee)
 
     @staticmethod
-    async def get_by_id(
-        project_id: int,
-        session: AsyncSession,
-        current_employee: Employee,
-    ):
-        service = ProjectService(session)
-
-        return await service.get_by_id(project_id, current_employee)
-
-    @staticmethod
     async def get_all(session: AsyncSession, current_employee: Employee):
         service = ProjectService(session)
 

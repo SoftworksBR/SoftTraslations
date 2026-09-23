@@ -18,7 +18,11 @@ class StageService:
     def __init__(self, session: AsyncSession):
         self.repository = StageRepository(session)
 
-    async def create(self, data: StageCreate) -> Stage:
+    async def create(
+        self, data: StageCreate, current_employee: Employee
+    ) -> Stage:
+        self._require_projects_role(current_employee)
+
         return await self._create_for_project(
             data.project_id,
             data.freelancer_id,
@@ -101,11 +105,18 @@ class StageService:
 
         return stage
 
-    async def get_all(self) -> list[Stage]:
+    async def get_all(self, current_employee: Employee) -> list[Stage]:
+        self._require_projects_role(current_employee)
 
         return await self.repository.get_all()
 
-    async def update(self, stage_id: int, data: StageUpdate) -> Stage:
+    async def update(
+        self,
+        stage_id: int,
+        data: StageUpdate,
+        current_employee: Employee,
+    ) -> Stage:
+        self._require_projects_role(current_employee)
 
         stage = await self.get_by_id(stage_id)
 
@@ -117,8 +128,17 @@ class StageService:
 
         return await self.repository.update(stage)
 
-    async def delete(self, stage_id: int) -> None:
+    async def delete(self, stage_id: int, current_employee: Employee) -> None:
+        self._require_projects_role(current_employee)
 
         stage = await self.get_by_id(stage_id)
 
         await self.repository.delete(stage)
+
+    @staticmethod
+    def _require_projects_role(current_employee: Employee) -> None:
+        if current_employee.role != Roles.PROJETOS:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only projetos can use this endpoint',
+            )
