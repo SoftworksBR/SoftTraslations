@@ -39,6 +39,7 @@ async def get_employees_route(
         limit,
         offset,
         session,
+        current_employee,
     )
 
 
@@ -50,10 +51,12 @@ async def get_employees_route(
 async def create_employee_route(
     employee: EmployeeSchema,
     session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
 ):
     return await create_employee(
         employee,
         session,
+        current_employee,
     )
 
 

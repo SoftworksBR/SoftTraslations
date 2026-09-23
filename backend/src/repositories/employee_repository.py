@@ -1,6 +1,7 @@
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import Roles
 from src.models.employee_model import Employee
 
 
@@ -10,10 +11,13 @@ class EmployeeRepository:
         session: AsyncSession,
         limit: int,
         offset: int,
+        role: Roles | None = None,
     ):
-        result = await session.scalars(
-            select(Employee).offset(offset).limit(limit)
-        )
+        query = select(Employee)
+        if role is not None:
+            query = query.where(Employee.role == role)
+
+        result = await session.scalars(query.offset(offset).limit(limit))
 
         return result.all()
 
