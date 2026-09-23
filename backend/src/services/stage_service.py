@@ -1,14 +1,14 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.enums.enums import Status
+from src.enums.enums import Roles, Status
 from src.models.employee_model import Employee
 from src.models.project_model import Project
 from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
-    ProjectStageCreate,
     StageCreate,
     StageUpdate,
 )
@@ -25,16 +25,40 @@ class StageService:
             data.status,
         )
 
-    async def create_for_project(
+    async def assign_to_project(
         self,
         project_id: int,
-        data: ProjectStageCreate,
+        stage_id: int,
+        current_employee: Employee,
     ) -> Stage:
-        return await self._create_for_project(
-            project_id,
-            data.freelancer_id,
-            data.status,
+        if current_employee.role != Roles.PROJETOS:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only projetos can use this endpoint',
+            )
+
+        project = await self.repository.session.scalar(
+            select(Project)
+            .options(selectinload(Project.stages))
+            .where(Project.id == project_id)
         )
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project not found',
+            )
+
+        stage = await self.repository.get_by_id(stage_id)
+        if stage is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Stage not found',
+            )
+
+        if stage not in project.stages:
+            project.stages.append(stage)
+
+        return await self.repository.assign_to_project(stage)
 
     async def _create_for_project(
         self,
