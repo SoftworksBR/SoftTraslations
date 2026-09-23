@@ -106,9 +106,13 @@ class StageService:
         return stage
 
     async def get_all(self, current_employee: Employee) -> list[Stage]:
-        self._require_projects_role(current_employee)
+        if current_employee.role == Roles.PROJETOS:
+            return await self.repository.get_all()
 
-        return await self.repository.get_all()
+        if current_employee.role == Roles.FREELANCER:
+            return await self.repository.get_all(current_employee.id)
+
+        self._raise_stage_access_denied()
 
     async def update(
         self,
@@ -116,9 +120,33 @@ class StageService:
         data: StageUpdate,
         current_employee: Employee,
     ) -> Stage:
-        self._require_projects_role(current_employee)
+        if current_employee.role not in {Roles.PROJETOS, Roles.FREELANCER}:
+            self._raise_stage_access_denied()
 
         stage = await self.get_by_id(stage_id)
+
+        if current_employee.role == Roles.PROJETOS:
+            pass
+        elif current_employee.role == Roles.FREELANCER:
+            if stage.freelancer_id != current_employee.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='Freelancers can only update their own stages',
+                )
+            if (
+                data.freelancer_id is not None
+                or data.status
+                not in {Status.IN_PROGRESS, Status.TESTING}
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        'Freelancers can only update their stage status '
+                        'to in_progress or testing'
+                    ),
+                )
+        else:
+            self._raise_stage_access_denied()
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
@@ -142,3 +170,10 @@ class StageService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only projetos can use this endpoint',
             )
+
+    @staticmethod
+    def _raise_stage_access_denied() -> None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='Only projetos and freelancers can use this endpoint',
+        )

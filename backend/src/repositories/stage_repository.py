@@ -31,9 +31,12 @@ class StageRepository:
 
         return result.scalar_one_or_none()
 
-    async def get_all(self) -> list[Stage]:
+    async def get_all(self, freelancer_id: int | None = None) -> list[Stage]:
+        query = select(Stage)
+        if freelancer_id is not None:
+            query = query.where(Stage.freelancer_id == freelancer_id)
 
-        result = await self.session.execute(select(Stage))
+        result = await self.session.execute(query)
 
         return list(result.scalars().all())
 
