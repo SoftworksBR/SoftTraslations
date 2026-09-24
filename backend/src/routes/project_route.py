@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.controllers.project_controller import ProjectController
 from src.controllers.stage_controller import StageController
 from src.database import get_session
+from src.enums.enums import Status
 from src.schemas.project_schema import (
     ProjectCreate,
     ProjectResponse,
@@ -46,8 +47,22 @@ async def create_project_stage(
 
 
 @router.get('/', response_model=list[ProjectResponse])
-async def get_projects(session: AsyncSession = Depends(get_session)):
-    return await ProjectController.get_all(session)
+async def get_projects(
+    session: AsyncSession = Depends(get_session),
+    name: str | None = None,
+    status: Status | None = None,
+    stage_name: str | None = None,
+    freelancer_name: str | None = None,
+    creator_name: str | None = None,
+):
+    return await ProjectController.get_all(
+        session,
+        name=name,
+        status=status,
+        stage_name=stage_name,
+        freelancer_name=freelancer_name,
+        creator_name=creator_name,
+    )
 
 
 @router.get('/{project_id}', response_model=ProjectResponse)

@@ -32,10 +32,21 @@ class StageController:
         return await service.get_by_id(stage_id)
 
     @staticmethod
-    async def get_all(session: AsyncSession):
+    async def get_all(
+        session: AsyncSession,
+        name: str | None = None,
+        status=None,
+        project_name: str | None = None,
+        freelancer_name: str | None = None,
+    ):
         service = StageService(session)
 
-        return await service.get_all()
+        return await service.get_all(
+            name=name,
+            status=status,
+            project_name=project_name,
+            freelancer_name=freelancer_name,
+        )
 
     @staticmethod
     async def update(stage_id: int, data: StageUpdate, session: AsyncSession):

@@ -10,9 +10,25 @@ class EmployeeRepository:
         session: AsyncSession,
         limit: int,
         offset: int,
+        username: str | None = None,
+        email: str | None = None,
+        role: str | None = None,
     ):
+        statement = select(Employee)
+
+        if username is not None:
+            statement = statement.where(
+                Employee.username.ilike(f'%{username}%')
+            )
+
+        if email is not None:
+            statement = statement.where(Employee.email.ilike(f'%{email}%'))
+
+        if role is not None:
+            statement = statement.where(Employee.role == role)
+
         result = await session.scalars(
-            select(Employee).offset(offset).limit(limit)
+            statement.offset(offset).limit(limit)
         )
 
         return result.all()

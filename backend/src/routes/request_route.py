@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.request_controller import RequestController
 from src.database import get_session
+from src.enums.enums import Translations
 from src.schemas.request_schema import (
     RequestCreate,
     RequestResponse,
@@ -28,9 +29,25 @@ async def create_request(
 
 
 @router.get('/', response_model=list[RequestResponse])
-async def get_requests(session: AsyncSession = Depends(get_session)):
+async def get_requests(
+    session: AsyncSession = Depends(get_session),
+    username: str | None = None,
+    email: str | None = None,
+    phone: str | None = None,
+    company: str | None = None,
+    translate_from: Translations | None = None,
+    translate_to: Translations | None = None,
+):
 
-    return await RequestController.get_all(session)
+    return await RequestController.get_all(
+        session,
+        username=username,
+        email=email,
+        phone=phone,
+        company=company,
+        translate_from=translate_from,
+        translate_to=translate_to,
+    )
 
 
 @router.get('/{request_id}', response_model=RequestResponse)

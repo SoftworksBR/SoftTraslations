@@ -28,8 +28,21 @@ class ProjectService:
 
         return project
 
-    async def get_all(self) -> list[Project]:
-        return await self.repository.get_all()
+    async def get_all(
+        self,
+        name: str | None = None,
+        status=None,
+        stage_name: str | None = None,
+        freelancer_name: str | None = None,
+        creator_name: str | None = None,
+    ) -> list[Project]:
+        return await self.repository.get_all(
+            name=name,
+            status=status,
+            stage_name=stage_name,
+            freelancer_name=freelancer_name,
+            creator_name=creator_name,
+        )
 
     async def update(self, project_id: int, data: ProjectUpdate) -> Project:
 

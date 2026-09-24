@@ -19,11 +19,17 @@ async def get_employees(
     limit: int,
     offset: int,
     session: AsyncSession,
+    username: str | None = None,
+    email: str | None = None,
+    role: Roles | None = None,
 ):
     employees = await service.get_employees(
         session,
         limit,
         offset,
+        username=username,
+        email=email,
+        role=role,
     )
 
     return {'employees': employees}

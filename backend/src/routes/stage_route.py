@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.stage_controller import StageController
 from src.database import get_session
+from src.enums.enums import Status
 from src.schemas.stage_schema import StageCreate, StageResponse, StageUpdate
 from src.security import get_current_employee
 
@@ -23,8 +24,20 @@ async def create_stage(
 
 
 @router.get('/', response_model=list[StageResponse])
-async def get_stages(session: AsyncSession = Depends(get_session)):
-    return await StageController.get_all(session)
+async def get_stages(
+    session: AsyncSession = Depends(get_session),
+    name: str | None = None,
+    status: Status | None = None,
+    project_name: str | None = None,
+    freelancer_name: str | None = None,
+):
+    return await StageController.get_all(
+        session,
+        name=name,
+        status=status,
+        project_name=project_name,
+        freelancer_name=freelancer_name,
+    )
 
 
 @router.get('/{stage_id}', response_model=StageResponse)

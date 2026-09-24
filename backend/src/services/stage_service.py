@@ -22,6 +22,7 @@ class StageService:
         return await self._create_for_project(
             data.project_id,
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -33,6 +34,7 @@ class StageService:
         return await self._create_for_project(
             project_id,
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -40,6 +42,7 @@ class StageService:
         self,
         project_id: int,
         freelancer_id: int,
+        name: str,
         stage_status: Status,
     ) -> Stage:
         project = await self.repository.session.scalar(
@@ -60,7 +63,11 @@ class StageService:
                 detail='Freelancer not found',
             )
 
-        stage = Stage(freelancer_id=freelancer_id, status=stage_status)
+        stage = Stage(
+            freelancer_id=freelancer_id,
+            name=name,
+            status=stage_status,
+        )
         stage.projects.append(project)
 
         return await self.repository.create(stage)
@@ -77,9 +84,20 @@ class StageService:
 
         return stage
 
-    async def get_all(self) -> list[Stage]:
+    async def get_all(
+        self,
+        name: str | None = None,
+        status=None,
+        project_name: str | None = None,
+        freelancer_name: str | None = None,
+    ) -> list[Stage]:
 
-        return await self.repository.get_all()
+        return await self.repository.get_all(
+            name=name,
+            status=status,
+            project_name=project_name,
+            freelancer_name=freelancer_name,
+        )
 
     async def update(self, stage_id: int, data: StageUpdate) -> Stage:
 
@@ -87,6 +105,9 @@ class StageService:
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
+
+        if data.name is not None:
+            stage.name = data.name
 
         if data.status is not None:
             stage.status = data.status
