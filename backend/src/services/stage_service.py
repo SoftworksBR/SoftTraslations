@@ -84,9 +84,20 @@ class StageService:
 
         return stage
 
-    async def get_all(self) -> list[Stage]:
+    async def get_all(
+        self,
+        name: str | None = None,
+        status=None,
+        project_name: str | None = None,
+        freelancer_name: str | None = None,
+    ) -> list[Stage]:
 
-        return await self.repository.get_all()
+        return await self.repository.get_all(
+            name=name,
+            status=status,
+            project_name=project_name,
+            freelancer_name=freelancer_name,
+        )
 
     async def update(self, stage_id: int, data: StageUpdate) -> Stage:
 
