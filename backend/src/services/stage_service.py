@@ -22,6 +22,7 @@ class StageService:
         return await self._create_for_project(
             data.project_id,
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -33,6 +34,7 @@ class StageService:
         return await self._create_for_project(
             project_id,
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -40,6 +42,7 @@ class StageService:
         self,
         project_id: int,
         freelancer_id: int,
+        name: str,
         stage_status: Status,
     ) -> Stage:
         project = await self.repository.session.scalar(
@@ -60,7 +63,11 @@ class StageService:
                 detail='Freelancer not found',
             )
 
-        stage = Stage(freelancer_id=freelancer_id, status=stage_status)
+        stage = Stage(
+            freelancer_id=freelancer_id,
+            name=name,
+            status=stage_status,
+        )
         stage.projects.append(project)
 
         return await self.repository.create(stage)
@@ -87,6 +94,9 @@ class StageService:
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
+
+        if data.name is not None:
+            stage.name = data.name
 
         if data.status is not None:
             stage.status = data.status
