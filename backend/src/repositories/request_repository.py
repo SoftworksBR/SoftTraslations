@@ -25,9 +25,36 @@ class RequestRepository:
 
         return result.scalar_one_or_none()
 
-    async def get_all(self) -> list[Request]:
+    async def get_all(
+        self,
+        username: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        company: str | None = None,
+        translate_from=None,
+        translate_to=None,
+    ) -> list[Request]:
+        statement = select(Request)
 
-        result = await self.session.execute(select(Request))
+        if username is not None:
+            statement = statement.where(Request.username.ilike(f'%{username}%'))
+
+        if email is not None:
+            statement = statement.where(Request.email.ilike(f'%{email}%'))
+
+        if phone is not None:
+            statement = statement.where(Request.phone.ilike(f'%{phone}%'))
+
+        if company is not None:
+            statement = statement.where(Request.company.ilike(f'%{company}%'))
+
+        if translate_from is not None:
+            statement = statement.where(Request.translate_from == translate_from)
+
+        if translate_to is not None:
+            statement = statement.where(Request.translate_to == translate_to)
+
+        result = await self.session.execute(statement)
 
         return list(result.scalars().all())
 

@@ -20,11 +20,26 @@ class RequestController:
         return await service.get_by_id(request_id)
 
     @staticmethod
-    async def get_all(session: AsyncSession):
+    async def get_all(
+        session: AsyncSession,
+        username: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        company: str | None = None,
+        translate_from=None,
+        translate_to=None,
+    ):
 
         service = RequestService(session)
 
-        return await service.get_all()
+        return await service.get_all(
+            username=username,
+            email=email,
+            phone=phone,
+            company=company,
+            translate_from=translate_from,
+            translate_to=translate_to,
+        )
 
     @staticmethod
     async def update(
