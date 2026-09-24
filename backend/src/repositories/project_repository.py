@@ -34,8 +34,7 @@ class ProjectRepository:
 
     async def get_all(self) -> list[Project]:
         result = await self.session.execute(
-            select(Project)
-            .options(selectinload(Project.stages))
+            select(Project).options(selectinload(Project.stages))
         )
 
         return list(result.scalars().all())
