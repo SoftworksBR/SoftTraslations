@@ -10,6 +10,7 @@ from src.controllers.employee_controller import (
     update_employee,
 )
 from src.database import get_session
+from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeListSchema,
@@ -32,6 +33,9 @@ router = APIRouter(
 async def get_employees_route(
     limit: int = 10,
     offset: int = 0,
+    username: str | None = None,
+    email: str | None = None,
+    role: Roles | None = None,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
@@ -39,6 +43,9 @@ async def get_employees_route(
         limit,
         offset,
         session,
+        username=username,
+        email=email,
+        role=role,
     )
 
 

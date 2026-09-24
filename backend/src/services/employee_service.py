@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import EmployeeSchema
@@ -12,11 +13,17 @@ class EmployeeService:
         session: AsyncSession,
         limit: int,
         offset: int,
+        username: str | None = None,
+        email: str | None = None,
+        role: Roles | None = None,
     ):
         return await EmployeeRepository.get_employees(
             session,
             limit,
             offset,
+            username=username,
+            email=email,
+            role=role,
         )
 
     @staticmethod
