@@ -26,9 +26,7 @@ export default function LandingPage() {
 
                     <View style={styles.navLinks}>
 
-                        <Text style={styles.navLink}>
-                            Recursos
-                        </Text>
+                       
 
                         <Pressable onPress={() => router.push('/login')}>
                             <Text style={styles.navLink}>
