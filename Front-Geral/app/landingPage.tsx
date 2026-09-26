@@ -219,21 +219,6 @@ export default function LandingPage() {
                 </View>
 
             </View>
-
-            {/* RODAPÉ */}
-            <View style={styles.footer}>
-
-                <Pressable
-                    style={styles.loginButton}
-                    onPress={() => router.push('/login')}
-                >
-                    <Text style={styles.loginText}>
-                        ENTRAR NA PLATAFORMA
-                    </Text>
-                </Pressable>
-
-            </View>
-
         </ScrollView>
     );
 }
