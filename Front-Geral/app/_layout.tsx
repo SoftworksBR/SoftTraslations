@@ -46,6 +46,13 @@ export default function RootLayout() {
         />
 
         <Stack.Screen
+          name="orcamentos"
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
           name="modal"
           options={{
             presentation: 'modal',
@@ -59,3 +66,4 @@ export default function RootLayout() {
     </TradutorProvider>
   );
 }
+

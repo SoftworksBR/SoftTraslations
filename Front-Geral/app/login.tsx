@@ -21,18 +21,17 @@ export default function Login() {
 
     console.log('Login:', { email, senha });
 
-    // Futuramente: chamar API de login
-    // Se autenticado, redirecionar:
     router.replace('/drawer/GerenciarAdministracao');
   }
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        {/* LOGO/TÍTULO */}
-        <Text style={styles.title}>SoftTranslations</Text>
-        <Text style={styles.subtitle}>Gerenciador de Tradução</Text>
+      {/* NAVBAR */}
+      <View style={styles.navbar}>
+        <Text style={styles.navbarTitle}>Área de Login</Text>
+      </View>
 
+      <View style={styles.content}>
         {/* FORMULÁRIO */}
         <View style={styles.form}>
           {/* EMAIL */}
@@ -75,25 +74,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
 
+  navbar: {
+    backgroundColor: '#000',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    justifyContent: 'flex-start',
+  },
+
+  navbarTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
     minHeight: '100%',
-  },
-
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000',
-    marginBottom: 8,
-  },
-
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 40,
   },
 
   form: {
