@@ -5,7 +5,10 @@ from src.security import get_current_employee
 from .auth_route import router as auth_route
 from .employee_route import router as employee_route
 from .project_route import router as project_route
-from .request_route import router as request_route
+from .request_route import (
+    protected_router as request_protected_route,
+)
+from .request_route import public_router as request_public_route
 from .stage_route import router as stage_route
 
 public_router = APIRouter()
@@ -14,7 +17,8 @@ protected_router = APIRouter(
 )
 
 public_router.include_router(auth_route)
+public_router.include_router(request_public_route)
 protected_router.include_router(employee_route)
 protected_router.include_router(project_route)
 protected_router.include_router(stage_route)
-protected_router.include_router(request_route)
+protected_router.include_router(request_protected_route)

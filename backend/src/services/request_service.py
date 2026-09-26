@@ -1,6 +1,8 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import Roles
+from src.models.employee_model import Employee
 from src.models.request_model import Request
 from src.repositories.request_repository import RequestRepository
 from src.schemas.request_schema import RequestCreate, RequestUpdate
@@ -11,7 +13,6 @@ class RequestService:
         self.repository = RequestRepository(session)
 
     async def create(self, data: RequestCreate) -> Request:
-
         request = Request(
             username=data.username,
             email=data.email,
@@ -37,11 +38,18 @@ class RequestService:
 
         return request
 
-    async def get_all(self) -> list[Request]:
+    async def get_all(self, current_employee: Employee) -> list[Request]:
+        self._require_atendimento_role(current_employee)
 
         return await self.repository.get_all()
 
-    async def update(self, request_id: int, data: RequestUpdate) -> Request:
+    async def update(
+        self,
+        request_id: int,
+        data: RequestUpdate,
+        current_employee: Employee,
+    ) -> Request:
+        self._require_atendimento_role(current_employee)
 
         request = await self.get_by_id(request_id)
 
@@ -71,8 +79,19 @@ class RequestService:
 
         return await self.repository.update(request)
 
-    async def delete(self, request_id: int) -> None:
+    async def delete(
+        self, request_id: int, current_employee: Employee
+    ) -> None:
+        self._require_atendimento_role(current_employee)
 
         request = await self.get_by_id(request_id)
 
         await self.repository.delete(request)
+
+    @staticmethod
+    def _require_atendimento_role(current_employee: Employee) -> None:
+        if current_employee.role != Roles.ATENDIMENTO:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only atendimento can use this endpoint',
+            )
