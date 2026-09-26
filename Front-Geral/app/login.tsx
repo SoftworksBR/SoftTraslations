@@ -21,7 +21,7 @@ export default function Login() {
 
     console.log('Login:', { email, senha });
 
-    router.replace('/drawer/GerenciarAdministracao');
+   router.replace('/orcamentos/FazerSolicitacao');
   }
 
   return (
