@@ -23,4 +23,3 @@ class Roles(Enum):
     PROJETOS = 'projetos'
     ATENDIMENTO = 'atendimento'
     FREELANCER = 'freelancer'
-    ORCAMENTO = 'orcamento'
