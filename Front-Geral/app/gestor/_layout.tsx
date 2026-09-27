@@ -1,5 +1,6 @@
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
+import { logout } from '@/services/auth';
 
 import {
   DrawerContentScrollView,
@@ -13,7 +14,8 @@ import {
 } from 'react-native';
 
 function CustomDrawerContent(props: any) {
-  function deslogar() {
+  async function deslogar() {
+    await logout();
     router.replace('/');
   }
 
@@ -55,7 +57,7 @@ function CustomDrawerContent(props: any) {
       <View style={styles.rodape}>
         <DrawerItem
           label="Deslogar"
-          onPress={deslogar}
+          onPress={() => void deslogar()}
           labelStyle={styles.deslogar}
         />
       </View>

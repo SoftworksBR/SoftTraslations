@@ -1,6 +1,7 @@
 import { Drawer } from 'expo-router/drawer';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useTradutor } from '@/context/TradutorContext';
+import { logout } from '@/services/auth';
 
 import {
   DrawerContentScrollView,
@@ -13,14 +14,12 @@ import {
   StyleSheet,
 } from 'react-native';
 
-import { tradutores } from '@/data/tradutores';
-
-
 function CustomDrawerContent(props: any) {
 
     const { tradutorAtual } = useTradutor();
 
-  function deslogar() {
+  async function deslogar() {
+    await logout();
     router.replace('/');
   }
 
@@ -56,7 +55,7 @@ function CustomDrawerContent(props: any) {
 
         <DrawerItem
           label="Deslogar"
-          onPress={deslogar}
+          onPress={() => void deslogar()}
           labelStyle={styles.deslogar}
         />
 
