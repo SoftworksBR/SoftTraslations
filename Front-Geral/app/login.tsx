@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { getCurrentEmployee, login } from '@/services/auth';
 import {
@@ -29,12 +29,12 @@ export default function Login() {
       const destinations = {
         admin: '/drawer/GerenciarAdministracao',
         projetos: '/gestor/projetos',
-        atendimento: '/drawer/GerenciarAtendimento',
+        atendimento: '/atendente',
         freelancer: '/tradutor',
         orcamento: '/gestor/orcamentos',
       } as const;
 
-      router.replace(destinations[employee.role]);
+      router.replace(destinations[employee.role] as Href);
     } catch (error) {
       Alert.alert(
         'Não foi possível entrar',
