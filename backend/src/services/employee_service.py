@@ -146,6 +146,15 @@ class EmployeeService:
                 detail='Employee not found',
             )
 
+        if (
+            target_employee.role == Roles.ADMIN
+            and target_employee.id != current_employee.id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Admins cannot delete other admins',
+            )
+
         await EmployeeRepository.delete(
             session,
             target_employee,
