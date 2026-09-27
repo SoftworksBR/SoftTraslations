@@ -32,12 +32,6 @@ export default function LandingPage() {
                             </Text>
                         </Pressable>
 
-                        <Pressable onPress={() => router.push('/orcamentos/FazerSolicitacao')}>
-                            <Text style={styles.navLink}>
-                                Cliente
-                            </Text>
-                        </Pressable>
-
                         <Pressable onPress={() => router.push('/atendente')}>
                             <Text style={styles.navLink}>
                                 Atendente
@@ -97,18 +91,6 @@ export default function LandingPage() {
                                     Fazer Login
                                 </Text>
                             </Pressable>
-
-                            <Pressable
-                                style={styles.ctaButtonSecundario}
-                                onPress={() =>
-                                    router.push('/orcamentos/FazerSolicitacao')
-                                }
-                            >
-                                <Text style={styles.ctaTextSecundario}>
-                                    Solicitar Orçamento
-                                </Text>
-                            </Pressable>
-
                         </View>
 
                     </View>
