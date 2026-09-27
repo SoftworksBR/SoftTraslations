@@ -26,10 +26,6 @@ export default function LandingPage() {
 
                     <View style={styles.navLinks}>
 
-                        <Text style={styles.navLink}>
-                            Recursos
-                        </Text>
-
                         <Pressable onPress={() => router.push('/login')}>
                             <Text style={styles.navLink}>
                                 Entrar
@@ -61,14 +57,29 @@ export default function LandingPage() {
                             de cada tradução do início à entrega.
                         </Text>
 
-                        <Pressable
-                            style={styles.ctaButton}
-                            onPress={() => router.push('/login')}
-                        >
-                            <Text style={styles.ctaText}>
-                                COMEÇAR AGORA
-                            </Text>
-                        </Pressable>
+                        <View style={styles.botoesHero}>
+
+                            <Pressable
+                                style={styles.ctaButton}
+                                onPress={() => router.push('/login')}
+                            >
+                                <Text style={styles.ctaText}>
+                                    Fazer Login
+                                </Text>
+                            </Pressable>
+
+                            <Pressable
+                                style={styles.ctaButtonSecundario}
+                                onPress={() =>
+                                    router.push('/orcamentos/FazerSolicitacao')
+                                }
+                            >
+                                <Text style={styles.ctaTextSecundario}>
+                                    Solicitar Orçamento
+                                </Text>
+                            </Pressable>
+
+                        </View>
 
                     </View>
 
@@ -89,6 +100,7 @@ export default function LandingPage() {
 
             {/* RECURSOS */}
             <View style={styles.resourcesSection}>
+
                 {/* CARDS */}
                 <View style={styles.resourcesGrid}>
 
@@ -222,20 +234,6 @@ export default function LandingPage() {
 
             </View>
 
-            {/* RODAPÉ */}
-            <View style={styles.footer}>
-
-                <Pressable
-                    style={styles.loginButton}
-                    onPress={() => router.push('/login')}
-                >
-                    <Text style={styles.loginText}>
-                        ENTRAR NA PLATAFORMA
-                    </Text>
-                </Pressable>
-
-            </View>
-
         </ScrollView>
     );
 }
@@ -328,7 +326,13 @@ const styles = StyleSheet.create({
         maxWidth: 500,
     },
 
-    /* BOTÃO PRINCIPAL */
+    /* BOTÕES PRINCIPAIS */
+    botoesHero: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+
     ctaButton: {
         alignSelf: 'flex-start',
 
@@ -343,6 +347,24 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '800',
         color: '#000000',
+    },
+
+    ctaButtonSecundario: {
+        alignSelf: 'flex-start',
+
+        paddingHorizontal: 26,
+        paddingVertical: 11,
+
+        backgroundColor: '#000000',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+        borderRadius: 6,
+    },
+
+    ctaTextSecundario: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
 
     /* LOGO */
@@ -505,4 +527,3 @@ const styles = StyleSheet.create({
     },
 
 });
-

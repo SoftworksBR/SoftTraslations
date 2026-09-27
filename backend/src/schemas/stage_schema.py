@@ -9,11 +9,6 @@ class StageCreate(BaseModel):
     status: Status
 
 
-class ProjectStageCreate(BaseModel):
-    freelancer_id: int
-    status: Status
-
-
 class StageUpdate(BaseModel):
     freelancer_id: int | None = None
     status: Status | None = None
