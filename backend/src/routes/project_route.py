@@ -10,7 +10,7 @@ from src.schemas.project_schema import (
     ProjectResponse,
     ProjectUpdate,
 )
-from src.schemas.stage_schema import ProjectStageCreate, StageResponse
+from src.schemas.stage_schema import StageResponse
 from src.security import get_current_employee
 
 router = APIRouter(
@@ -24,25 +24,29 @@ router = APIRouter(
     '/', response_model=ProjectResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_project(
-    data: ProjectCreate, session: AsyncSession = Depends(get_session)
-):
-    return await ProjectController.create(data, session)
-
-
-@router.post(
-    '/{project_id}/stages',
-    response_model=StageResponse,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_project_stage(
-    project_id: int,
-    data: ProjectStageCreate,
+    data: ProjectCreate,
     session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
 ):
-    return await StageController.create_for_project(
+    return await ProjectController.create(data, session, current_employee)
+
+
+@router.put(
+    '/{project_id}/stages/{stage_id}',
+    response_model=StageResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def assign_stage_to_project(
+    project_id: int,
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.assign_to_project(
         project_id,
-        data,
+        stage_id,
         session,
+        current_employee,
     )
 
 
@@ -69,7 +73,7 @@ async def get_projects(
 async def get_project(
     project_id: int, session: AsyncSession = Depends(get_session)
 ):
-    return await ProjectController.get_by_id(project_id, session)
+    return await ProjectController.get_all(session, current_employee)
 
 
 @router.put('/{project_id}', response_model=ProjectResponse)
@@ -77,12 +81,17 @@ async def update_project(
     project_id: int,
     data: ProjectUpdate,
     session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
 ):
-    return await ProjectController.update(project_id, data, session)
+    return await ProjectController.update(
+        project_id, data, session, current_employee
+    )
 
 
 @router.delete('/{project_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(
-    project_id: int, session: AsyncSession = Depends(get_session)
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
 ):
-    await ProjectController.delete(project_id, session)
+    await ProjectController.delete(project_id, session, current_employee)

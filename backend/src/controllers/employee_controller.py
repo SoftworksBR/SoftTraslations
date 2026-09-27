@@ -4,9 +4,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.enums.enums import Roles
 from src.models.employee_model import Employee
-from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
 )
@@ -38,11 +36,13 @@ async def get_employees(
 async def create_employee(
     employee: EmployeeSchema,
     session: AsyncSession,
+    current_employee: Employee,
 ):
     try:
         return await service.create_employee(
             session,
             employee,
+            current_employee,
         )
 
     except ValueError as error:
@@ -58,30 +58,12 @@ async def update_employee(
     session: AsyncSession,
     current_employee: Employee,
 ):
-    if (
-        current_employee.role != Roles.ADMIN
-        and current_employee.id != employee_id
-    ):
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You can only update your own employee',
-        )
-
-    target_employee = await EmployeeRepository.get_by_id(
-        session,
-        employee_id,
-    )
-    if target_employee is None:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail='Employee not found',
-        )
-
     try:
         return await service.update_employee(
             session,
-            target_employee,
+            employee_id,
             employee,
+            current_employee,
         )
 
     except IntegrityError:
@@ -96,26 +78,8 @@ async def delete_employee(
     session: AsyncSession,
     current_employee: Employee,
 ):
-    if (
-        current_employee.role != Roles.ADMIN
-        and current_employee.id != employee_id
-    ):
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You can only delete your own employee',
-        )
-
-    target_employee = await EmployeeRepository.get_by_id(
-        session,
-        employee_id,
-    )
-    if target_employee is None:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail='Employee not found',
-        )
-
     await service.delete_employee(
         session,
-        target_employee,
+        employee_id,
+        current_employee,
     )
