@@ -1,7 +1,7 @@
+from .company_model import Company as Company
+from .company_model import Contact as Contact
+from .company_model import Department as Department
 from .employee_model import Employee as Employee
-from .empresa_model import Contato as Contato
-from .empresa_model import Departamento as Departamento
-from .empresa_model import Empresa as Empresa
 from .file_model import RequestFile as RequestFile
 from .file_model import StageFile as StageFile
 from .project_model import Project as Project

@@ -1,4 +1,4 @@
-"""cria empresas, departamentos e contatos
+"""creates companies, departments and contacts
 
 Revision ID: c5e1a7d93f42
 Revises: bc003363b4ba
@@ -22,12 +22,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     op.create_table(
-        'empresas',
+        'companies',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('razao_social', sa.String(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
         sa.Column('cnpj', sa.String(), nullable=False),
         sa.Column(
-            'criada_em',
+            'created_at',
             sa.DateTime(),
             server_default=sa.text('now()'),
             nullable=False,
@@ -36,28 +36,28 @@ def upgrade() -> None:
         sa.UniqueConstraint('cnpj'),
     )
     op.create_table(
-        'departamentos',
+        'departments',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('nome', sa.String(), nullable=False),
-        sa.Column('empresa_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['empresa_id'], ['empresas.id']),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('company_id', sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(['company_id'], ['companies.id']),
         sa.PrimaryKeyConstraint('id'),
     )
     op.create_table(
-        'contatos',
+        'contacts',
         sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('nome', sa.String(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
         sa.Column('email', sa.String(), nullable=False),
-        sa.Column('telefone', sa.String(), nullable=False),
-        sa.Column('cargo', sa.String(), nullable=True),
-        sa.Column('departamento_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['departamento_id'], ['departamentos.id']),
+        sa.Column('phone', sa.String(), nullable=False),
+        sa.Column('job_title', sa.String(), nullable=True),
+        sa.Column('department_id', sa.Integer(), nullable=False),
+        sa.ForeignKeyConstraint(['department_id'], ['departments.id']),
         sa.PrimaryKeyConstraint('id'),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_table('contatos')
-    op.drop_table('departamentos')
-    op.drop_table('empresas')
+    op.drop_table('contacts')
+    op.drop_table('departments')
+    op.drop_table('companies')
