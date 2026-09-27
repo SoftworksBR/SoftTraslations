@@ -7,6 +7,7 @@ class EmployeePublicSchema(BaseModel):
     id: int
     username: str
     email: EmailStr
+    role: Roles
 
     model_config = ConfigDict(from_attributes=True)
 
