@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -67,26 +68,40 @@ export default function EmployeeManagementList({
   }
 
   function confirmDelete(id: number) {
+    if (Platform.OS === 'web') {
+      if (
+        typeof window !== 'undefined' &&
+        window.confirm('Deseja realmente excluir este funcionário?')
+      ) {
+        void deleteEmployeeFromApi(id);
+      }
+      return;
+    }
+
     Alert.alert('Excluir funcionário', 'Deseja realmente excluir este funcionário?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir',
         style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            try {
-              await deleteEmployee(id);
-              await loadEmployees();
-            } catch (error) {
-              Alert.alert(
-                'Não foi possível excluir',
-                error instanceof Error ? error.message : 'Tente novamente.',
-              );
-            }
-          })();
-        },
+        onPress: () => void deleteEmployeeFromApi(id),
       },
     ]);
+  }
+
+  async function deleteEmployeeFromApi(id: number) {
+    try {
+      await deleteEmployee(id);
+      await loadEmployees();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Tente novamente.';
+
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Não foi possível excluir: ${message}`);
+      } else {
+        Alert.alert('Não foi possível excluir', message);
+      }
+    }
   }
 
   function addEmployee() {
