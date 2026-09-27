@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
+import { createEmployee } from '@/services/employees';
 
 import {
   View,
@@ -7,26 +9,39 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
+  Alert,
 } from 'react-native';
-
-import { useState } from 'react';
 
 export default function NovoTradutor() {
 
   const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
-  function salvar() {
+  async function salvar() {
+    if (!nome.trim() || !email.trim() || !senha) {
+      Alert.alert('Pré-cadastro', 'Preencha nome, e-mail e senha.');
+      return;
+    }
 
-    const tradutor = {
-      nome,
-      senha,
-      status: 'aguardando_perfil',
-    };
-
-    console.log('Pré-cadastro do tradutor:', tradutor);
-
-    router.back();
+    setSalvando(true);
+    try {
+      await createEmployee({
+        username: nome.trim(),
+        email: email.trim(),
+        password: senha,
+        role: 'freelancer',
+      });
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível cadastrar',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -52,6 +67,19 @@ export default function NovoTradutor() {
           />
 
           <Text style={styles.label}>
+            E-mail
+          </Text>
+
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Digite o e-mail"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>
             Senha
           </Text>
 
@@ -66,9 +94,10 @@ export default function NovoTradutor() {
           <Pressable
             style={styles.botao}
             onPress={salvar}
+            disabled={salvando}
           >
             <Text style={styles.botaoText}>
-              PRÉ-CADASTRAR
+              {salvando ? 'CADASTRANDO...' : 'PRÉ-CADASTRAR'}
             </Text>
           </Pressable>
 
