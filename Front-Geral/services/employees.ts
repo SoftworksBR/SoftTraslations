@@ -25,6 +25,15 @@ export type EmployeeInput = {
   status?: EmployeeStatus;
 };
 
+export type FreelancerPreRegistrationInput = {
+  email: string;
+  password: string;
+};
+
+export type FreelancerProfileInput = {
+  name: string;
+};
+
 type EmployeeList = {
   employees: Employee[];
 };
@@ -55,5 +64,21 @@ export function updateEmployee(id: number, employee: EmployeeInput) {
 export function deleteEmployee(id: number) {
   return apiRequest<void>(`/employee/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export function preRegisterFreelancer(
+  freelancer: FreelancerPreRegistrationInput,
+) {
+  return apiRequest<Employee>('/employee/freelancers/pre-register', {
+    method: 'POST',
+    body: JSON.stringify(freelancer),
+  });
+}
+
+export function completeFreelancerProfile(profile: FreelancerProfileInput) {
+  return apiRequest<Employee>('/employee/me/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
   });
 }

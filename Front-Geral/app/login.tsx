@@ -26,6 +26,14 @@ export default function Login() {
     try {
       await login(email.trim(), senha);
       const employee = await getCurrentEmployee();
+      if (
+        employee.role === 'freelancer' &&
+        employee.status === 'pending'
+      ) {
+        router.replace('/tradutor/completar-perfil');
+        return;
+      }
+
       const destinations = {
         admin: '/drawer/GerenciarAdministracao',
         projetos: '/gestor/projetos',

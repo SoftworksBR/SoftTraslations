@@ -1,38 +1,43 @@
-import {
-  Redirect,
-  useLocalSearchParams,
-} from 'expo-router';
+import { Redirect } from 'expo-router';
+import { useEffect, useState } from 'react';
 
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
 } from 'react-native';
 
-import { tradutores } from '@/data/tradutores';
+import { getCurrentEmployee } from '@/services/auth';
+import type { Employee } from '@/services/employees';
 
 export default function Servicos() {
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const params = useLocalSearchParams<{
-    id?: string;
-  }>();
+  useEffect(() => {
+    void getCurrentEmployee()
+      .then(setEmployee)
+      .catch(() => setEmployee(null))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const id = Number(params.id);
+  if (loading) {
+    return <ActivityIndicator style={styles.loading} />;
+  }
 
-  const tradutor = tradutores.find(
-    (item) => item.id === id
-  );
-
-  if (!tradutor) {
+  if (!employee || employee.role !== 'freelancer') {
     return <Redirect href="/" />;
   }
 
-  if (tradutor.status !== 'autorizado') {
+  if (employee.status === 'pending') {
     return (
-      <Redirect
-        href={`/tradutor/completar-perfil?id=${id}`}
-      />
+      <Redirect href="/tradutor/completar-perfil" />
     );
+  }
+
+  if (employee.status !== 'available') {
+    return <Redirect href="/tradutor" />;
   }
 
   return (
@@ -51,6 +56,9 @@ export default function Servicos() {
 }
 
 const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 20,
