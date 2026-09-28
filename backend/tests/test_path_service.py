@@ -11,7 +11,7 @@ from src.services.path_service import PathService
 
 def test_existing_stage_can_be_added_to_another_path(monkeypatch):
     existing_path = Path(name='Existing path')
-    stage = Stage(freelancer_id=1, status=Status.READY)
+    stage = Stage(name='Stage 1', freelancer_id=1, status=Status.READY)
     existing_path.stages.append(stage)
 
     async def scalars(query):
