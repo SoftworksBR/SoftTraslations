@@ -41,7 +41,7 @@ def test_pending_status_is_only_valid_for_freelancers():
 
 def test_path_and_project_require_at_least_one_related_record():
     with pytest.raises(ValidationError):
-        PathCreate(name='Translation', stages=[])
+        PathCreate(name='Translation', stage_ids=[])
 
     with pytest.raises(ValidationError):
         ProjectCreate(
