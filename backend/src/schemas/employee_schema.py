@@ -1,4 +1,10 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    model_validator,
+)
 
 from src.enums.enums import EmployeeStatus, Roles
 
@@ -33,3 +39,12 @@ class EmployeeSchema(BaseModel):
 
 class EmployeeListSchema(BaseModel):
     employees: list[EmployeePublicSchema]
+
+
+class FreelancerPreRegistrationSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class FreelancerProfileSchema(BaseModel):
+    name: str = Field(min_length=1)
