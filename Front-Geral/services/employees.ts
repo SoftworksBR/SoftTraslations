@@ -7,11 +7,14 @@ export type EmployeeRole =
   | 'freelancer'
   | 'orcamento';
 
+export type EmployeeStatus = 'available' | 'busy' | 'pending';
+
 export type Employee = {
   id: number;
   username: string;
   email: string;
   role: EmployeeRole;
+  status: EmployeeStatus;
 };
 
 export type EmployeeInput = {
@@ -19,6 +22,7 @@ export type EmployeeInput = {
   email: string;
   role: EmployeeRole;
   password: string;
+  status?: EmployeeStatus;
 };
 
 type EmployeeList = {
