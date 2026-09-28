@@ -1,26 +1,49 @@
-import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
   Pressable,
   FlatList,
 } from 'react-native';
+import { getPaths } from '@/services/paths';
+import type { Path } from '@/services/paths';
+import type { ProjectStatus } from '@/services/projects';
 
-const trilhas = [
-  {
-    id: 1,
-    nome: 'Tradução padrão',
-    quadros: [
-      'Receber arquivos',
-      'Traduzir arquivos',
-      'Emitir fatura',
-    ],
-  },
-];
+const statusLabels: Record<ProjectStatus, string> = {
+  ready: 'Pronto',
+  in_progress: 'Em andamento',
+  testing: 'Em teste',
+  done: 'Concluído',
+};
 
 export default function Trilhas() {
+  const [trilhas, setTrilhas] = useState<Path[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const loadPaths = useCallback(async () => {
+    setLoading(true);
+    try {
+      setTrilhas(await getPaths());
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Falha ao carregar trilhas.',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadPaths();
+    }, [loadPaths]),
+  );
 
   return (
     <View style={styles.container}>
@@ -38,23 +61,30 @@ export default function Trilhas() {
         Trilhas
       </Text>
 
-      <FlatList
-        data={trilhas}
-        keyExtractor={(item) =>
-          item.id.toString()
-        }
-        renderItem={({ item }) => (
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        <FlatList
+          data={trilhas}
+          keyExtractor={(item) => String(item.id)}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {errorMessage || 'Nenhuma Trilha cadastrada.'}
+            </Text>
+          }
+          renderItem={({ item }) => (
 
           <View style={styles.card}>
 
             <Text style={styles.nome}>
-              {item.nome}
+              {item.name}
             </Text>
 
-            {item.quadros.map(
-              (quadro, index) => (
+            {[...item.stages]
+              .sort((left, right) => left.id - right.id)
+              .map((stage, index) => (
                 <View
-                  key={quadro}
+                  key={stage.id}
                   style={styles.etapa}
                 >
                   <Text style={styles.numero}>
@@ -62,16 +92,16 @@ export default function Trilhas() {
                   </Text>
 
                   <Text style={styles.quadro}>
-                    {quadro}
+                    Etapa #{stage.id} · {statusLabels[stage.status]}
                   </Text>
                 </View>
-              )
-            )}
+              ))}
 
           </View>
 
-        )}
-      />
+          )}
+        />
+      )}
 
       <Pressable
         style={styles.botao}
@@ -138,6 +168,8 @@ const styles = StyleSheet.create({
   quadro: {
     fontSize: 16,
   },
+
+  empty: { color: '#666', paddingVertical: 16 },
 
   botao: {
     height: 55,

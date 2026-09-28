@@ -1,37 +1,55 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, router } from 'expo-router';
 
 import {
+  ActivityIndicator,
   View,
   Text,
   TextInput,
   Pressable,
   StyleSheet,
   ScrollView,
+  Alert,
 } from 'react-native';
 
-import { router } from 'expo-router';
+import { createPath } from '@/services/paths';
+import { getStages } from '@/services/stages';
+import type { ProjectStage, ProjectStatus } from '@/services/projects';
 
-const quadros = [
-  {
-    id: 1,
-    nome: 'Receber arquivos',
-  },
-  {
-    id: 2,
-    nome: 'Traduzir arquivos',
-  },
-  {
-    id: 3,
-    nome: 'Emitir fatura',
-  },
-];
+const statusLabels: Record<ProjectStatus, string> = {
+  ready: 'Pronto',
+  in_progress: 'Em andamento',
+  testing: 'Em teste',
+  done: 'Concluído',
+};
 
 export default function NovaTrilha() {
-
   const [nome, setNome] = useState('');
+  const [stages, setStages] = useState<ProjectStage[]>([]);
+  const [selecionados, setSelecionados] = useState<number[]>([]);
+  const [loadingStages, setLoadingStages] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [selecionados, setSelecionados] =
-    useState<number[]>([]);
+  const loadStages = useCallback(async () => {
+    setLoadingStages(true);
+    try {
+      setStages(await getStages());
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Falha ao carregar etapas.',
+      );
+    } finally {
+      setLoadingStages(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadStages();
+    }, [loadStages]),
+  );
 
   function selecionarQuadro(id: number) {
 
@@ -47,20 +65,34 @@ export default function NovaTrilha() {
     });
   }
 
-  function salvar() {
+  async function salvar() {
+    if (!nome.trim() || selecionados.length === 0) {
+      Alert.alert('Nova Trilha', 'Informe um nome e selecione ao menos um Stage.');
+      return;
+    }
 
-    const trilha = {
-      id: Date.now(),
-      nome,
-      quadros: selecionados,
-    };
+    setSalvando(true);
+    try {
+      const stagesSelecionados = selecionados
+        .map((id) => stages.find((stage) => stage.id === id))
+        .filter((stage): stage is ProjectStage => stage !== undefined);
 
-    console.log(
-      'Nova trilha:',
-      trilha
-    );
-
-    router.back();
+      await createPath({
+        name: nome.trim(),
+        stages: stagesSelecionados.map(({ freelancer_id, status }) => ({
+          freelancer_id,
+          status,
+        })),
+      });
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível criar a trilha',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    } finally {
+      setSalvando(false);
+    }
   }
 
   return (
@@ -89,16 +121,24 @@ export default function NovaTrilha() {
             Quadros da trilha
           </Text>
 
-          {quadros.map((quadro) => {
+          {loadingStages ? (
+            <ActivityIndicator />
+          ) : stages.length === 0 ? (
+            <Text style={styles.info}>
+              {errorMessage || 'Nenhum Stage disponível para compor a trilha.'}
+            </Text>
+          ) : [...stages]
+            .sort((left, right) => left.id - right.id)
+            .map((stage) => {
 
             const selecionado =
               selecionados.includes(
-                quadro.id
+                stage.id
               );
 
             return (
               <Pressable
-                key={quadro.id}
+                key={stage.id}
                 style={[
                   styles.quadro,
                   selecionado &&
@@ -106,7 +146,7 @@ export default function NovaTrilha() {
                 ]}
                 onPress={() =>
                   selecionarQuadro(
-                    quadro.id
+                    stage.id
                   )
                 }
               >
@@ -118,23 +158,23 @@ export default function NovaTrilha() {
                   }
                 >
                   {selecionado ? '✓ ' : ''}
-                  {quadro.nome}
+                  Etapa #{stage.id} · {statusLabels[stage.status]} · Freelancer #{stage.freelancer_id}
                 </Text>
               </Pressable>
             );
           })}
 
           <Text style={styles.info}>
-            Os quadros serão utilizados na
-            ordem em que forem selecionados.
+            Os Stages selecionados serão copiados para esta Trilha.
           </Text>
 
           <Pressable
             style={styles.botao}
             onPress={salvar}
+            disabled={salvando || loadingStages || stages.length === 0}
           >
             <Text style={styles.botaoText}>
-              SALVAR TRILHA
+              {salvando ? 'SALVANDO...' : 'SALVAR TRILHA'}
             </Text>
           </Pressable>
 
