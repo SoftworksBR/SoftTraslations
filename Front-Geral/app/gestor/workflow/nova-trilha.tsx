@@ -73,16 +73,9 @@ export default function NovaTrilha() {
 
     setSalvando(true);
     try {
-      const stagesSelecionados = selecionados
-        .map((id) => stages.find((stage) => stage.id === id))
-        .filter((stage): stage is ProjectStage => stage !== undefined);
-
       await createPath({
         name: nome.trim(),
-        stages: stagesSelecionados.map(({ freelancer_id, status }) => ({
-          freelancer_id,
-          status,
-        })),
+        stage_ids: selecionados,
       });
       router.back();
     } catch (error) {
@@ -165,7 +158,7 @@ export default function NovaTrilha() {
           })}
 
           <Text style={styles.info}>
-            Os Stages selecionados serão copiados para esta Trilha.
+            Os Stages selecionados serão alocados nesta Trilha.
           </Text>
 
           <Pressable

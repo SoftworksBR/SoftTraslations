@@ -4,7 +4,6 @@ export type ProjectStatus = 'ready' | 'in_progress' | 'testing' | 'done';
 
 export type ProjectStage = {
   id: number;
-  path_id: number;
   freelancer_id: number;
   status: ProjectStatus;
 };

@@ -12,8 +12,6 @@ import {
 
 import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
-import { getPaths } from '@/services/paths';
-import type { Path } from '@/services/paths';
 import { createStage } from '@/services/stages';
 import type { ProjectStatus } from '@/services/projects';
 
@@ -32,9 +30,7 @@ const statusLabels: Record<ProjectStatus, string> = {
 };
 
 export default function NovoStage() {
-  const [paths, setPaths] = useState<Path[]>([]);
   const [freelancers, setFreelancers] = useState<Employee[]>([]);
-  const [pathId, setPathId] = useState<number | null>(null);
   const [freelancerId, setFreelancerId] = useState<number | null>(null);
   const [stageStatus, setStageStatus] = useState<ProjectStatus>('ready');
   const [loading, setLoading] = useState(true);
@@ -44,11 +40,7 @@ export default function NovoStage() {
   const loadOptions = useCallback(async () => {
     setLoading(true);
     try {
-      const [availablePaths, employees] = await Promise.all([
-        getPaths(),
-        getEmployees(),
-      ]);
-      setPaths(availablePaths);
+      const employees = await getEmployees();
       setFreelancers(
         employees.filter(
           (employee) =>
@@ -75,15 +67,14 @@ export default function NovoStage() {
   );
 
   async function saveStage() {
-    if (pathId === null || freelancerId === null) {
-      Alert.alert('Novo Stage', 'Selecione um Path e um freelancer.');
+    if (freelancerId === null) {
+      Alert.alert('Novo Stage', 'Selecione um freelancer.');
       return;
     }
 
     setSaving(true);
     try {
       await createStage({
-        path_id: pathId,
         freelancer_id: freelancerId,
         status: stageStatus,
       });
@@ -113,21 +104,6 @@ export default function NovoStage() {
           {errorMessage ? (
             <Text style={styles.error}>{errorMessage}</Text>
           ) : null}
-
-          <Text style={styles.label}>Path</Text>
-          {paths.length === 0 ? (
-            <Text style={styles.helper}>Cadastre uma Trilha antes.</Text>
-          ) : (
-            paths.map((path) => (
-              <Pressable
-                key={path.id}
-                style={[styles.option, pathId === path.id && styles.selected]}
-                onPress={() => setPathId(path.id)}
-              >
-                <Text style={styles.optionText}>{path.name}</Text>
-              </Pressable>
-            ))
-          )}
 
           <Text style={styles.label}>Freelancer disponível</Text>
           {freelancers.length === 0 ? (
@@ -168,11 +144,10 @@ export default function NovoStage() {
           <Pressable
             style={[
               styles.submit,
-              (saving || paths.length === 0 || freelancers.length === 0) &&
-                styles.submitDisabled,
+              (saving || freelancers.length === 0) && styles.submitDisabled,
             ]}
             onPress={() => void saveStage()}
-            disabled={saving || paths.length === 0 || freelancers.length === 0}
+            disabled={saving || freelancers.length === 0}
           >
             <Text style={styles.submitText}>
               {saving ? 'CADASTRANDO...' : 'CADASTRAR STAGE'}

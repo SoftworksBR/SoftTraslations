@@ -1,8 +1,6 @@
 import { apiRequest } from './api';
 import type { ProjectStage } from './projects';
 
-export type PathStageInput = Pick<ProjectStage, 'freelancer_id' | 'status'>;
-
 export type Path = {
   id: number;
   name: string;
@@ -11,7 +9,7 @@ export type Path = {
 
 export type PathInput = {
   name: string;
-  stages: PathStageInput[];
+  stage_ids: number[];
 };
 
 export function getPaths() {

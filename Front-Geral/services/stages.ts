@@ -2,7 +2,6 @@ import { apiRequest } from './api';
 import type { ProjectStatus, ProjectStage } from './projects';
 
 export type StageInput = {
-  path_id: number;
   freelancer_id: number;
   status: ProjectStatus;
 };
