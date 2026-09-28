@@ -8,7 +8,11 @@ from pydantic import ValidationError
 
 from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
-from src.schemas.employee_schema import EmployeeSchema
+from src.schemas.employee_schema import (
+    EmployeeSchema,
+    FreelancerPreRegistrationSchema,
+    FreelancerProfileSchema,
+)
 from src.schemas.path_schema import PathCreate
 from src.schemas.project_schema import ProjectCreate
 from src.services.employee_service import EmployeeService
@@ -46,6 +50,142 @@ def test_path_and_project_require_at_least_one_related_record():
             creator_id=1,
             path_ids=[],
         )
+
+
+def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
+    created_employees = []
+
+    async def get_by_email_or_username(session, email=None, username=None):
+        return None
+
+    async def create(session, employee):
+        created_employees.append(employee)
+        return employee
+
+    monkeypatch.setattr(
+        EmployeeRepository,
+        'get_by_email_or_username',
+        get_by_email_or_username,
+    )
+    monkeypatch.setattr(EmployeeRepository, 'create', create)
+
+    employee = asyncio.run(
+        EmployeeService.pre_register_freelancer(
+            session=None,
+            data=FreelancerPreRegistrationSchema(
+                email='new-freelancer@example.com', password='secret'
+            ),
+            current_employee=SimpleNamespace(role=Roles.PROJETOS),
+        )
+    )
+
+    assert created_employees == [employee]
+    assert employee.role == Roles.FREELANCER
+    assert employee.status == EmployeeStatus.PENDING
+
+
+def test_only_projects_role_can_pre_register_freelancers():
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.pre_register_freelancer(
+                session=None,
+                data=FreelancerPreRegistrationSchema(
+                    email='new-freelancer@example.com', password='secret'
+                ),
+                current_employee=SimpleNamespace(role=Roles.ADMIN),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_completing_profile_changes_pending_to_available(monkeypatch):
+    employee = SimpleNamespace(
+        id=7,
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.PENDING,
+        username='freelancer@example.com',
+    )
+
+    async def get_by_id(session, employee_id):
+        return employee
+
+    async def update(session, updated_employee):
+        return updated_employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    updated_employee = asyncio.run(
+        EmployeeService.complete_freelancer_profile(
+            session=None,
+            data=FreelancerProfileSchema(
+                name='Freelancer Name',
+            ),
+            current_employee=employee,
+        )
+    )
+
+    assert updated_employee.username == 'Freelancer Name'
+    assert updated_employee.status == EmployeeStatus.AVAILABLE
+
+
+def test_only_freelancers_can_complete_profile():
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.complete_freelancer_profile(
+                session=None,
+                data=FreelancerProfileSchema(name='Someone'),
+                current_employee=SimpleNamespace(
+                    id=1,
+                    role=Roles.PROJETOS,
+                    status=EmployeeStatus.PENDING,
+                ),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_generic_employee_update_cannot_complete_pending_freelancer(
+    monkeypatch,
+):
+    employee = SimpleNamespace(
+        id=7,
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.PENDING,
+    )
+    current_employee = SimpleNamespace(
+        id=7,
+        role=Roles.FREELANCER,
+    )
+
+    async def get_by_id(session, employee_id):
+        return employee
+
+    async def update(session, updated_employee):
+        pytest.fail('Pending status must only change through profile route')
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.update_employee(
+                session=None,
+                employee_id=employee.id,
+                employee=EmployeeSchema(
+                    username='Freelancer Name',
+                    email='freelancer@example.com',
+                    password='secret',
+                    role=Roles.FREELANCER,
+                    status=EmployeeStatus.AVAILABLE,
+                ),
+                current_employee=current_employee,
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_admin_nao_pode_excluir_outro_admin(monkeypatch):
