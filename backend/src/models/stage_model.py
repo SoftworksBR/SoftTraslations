@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.enums.enums import Status
+from src.models.path_model import path_stages
 
 from .base import table_registry
 
@@ -24,12 +25,10 @@ class Stage:
         ForeignKey('employees.id'), nullable=False
     )
 
-    path_id: Mapped[int] = mapped_column(
-        ForeignKey('paths.id'), init=False
-    )
-
     status: Mapped[Status] = mapped_column(SQLEnum(Status), nullable=False)
 
-    path: Mapped['Path'] = relationship(
+    paths: Mapped[list['Path']] = relationship(
+        secondary=path_stages,
         back_populates='stages',
+        default_factory=list,
     )

@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import Roles
@@ -18,15 +19,20 @@ class PathService:
     ) -> Path:
         self._require_projects_role(current_employee)
 
-        path = Path(name=data.name)
-        path.stages.extend(
-            Stage(
-                path=path,
-                freelancer_id=stage.freelancer_id,
-                status=stage.status,
-            )
-            for stage in data.stages
+        stages = list(
+            (
+                await self.repository.session.scalars(
+                    select(Stage).where(Stage.id.in_(data.stage_ids))
+                )
+            ).all()
         )
+        if len(stages) != len(data.stage_ids):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='One or more stages were not found',
+            )
+        path = Path(name=data.name)
+        path.stages.extend(stages)
 
         return await self.repository.create(path)
 

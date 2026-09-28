@@ -24,8 +24,7 @@ class StageService:
     ) -> Stage:
         self._require_projects_role(current_employee)
 
-        return await self._create_for_path(
-            data.path_id,
+        return await self._create_for_freelancer(
             data.freelancer_id,
             data.status,
         )
@@ -72,21 +71,11 @@ class StageService:
 
         return path
 
-    async def _create_for_path(
+    async def _create_for_freelancer(
         self,
-        path_id: int,
         freelancer_id: int,
         stage_status: Status,
     ) -> Stage:
-        path = await self.repository.session.scalar(
-            select(Path).where(Path.id == path_id)
-        )
-        if path is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Path not found',
-            )
-
         freelancer = await self.repository.session.scalar(
             select(Employee).where(Employee.id == freelancer_id)
         )
@@ -97,7 +86,6 @@ class StageService:
             )
 
         stage = Stage(
-            path=path,
             freelancer_id=freelancer_id,
             status=stage_status,
         )
