@@ -5,11 +5,11 @@ import {
   DrawerItem,
 } from '@react-navigation/drawer';
 import { View, Text, StyleSheet } from 'react-native';
+import { logout } from '@/services/auth';
 
 function CustomDrawerContent(props: any) {
-  function deslogar() {
-    // Futuramente podemos limpar o token/sessão aqui
-
+  async function deslogar() {
+    await logout();
     router.replace('/');
   }
 
@@ -51,7 +51,7 @@ function CustomDrawerContent(props: any) {
       <View style={styles.rodape}>
         <DrawerItem
           label="Deslogar"
-          onPress={deslogar}
+          onPress={() => void deslogar()}
           labelStyle={styles.deslogar}
         />
       </View>

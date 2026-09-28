@@ -1,11 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-
-import { administradores } from '@/data/administradores';
-import { gestores } from '@/data/gestores';
-import { atendentes } from '@/data/atendentes';
+import { useEffect, useState } from 'react';
+import { createEmployee, getEmployees, updateEmployee } from '@/services/employees';
+import type { EmployeeRole } from '@/services/employees';
 
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+const roleByType: Record<string, EmployeeRole> = {
+  administrador: 'admin',
+  gestor: 'projetos',
+  atendente: 'atendimento',
+};
 
 export default function Modal() {
   const params = useLocalSearchParams<{
@@ -25,61 +30,76 @@ export default function Modal() {
 
   // Descobre qual tipo de usuário está sendo editado
   const tipo = params.tipo ?? 'usuario';
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [role, setRole] = useState<EmployeeRole | undefined>(roleByType[tipo]);
+  const [carregando, setCarregando] = useState(editando);
 
-  // Procura o usuário no arquivo correspondente
-  let usuario: {
-    id: number;
-    nome: string;
-    email?: string;
-    senha?: string | number;
-  } | undefined;
+  useEffect(() => {
+    if (!params.id) return;
 
-  if (tipo === 'administrador') {
-    usuario = administradores.find(
-      (item) => item.id.toString() === params.id
-    );
-  }
+    let mounted = true;
+    async function carregarFuncionario() {
+      try {
+        const employees = await getEmployees(1000);
+        const employee = employees.find(
+          (item) => String(item.id) === params.id,
+        );
+        if (!employee) {
+          throw new Error('Funcionário não encontrado.');
+        }
+        if (mounted) {
+          setNome(employee.username);
+          setEmail(employee.email);
+          setRole(employee.role);
+        }
+      } catch (error) {
+        if (mounted) {
+          Alert.alert(
+            'Não foi possível carregar o funcionário',
+            error instanceof Error ? error.message : 'Tente novamente.',
+          );
+        }
+      } finally {
+        if (mounted) setCarregando(false);
+      }
+    }
 
-  if (tipo === 'gestor') {
-    usuario = gestores.find(
-      (item) => item.id.toString() === params.id
-    );
-  }
-
-  if (tipo === 'atendente') {
-    usuario = atendentes.find(
-      (item) => item.id.toString() === params.id
-    );
-  }
-
-  const [nome, setNome] = useState(usuario?.nome ?? '');
-  const [email, setEmail] = useState(usuario?.email ?? '');
-  const [senha, setSenha] = useState(
-    usuario?.senha?.toString() ?? ''
-  );
-
-  function salvar() {
-    const usuarioAtualizado = {
-      id: params.id,
-      nome,
-      email,
-      senha,
+    void carregarFuncionario();
+    return () => {
+      mounted = false;
     };
+  }, [params.id]);
 
-    console.log(`${tipo}:`, usuarioAtualizado);
+  async function salvar() {
+    if (!nome.trim() || !email.trim() || !senha || !role) {
+      Alert.alert('Cadastro', 'Preencha nome, e-mail e senha.');
+      return;
+    }
 
-    // Futuramente:
-    //
-    // administrador → PUT /administradores/:id
-    // gestor        → PUT /gestores/:id
-    // atendente     → PUT /atendentes/:id
-    //
-    // novo usuário:
-    // POST /administradores
-    // POST /gestores
-    // POST /atendentes
-
-    router.back();
+    setCarregando(true);
+    try {
+      const employee = {
+        username: nome.trim(),
+        email: email.trim(),
+        password: senha,
+        role,
+      };
+      if (params.id) {
+        await updateEmployee(Number(params.id), employee);
+      } else {
+        await createEmployee(employee);
+      }
+      router.back();
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível salvar',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    } finally {
+      setCarregando(false);
+    }
   }
 
   // Nome que aparecerá no título
@@ -170,7 +190,7 @@ export default function Modal() {
           <TextInput
             value={senha}
             onChangeText={setSenha}
-            placeholder="Digite a senha"
+            placeholder={editando ? 'Digite a nova senha' : 'Digite a senha'}
             secureTextEntry
             style={styles.input}
           />
@@ -179,9 +199,10 @@ export default function Modal() {
           <Pressable
             style={styles.saveButton}
             onPress={salvar}
+            disabled={carregando}
           >
             <Text style={styles.saveText}>
-              SALVAR
+              {carregando ? 'SALVANDO...' : 'SALVAR'}
             </Text>
           </Pressable>
 

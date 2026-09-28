@@ -1,8 +1,9 @@
-import { router } from 'expo-router';
-import { tradutores } from '@/data/tradutores';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { getEmployees, type Employee } from '@/services/employees';
 
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -10,62 +11,36 @@ import {
   FlatList,
 } from 'react-native';
 
-const [listaTradutores, setListaTradutores] =
-  useState([...tradutores]);
-
-function textoStatus(status: string) {
-  switch (status) {
-    case 'aguardando_perfil':
-      return 'Aguardando preenchimento do perfil';
-
-    case 'aguardando_aprovacao':
-      return 'Aguardando aprovação';
-
-    case 'autorizado':
-      return 'Autorizado';
-
-    case 'reprovado':
-      return 'Reprovado';
-
-    default:
-      return status;
-  }
-}
-
 export default function Tradutores() {
+  const [tradutores, setTradutores] = useState<Employee[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+
+  const carregarTradutores = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const employees = await getEmployees();
+      setTradutores(
+        employees.filter((employee) => employee.role === 'freelancer'),
+      );
+      setErro('');
+    } catch (error) {
+      setErro(
+        error instanceof Error ? error.message : 'Falha ao carregar tradutores.',
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void carregarTradutores();
+    }, [carregarTradutores]),
+  );
 
   function novoTradutor() {
     router.push('/gestor/tradutores/novo');
-  }
-
-  function aprovarTradutor(id: number) {
-
-    const tradutor = tradutores.find(
-      (item) => item.id === id
-    );
-
-    if (!tradutor) return;
-
-    tradutor.status = 'autorizado';
-
-    setListaTradutores([
-      ...tradutores,
-    ]);
-  }
-
-  function reprovarTradutor(id: number) {
-
-    const tradutor = tradutores.find(
-      (item) => item.id === id
-    );
-
-    if (!tradutor) return;
-
-    tradutor.status = 'reprovado';
-
-    setListaTradutores([
-      ...tradutores,
-    ]);
   }
 
   return (
@@ -75,70 +50,28 @@ export default function Tradutores() {
         Tradutores
       </Text>
 
-      <FlatList
-        data={listaTradutores}
-        keyExtractor={(item) =>
-          item.id.toString()
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-
-            <View style={styles.info}>
-
-              <Text style={styles.nome}>
-                {item.nome}
-              </Text>
-
-              <Text style={styles.id}>
-                ID: {item.id}
-              </Text>
-
-              <Text style={styles.status}>
-                {textoStatus(item.status)}
-              </Text>
-
-              {item.status === 'aguardando_aprovacao' && (
-                <View style={styles.aprovacao}>
-
-                  <Pressable
-                    style={styles.aprovar}
-                    onPress={() =>
-                      aprovarTradutor(item.id)
-                    }
-                  >
-                    <Text style={styles.aprovarTexto}>
-                      APROVAR
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.reprovar}
-                    onPress={() =>
-                      reprovarTradutor(item.id)
-                    }
-                  >
-                    <Text style={styles.reprovarTexto}>
-                      REPROVAR
-                    </Text>
-                  </Pressable>
-
-                </View>
-              )}
-
+      {carregando ? (
+        <ActivityIndicator />
+      ) : (
+        <FlatList
+          data={tradutores}
+          keyExtractor={(item) => String(item.id)}
+          ListEmptyComponent={
+            <Text style={styles.status}>
+              {erro || 'Nenhum tradutor cadastrado.'}
+            </Text>
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.info}>
+                <Text style={styles.nome}>{item.username}</Text>
+                <Text style={styles.id}>ID: {item.id}</Text>
+                <Text style={styles.status}>{item.email}</Text>
+              </View>
             </View>
-
-            <Pressable
-              style={styles.excluir}
-              onPress={() => {}}
-            >
-              <Text style={styles.excluirText}>
-                ×
-              </Text>
-            </Pressable>
-
-          </View>
-        )}
-      />
+          )}
+        />
+      )}
 
       <Pressable
         style={styles.botao}
@@ -200,18 +133,6 @@ const styles = StyleSheet.create({
     color: '#555',
   },
 
-  excluir: {
-    width: 65,
-    borderLeftWidth: 1,
-    borderLeftColor: '#ccc',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  excluirText: {
-    fontSize: 30,
-  },
-
   botao: {
     height: 55,
     borderWidth: 1,
@@ -229,36 +150,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  //aprovação
-
-  aprovacao: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 10,
-  },
-
-  aprovar: {
-    backgroundColor: '#000',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-  },
-
-  aprovarTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  reprovar: {
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-  },
-
-  reprovarTexto: {
-    color: '#000',
-    fontWeight: 'bold',
-  },
 });

@@ -1,6 +1,8 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useState } from 'react';
+import { getCurrentEmployee, login } from '@/services/auth';
 import {
+  Alert,
   View,
   Text,
   TextInput,
@@ -12,16 +14,35 @@ import {
 export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
 
-  function fazerLogin() {
+  async function fazerLogin() {
     if (!email || !senha) {
-      alert('Preencha todos os campos');
+      Alert.alert('Login', 'Preencha todos os campos');
       return;
     }
 
-    console.log('Login:', { email, senha });
+    setCarregando(true);
+    try {
+      await login(email.trim(), senha);
+      const employee = await getCurrentEmployee();
+      const destinations = {
+        admin: '/drawer/GerenciarAdministracao',
+        projetos: '/gestor/projetos',
+        atendimento: '/atendente',
+        freelancer: '/tradutor',
+        orcamento: '/gestor/orcamentos',
+      } as const;
 
-   router.replace('/landingPage');
+      router.replace(destinations[employee.role] as Href);
+    } catch (error) {
+      Alert.alert(
+        'Não foi possível entrar',
+        error instanceof Error ? error.message : 'Tente novamente.',
+      );
+    } finally {
+      setCarregando(false);
+    }
   }
 
   return (
@@ -59,8 +80,11 @@ export default function Login() {
           <Pressable
             style={styles.loginButton}
             onPress={fazerLogin}
+            disabled={carregando}
           >
-            <Text style={styles.loginText}>ENTRAR</Text>
+            <Text style={styles.loginText}>
+              {carregando ? 'ENTRANDO...' : 'ENTRAR'}
+            </Text>
           </Pressable>
         </View>
       </View>
