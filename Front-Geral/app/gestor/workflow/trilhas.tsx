@@ -92,7 +92,7 @@ export default function Trilhas() {
                   </Text>
 
                   <Text style={styles.quadro}>
-                    Etapa #{stage.id} · {statusLabels[stage.status]}
+                    {stage.name} · {statusLabels[stage.status]}
                   </Text>
                 </View>
               ))}

@@ -7,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -31,6 +32,7 @@ const statusLabels: Record<ProjectStatus, string> = {
 
 export default function NovoStage() {
   const [freelancers, setFreelancers] = useState<Employee[]>([]);
+  const [stageName, setStageName] = useState('');
   const [freelancerId, setFreelancerId] = useState<number | null>(null);
   const [stageStatus, setStageStatus] = useState<ProjectStatus>('ready');
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,11 @@ export default function NovoStage() {
   );
 
   async function saveStage() {
+    if (!stageName.trim()) {
+      Alert.alert('Novo Stage', 'Informe um nome para o Stage.');
+      return;
+    }
+
     if (freelancerId === null) {
       Alert.alert('Novo Stage', 'Selecione um freelancer.');
       return;
@@ -76,6 +83,7 @@ export default function NovoStage() {
     try {
       await createStage({
         freelancer_id: freelancerId,
+        name: stageName.trim(),
         status: stageStatus,
       });
       router.back();
@@ -104,6 +112,15 @@ export default function NovoStage() {
           {errorMessage ? (
             <Text style={styles.error}>{errorMessage}</Text>
           ) : null}
+
+          <Text style={styles.label}>Nome do Stage</Text>
+          <TextInput
+            value={stageName}
+            onChangeText={setStageName}
+            placeholder="Digite o nome"
+            style={styles.input}
+            maxLength={120}
+          />
 
           <Text style={styles.label}>Freelancer disponível</Text>
           {freelancers.length === 0 ? (
@@ -186,6 +203,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontSize: 15,
     fontWeight: '600',
+  },
+  input: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
   },
   option: {
     minHeight: 48,

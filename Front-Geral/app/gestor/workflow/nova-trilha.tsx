@@ -151,7 +151,7 @@ export default function NovaTrilha() {
                   }
                 >
                   {selecionado ? '✓ ' : ''}
-                  Etapa #{stage.id} · {statusLabels[stage.status]} · Freelancer #{stage.freelancer_id}
+                  {stage.name} · {statusLabels[stage.status]} · Freelancer #{stage.freelancer_id}
                 </Text>
               </Pressable>
             );

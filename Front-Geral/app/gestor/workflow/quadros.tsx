@@ -79,7 +79,7 @@ export default function Quadros() {
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.nome}>Etapa #{item.id}</Text>
+              <Text style={styles.nome}>{item.name}</Text>
               <Text style={styles.detalhe}>
                 {statusLabels[item.status]} · Freelancer #{item.freelancer_id}
               </Text>

@@ -3,10 +3,13 @@ import type { ProjectStatus, ProjectStage } from './projects';
 
 export type StageInput = {
   freelancer_id: number;
+  name: string;
   status: ProjectStatus;
 };
 
-export type StageUpdate = Partial<Pick<ProjectStage, 'freelancer_id' | 'status'>>;
+export type StageUpdate = Partial<
+  Pick<ProjectStage, 'freelancer_id' | 'name' | 'status'>
+>;
 
 export async function getStages() {
   return apiRequest<ProjectStage[]>('/stages/');
