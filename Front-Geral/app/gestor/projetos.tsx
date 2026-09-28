@@ -60,7 +60,12 @@ export default function Projetos() {
             <View style={styles.project}>
               <Text style={styles.projectName}>{item.name}</Text>
               <Text style={styles.text}>
-                {statusLabels[item.status]} · {item.stages.length} etapas
+                {statusLabels[item.status]} ·{' '}
+                {item.paths.reduce(
+                  (count, path) => count + path.stages.length,
+                  0,
+                )}{' '}
+                etapas
               </Text>
             </View>
           )}

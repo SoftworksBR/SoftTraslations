@@ -17,16 +17,16 @@ class StageController:
         return await service.create(data, current_employee)
 
     @staticmethod
-    async def assign_to_project(
+    async def assign_path_to_project(
         project_id: int,
-        stage_id: int,
+        path_id: int,
         session: AsyncSession,
         current_employee: Employee,
     ):
         service = StageService(session)
 
-        return await service.assign_to_project(
-            project_id, stage_id, current_employee
+        return await service.assign_path_to_project(
+            project_id, path_id, current_employee
         )
 
     @staticmethod

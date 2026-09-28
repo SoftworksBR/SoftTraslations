@@ -7,11 +7,14 @@ export type EmployeeRole =
   | 'freelancer'
   | 'orcamento';
 
+export type EmployeeStatus = 'available' | 'busy' | 'pending';
+
 export type Employee = {
   id: number;
   username: string;
   email: string;
   role: EmployeeRole;
+  status: EmployeeStatus;
 };
 
 export type EmployeeInput = {
@@ -19,6 +22,16 @@ export type EmployeeInput = {
   email: string;
   role: EmployeeRole;
   password: string;
+  status?: EmployeeStatus;
+};
+
+export type FreelancerPreRegistrationInput = {
+  email: string;
+  password: string;
+};
+
+export type FreelancerProfileInput = {
+  name: string;
 };
 
 type EmployeeList = {
@@ -51,5 +64,21 @@ export function updateEmployee(id: number, employee: EmployeeInput) {
 export function deleteEmployee(id: number) {
   return apiRequest<void>(`/employee/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export function preRegisterFreelancer(
+  freelancer: FreelancerPreRegistrationInput,
+) {
+  return apiRequest<Employee>('/employee/freelancers/pre-register', {
+    method: 'POST',
+    body: JSON.stringify(freelancer),
+  });
+}
+
+export function completeFreelancerProfile(profile: FreelancerProfileInput) {
+  return apiRequest<Employee>('/employee/me/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profile),
   });
 }

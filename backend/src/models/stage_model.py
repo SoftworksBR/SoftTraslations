@@ -5,12 +5,12 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.enums.enums import Status
-from src.models.project_model import project_stages
+from src.models.path_model import path_stages
 
 from .base import table_registry
 
 if TYPE_CHECKING:
-    from src.models.project_model import Project
+    from src.models.path_model import Path
 
 
 @table_registry.mapped_as_dataclass
@@ -21,14 +21,16 @@ class Stage:
         primary_key=True, init=False, autoincrement=True
     )
 
+    name: Mapped[str] = mapped_column(nullable=False)
+
     freelancer_id: Mapped[int] = mapped_column(
         ForeignKey('employees.id'), nullable=False
     )
 
     status: Mapped[Status] = mapped_column(SQLEnum(Status), nullable=False)
 
-    projects: Mapped[list['Project']] = relationship(
-        secondary=project_stages,
+    paths: Mapped[list['Path']] = relationship(
+        secondary=path_stages,
         back_populates='stages',
         default_factory=list,
     )

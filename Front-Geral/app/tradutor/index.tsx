@@ -69,7 +69,7 @@ export default function TradutorIndex() {
           }
           renderItem={({ item }) => (
             <View style={styles.stage}>
-              <Text style={styles.stageName}>Etapa #{item.id}</Text>
+              <Text style={styles.stageName}>{item.name}</Text>
               <Text style={styles.status}>{statusLabels[item.status]}</Text>
             </View>
           )}

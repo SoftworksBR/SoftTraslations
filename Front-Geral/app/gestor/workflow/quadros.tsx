@@ -1,109 +1,47 @@
-import { useState } from 'react';
-import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
   Pressable,
   FlatList,
-  TextInput,
-  Alert,
 } from 'react-native';
+import { getStages } from '@/services/stages';
+import type { ProjectStage, ProjectStatus } from '@/services/projects';
+
+const statusLabels: Record<ProjectStatus, string> = {
+  ready: 'Pronto',
+  in_progress: 'Em andamento',
+  testing: 'Em teste',
+  done: 'Concluído',
+};
 
 export default function Quadros() {
+  const [stages, setStages] = useState<ProjectStage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const [quadros, setQuadros] = useState([
-    {
-      id: 1,
-      nome: 'Receber arquivos',
-    },
-    {
-      id: 2,
-      nome: 'Traduzir arquivos',
-    },
-    {
-      id: 3,
-      nome: 'Emitir fatura',
-    },
-  ]);
-
-  const [nome, setNome] = useState('');
-  const [editandoId, setEditandoId] =
-    useState<number | null>(null);
-
-  function salvarQuadro() {
-
-    if (!nome.trim()) {
-      Alert.alert(
-        'Atenção',
-        'Digite o nome do quadro.'
+  const loadStages = useCallback(async () => {
+    setLoading(true);
+    try {
+      setStages(await getStages());
+      setErrorMessage('');
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : 'Falha ao carregar etapas.',
       );
-
-      return;
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    if (editandoId !== null) {
-
-      setQuadros((lista) =>
-        lista.map((quadro) =>
-          quadro.id === editandoId
-            ? {
-                ...quadro,
-                nome: nome.trim(),
-              }
-            : quadro
-        )
-      );
-
-      setEditandoId(null);
-
-    } else {
-
-      const novo = {
-        id: Date.now(),
-        nome: nome.trim(),
-      };
-
-      setQuadros((lista) => [
-        ...lista,
-        novo,
-      ]);
-    }
-
-    setNome('');
-  }
-
-  function editarQuadro(
-    id: number,
-    nomeAtual: string
-  ) {
-    setEditandoId(id);
-    setNome(nomeAtual);
-  }
-
-  function excluirQuadro(id: number) {
-
-    Alert.alert(
-      'Excluir quadro',
-      'Deseja realmente excluir este quadro?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Excluir',
-          onPress: () => {
-            setQuadros((lista) =>
-              lista.filter(
-                (quadro) => quadro.id !== id
-              )
-            );
-          },
-        },
-      ]
-    );
-  }
+  useFocusEffect(
+    useCallback(() => {
+      void loadStages();
+    }, [loadStages]),
+  );
 
   return (
     <View style={styles.container}>
@@ -121,72 +59,34 @@ export default function Quadros() {
         Quadros
       </Text>
 
-      <View style={styles.form}>
+      <Pressable
+        style={styles.botao}
+        onPress={() => router.push('/gestor/workflow/novo-stage')}
+      >
+        <Text style={styles.botaoText}>NOVO STAGE</Text>
+      </Pressable>
 
-        <TextInput
-          value={nome}
-          onChangeText={setNome}
-          placeholder="Nome do quadro"
-          style={styles.input}
-        />
-
-        <Pressable
-          style={styles.botao}
-          onPress={salvarQuadro}
-        >
-          <Text style={styles.botaoText}>
-            {editandoId !== null
-              ? 'SALVAR ALTERAÇÃO'
-              : 'ADICIONAR QUADRO'}
-          </Text>
-        </Pressable>
-
-      </View>
-
-      <FlatList
-        data={quadros}
-        keyExtractor={(item) =>
-          item.id.toString()
-        }
-        renderItem={({ item }) => (
-
-          <View style={styles.card}>
-
-            <Text style={styles.nome}>
-              {item.nome}
+      {loading ? (
+        <ActivityIndicator />
+      ) : (
+        <FlatList
+          data={[...stages].sort((left, right) => left.id - right.id)}
+          keyExtractor={(item) => String(item.id)}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              {errorMessage || 'Nenhum Stage cadastrado.'}
             </Text>
-
-            <View style={styles.acoes}>
-
-              <Pressable
-                onPress={() =>
-                  editarQuadro(
-                    item.id,
-                    item.nome
-                  )
-                }
-              >
-                <Text style={styles.editar}>
-                  ✎
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() =>
-                  excluirQuadro(item.id)
-                }
-              >
-                <Text style={styles.excluir}>
-                  ×
-                </Text>
-              </Pressable>
-
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <Text style={styles.nome}>{item.name}</Text>
+              <Text style={styles.detalhe}>
+                {statusLabels[item.status]} · Freelancer #{item.freelancer_id}
+              </Text>
             </View>
-
-          </View>
-
-        )}
-      />
+          )}
+        />
+      )}
 
     </View>
   );
@@ -205,26 +105,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  form: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-
-  input: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#bbb',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-  },
-
   botao: {
-    height: 48,
+    minHeight: 48,
     backgroundColor: '#000',
     borderRadius: 6,
-    marginTop: 10,
+    marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -247,25 +132,16 @@ const styles = StyleSheet.create({
   },
 
   nome: {
-    flex: 1,
     fontSize: 17,
     fontWeight: '600',
   },
 
-  acoes: {
-    flexDirection: 'row',
-    height: '100%',
+  detalhe: {
+    marginTop: 6,
+    color: '#666',
   },
 
-  editar: {
-    fontSize: 27,
-    paddingHorizontal: 20,
-  },
-
-  excluir: {
-    fontSize: 30,
-    paddingHorizontal: 20,
-  },
+  empty: { color: '#666', paddingVertical: 16 },
   voltar: {
     marginBottom: 15,
   },

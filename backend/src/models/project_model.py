@@ -9,14 +9,14 @@ from src.enums.enums import Status
 from .base import table_registry
 
 if TYPE_CHECKING:
-    from src.models.stage_model import Stage
+    from src.models.path_model import Path
 
 
-project_stages = Table(
-    'project_stages',
+path_projects = Table(
+    'path_projects',
     table_registry.metadata,
+    Column('path_id', ForeignKey('paths.id'), primary_key=True),
     Column('project_id', ForeignKey('projects.id'), primary_key=True),
-    Column('stage_id', ForeignKey('stages.id'), primary_key=True),
 )
 
 
@@ -36,8 +36,8 @@ class Project:
         ForeignKey('employees.id'), nullable=False
     )
 
-    stages: Mapped[list['Stage']] = relationship(
-        secondary=project_stages,
+    paths: Mapped[list['Path']] = relationship(
+        secondary=path_projects,
         back_populates='projects',
         default_factory=list,
     )

@@ -18,6 +18,12 @@ class Status(Enum):
     DONE = 'done'
 
 
+class EmployeeStatus(Enum):
+    AVAILABLE = 'available'
+    BUSY = 'busy'
+    PENDING = 'pending'
+
+
 class Roles(Enum):
     ADMIN = 'admin'
     PROJETOS = 'projetos'

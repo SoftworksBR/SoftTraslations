@@ -1,7 +1,8 @@
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
-import { useTradutor } from '@/context/TradutorContext';
-import { logout } from '@/services/auth';
+import { useEffect, useState } from 'react';
+import { getCurrentEmployee, logout } from '@/services/auth';
+import type { Employee } from '@/services/employees';
 
 import {
   DrawerContentScrollView,
@@ -15,8 +16,13 @@ import {
 } from 'react-native';
 
 function CustomDrawerContent(props: any) {
+  const [employee, setEmployee] = useState<Employee | null>(null);
 
-    const { tradutorAtual } = useTradutor();
+  useEffect(() => {
+    void getCurrentEmployee()
+      .then(setEmployee)
+      .catch(() => setEmployee(null));
+  }, []);
 
   async function deslogar() {
     await logout();
@@ -36,13 +42,12 @@ function CustomDrawerContent(props: any) {
             Menu Tradutor
         </Text>
 
-        {tradutorAtual?.status === 'autorizado' && (
+        {employee?.role === 'freelancer' &&
+          employee.status === 'available' && (
             <DrawerItem
             label="Serviços"
             onPress={() =>
-                router.push(
-                `/tradutor/servicos?id=${tradutorAtual.id}`
-                )
+            router.push('/tradutor/servicos')
             }
             labelStyle={styles.label}
             />

@@ -4,7 +4,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.enums.enums import Roles
+from src.enums.enums import EmployeeStatus, Roles
 
 from .base import table_registry
 
@@ -20,6 +20,14 @@ class Employee:
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     role: Mapped[Roles] = mapped_column(SQLEnum(Roles), nullable=False)
+    status: Mapped[EmployeeStatus] = mapped_column(
+        SQLEnum(
+            EmployeeStatus,
+            name='employee_status',
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
+        default=EmployeeStatus.AVAILABLE,
+    )
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )

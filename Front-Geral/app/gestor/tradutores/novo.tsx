@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { createEmployee } from '@/services/employees';
+import { preRegisterFreelancer } from '@/services/employees';
 
 import {
   View,
@@ -14,24 +14,21 @@ import {
 
 export default function NovoTradutor() {
 
-  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   async function salvar() {
-    if (!nome.trim() || !email.trim() || !senha) {
-      Alert.alert('Pré-cadastro', 'Preencha nome, e-mail e senha.');
+    if (!email.trim() || !senha) {
+      Alert.alert('Pré-cadastro', 'Preencha e-mail e senha.');
       return;
     }
 
     setSalvando(true);
     try {
-      await createEmployee({
-        username: nome.trim(),
+      await preRegisterFreelancer({
         email: email.trim(),
         password: senha,
-        role: 'freelancer',
       });
       router.back();
     } catch (error) {
@@ -50,21 +47,10 @@ export default function NovoTradutor() {
       <View style={styles.form}>
 
         <Text style={styles.title}>
-          Pré-cadastro de Tradutor
+          Pré-cadastro de Freelancer
         </Text>
 
         <ScrollView>
-
-          <Text style={styles.label}>
-            Nome
-          </Text>
-
-          <TextInput
-            value={nome}
-            onChangeText={setNome}
-            placeholder="Digite o nome"
-            style={styles.input}
-          />
 
           <Text style={styles.label}>
             E-mail

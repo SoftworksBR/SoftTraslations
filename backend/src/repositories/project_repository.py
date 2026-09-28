@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.models.path_model import Path
 from src.models.project_model import Project
 
 
@@ -17,7 +18,9 @@ class ProjectRepository:
 
         result = await self.session.execute(
             select(Project)
-            .options(selectinload(Project.stages))
+            .options(
+                selectinload(Project.paths).selectinload(Path.stages)
+            )
             .where(Project.id == project.id)
         )
 
@@ -26,7 +29,9 @@ class ProjectRepository:
     async def get_by_id(self, project_id: int) -> Project | None:
         result = await self.session.execute(
             select(Project)
-            .options(selectinload(Project.stages))
+            .options(
+                selectinload(Project.paths).selectinload(Path.stages)
+            )
             .where(Project.id == project_id)
         )
 
@@ -35,7 +40,9 @@ class ProjectRepository:
     async def get_all(self) -> list[Project]:
         result = await self.session.execute(
             select(Project)
-            .options(selectinload(Project.stages))
+            .options(
+                selectinload(Project.paths).selectinload(Path.stages)
+            )
         )
 
         return list(result.scalars().all())
