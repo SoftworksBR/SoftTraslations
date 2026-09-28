@@ -1,6 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+
 import { administradores } from '@/data/administradores';
+import { gestores } from '@/data/gestores';
+import { atendentes } from '@/data/atendentes';
 
 import {
   Pressable,
@@ -15,42 +18,79 @@ export default function Modal() {
   const params = useLocalSearchParams<{
     id?: string;
     modo?: string;
+    tipo?: string;
   }>();
 
   const editando = !!params.id;
 
-  const administrador = administradores.find(
-    (item) => item.id.toString() === params.id
+  // Descobre qual tipo de usuário está sendo editado
+  const tipo = params.tipo ?? 'usuario';
+
+  // Procura o usuário no arquivo correspondente
+  let usuario: {
+    id: number;
+    nome: string;
+    email?: string;
+    senha?: string | number;
+  } | undefined;
+
+  if (tipo === 'administrador') {
+    usuario = administradores.find(
+      (item) => item.id.toString() === params.id
+    );
+  }
+
+  if (tipo === 'gestor') {
+    usuario = gestores.find(
+      (item) => item.id.toString() === params.id
+    );
+  }
+
+  if (tipo === 'atendente') {
+    usuario = atendentes.find(
+      (item) => item.id.toString() === params.id
+    );
+  }
+
+  const [nome, setNome] = useState(usuario?.nome ?? '');
+  const [email, setEmail] = useState(usuario?.email ?? '');
+  const [senha, setSenha] = useState(
+    usuario?.senha?.toString() ?? ''
   );
 
-  const [nome, setNome] = useState(administrador?.nome ?? '');
-  const [email, setEmail] = useState('');
-  const [senha, setSenha] = useState('');
-
   function salvar() {
-    const administrador = {
+    const usuarioAtualizado = {
       id: params.id,
       nome,
       email,
       senha,
     };
 
-    console.log('Administrador:', administrador);
+    console.log(`${tipo}:`, usuarioAtualizado);
 
     // Futuramente:
     //
-    // Se editando:
-    // PUT /administradores/:id
+    // administrador → PUT /administradores/:id
+    // gestor        → PUT /gestores/:id
+    // atendente     → PUT /atendentes/:id
     //
-    // Se novo:
+    // novo usuário:
     // POST /administradores
+    // POST /gestores
+    // POST /atendentes
 
     router.back();
   }
 
+  // Nome que aparecerá no título
+  const tituloTipo = {
+    administrador: 'Administrador',
+    gestor: 'Gestor',
+    atendente: 'Atendente',
+  }[tipo] ?? 'Usuário';
+
   return (
     <View style={styles.container}>
-
       <View style={styles.modal}>
 
         {/* CABEÇALHO */}
@@ -58,8 +98,8 @@ export default function Modal() {
 
           <Text style={styles.title}>
             {editando
-              ? 'Editar Usuário'
-              : 'Novo Usuário'}
+              ? `Editar ${tituloTipo}`
+              : `Novo ${tituloTipo}`}
           </Text>
 
           <Pressable
@@ -148,7 +188,6 @@ export default function Modal() {
         </ScrollView>
 
       </View>
-
     </View>
   );
 }
@@ -156,32 +195,23 @@ export default function Modal() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-
     justifyContent: 'center',
-
     padding: 20,
-
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
 
   modal: {
     maxHeight: '90%',
-
     backgroundColor: '#fff',
-
     borderRadius: 10,
-
     overflow: 'hidden',
   },
 
   header: {
     minHeight: 65,
-
     paddingHorizontal: 20,
-
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
-
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -195,7 +225,6 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 40,
     height: 40,
-
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -212,20 +241,16 @@ const styles = StyleSheet.create({
   label: {
     marginTop: 12,
     marginBottom: 6,
-
     fontSize: 15,
     fontWeight: '600',
   },
 
   input: {
     height: 48,
-
     paddingHorizontal: 12,
-
     borderWidth: 1,
     borderColor: '#bbb',
     borderRadius: 6,
-
     fontSize: 16,
   },
 
@@ -236,20 +261,15 @@ const styles = StyleSheet.create({
 
   saveButton: {
     height: 50,
-
     marginTop: 25,
-
     justifyContent: 'center',
     alignItems: 'center',
-
     backgroundColor: '#000',
-
     borderRadius: 6,
   },
 
   saveText: {
     color: '#fff',
-
     fontSize: 15,
     fontWeight: 'bold',
   },

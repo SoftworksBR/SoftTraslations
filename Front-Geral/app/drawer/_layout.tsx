@@ -82,16 +82,16 @@ export default function DrawerLayout() {
       <Drawer.Screen
         name="GerenciarAtendimento"
         options={{
-          drawerLabel: 'Gerenciar Atendimento',
+          drawerLabel: 'Gerenciar Atendentes',
           title: 'Gerenciar Atendimento',
         }}
       />
 
       <Drawer.Screen
-        name="GerenciamentoAdministracao"
+        name="GerenciarAdministracao"
         options={{
           drawerLabel: 'Administradores',
-          title: 'Administradores',
+          title: 'Gerenciar Administradores',
         }}
       />
 
