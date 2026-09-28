@@ -26,6 +26,7 @@ class StageService:
 
         return await self._create_for_freelancer(
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -74,6 +75,7 @@ class StageService:
     async def _create_for_freelancer(
         self,
         freelancer_id: int,
+        name: str,
         stage_status: Status,
     ) -> Stage:
         freelancer = await self.repository.session.scalar(
@@ -87,6 +89,7 @@ class StageService:
 
         stage = Stage(
             freelancer_id=freelancer_id,
+            name=name,
             status=stage_status,
         )
 
@@ -134,6 +137,7 @@ class StageService:
                 )
             if (
                 data.freelancer_id is not None
+                or data.name is not None
                 or data.status
                 not in {Status.IN_PROGRESS, Status.TESTING}
             ):
@@ -149,6 +153,9 @@ class StageService:
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
+
+        if data.name is not None:
+            stage.name = data.name
 
         if data.status is not None:
             stage.status = data.status
