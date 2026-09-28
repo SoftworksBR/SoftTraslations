@@ -24,6 +24,35 @@ export class ApiError extends Error {
   }
 }
 
+function formatErrorDetail(detail: unknown): string | undefined {
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  if (!Array.isArray(detail)) {
+    return undefined;
+  }
+
+  const messages = detail.map((issue: unknown) => {
+    if (typeof issue !== 'object' || issue === null) {
+      return String(issue);
+    }
+
+    const validationIssue = issue as { loc?: unknown; msg?: unknown };
+    const location = Array.isArray(validationIssue.loc)
+      ? validationIssue.loc.slice(1).join('.')
+      : '';
+    const message =
+      typeof validationIssue.msg === 'string'
+        ? validationIssue.msg
+        : 'Erro de validação';
+
+    return location ? `${location}: ${message}` : message;
+  });
+
+  return messages.length > 0 ? messages.join('; ') : undefined;
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -66,11 +95,10 @@ export async function apiRequest<T>(
         ? responseBody.detail
         : undefined;
     const message =
-      typeof detail === 'string'
-        ? detail
-        : typeof responseBody === 'string' && responseBody
-          ? responseBody
-          : `Falha na API (${response.status})`;
+      formatErrorDetail(detail) ??
+      (typeof responseBody === 'string' && responseBody
+        ? responseBody
+        : `Falha na API (${response.status})`);
 
     throw new ApiError(message, response.status);
   }
