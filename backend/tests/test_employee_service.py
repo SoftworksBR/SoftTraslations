@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from src.enums.enums import Roles
 from src.repositories.employee_repository import EmployeeRepository
+from src.schemas.employee_schema import EmployeeSchema
 from src.services.employee_service import EmployeeService
 
 
@@ -59,3 +60,60 @@ def test_admin_pode_excluir_funcionario_nao_admin(monkeypatch):
     )
 
     assert deleted_employees == [target_employee]
+
+
+def test_cria_admin_inicial_quando_nao_existem_funcionarios(monkeypatch):
+    employee = EmployeeSchema(
+        username='admin',
+        email='admin@admin.com',
+        password='admin123',
+        role=Roles.ADMIN,
+    )
+    created_employees = []
+
+    async def get_employees(session, limit, offset, role=None):
+        return []
+
+    async def get_by_email_or_username(session, email, username):
+        return None
+
+    async def create(session, db_employee):
+        created_employees.append(db_employee)
+        return db_employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
+    monkeypatch.setattr(
+        EmployeeRepository,
+        'get_by_email_or_username',
+        get_by_email_or_username,
+    )
+    monkeypatch.setattr(EmployeeRepository, 'create', create)
+
+    created_employee = asyncio.run(
+        EmployeeService.create_initial_admin(session=None, employee=employee)
+    )
+
+    assert created_employees == [created_employee]
+    assert created_employee.role == Roles.ADMIN
+
+
+def test_nao_cria_admin_inicial_se_ja_existir_funcionario(monkeypatch):
+    employee = EmployeeSchema(
+        username='admin',
+        email='admin@admin.com',
+        password='admin123',
+        role=Roles.ADMIN,
+    )
+
+    async def get_employees(session, limit, offset, role=None):
+        return [object()]
+
+    monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
+
+    with pytest.raises(ValueError, match='Initial admin already registered'):
+        asyncio.run(
+            EmployeeService.create_initial_admin(
+                session=None,
+                employee=employee,
+            )
+        )
