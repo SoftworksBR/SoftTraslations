@@ -10,6 +10,27 @@ from src.security import get_password_hash
 
 class EmployeeService:
     @staticmethod
+    async def create_initial_admin(
+        session: AsyncSession,
+        employee: EmployeeSchema,
+    ):
+        if employee.role != Roles.ADMIN:
+            raise ValueError('Initial employee must be an admin')
+
+        existing_employees = await EmployeeRepository.get_employees(
+            session,
+            limit=1,
+            offset=0,
+        )
+        if existing_employees:
+            raise ValueError('Initial admin already registered')
+
+        return await EmployeeService._create_employee_record(
+            session,
+            employee,
+        )
+
+    @staticmethod
     async def get_employees(
         session: AsyncSession,
         limit: int,
@@ -63,6 +84,13 @@ class EmployeeService:
                 detail='You do not have permission to create employees',
             )
 
+        return await EmployeeService._create_employee_record(session, employee)
+
+    @staticmethod
+    async def _create_employee_record(
+        session: AsyncSession,
+        employee: EmployeeSchema,
+    ):
         db_employee = await EmployeeRepository.get_by_email_or_username(
             session,
             employee.email,

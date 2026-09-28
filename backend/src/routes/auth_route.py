@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.auth_controller import AuthController
-from src.controllers.employee_controller import create_employee
+from src.controllers.employee_controller import create_initial_admin
 from src.database import get_session
 from src.enums.enums import Roles
 from src.models.employee_model import Employee
@@ -46,7 +46,7 @@ async def login_for_access_token(
 async def register_temporary_admin(
     session: AsyncSession = Depends(get_session),
 ):
-    return await create_employee(
+    return await create_initial_admin(
         EmployeeSchema(
             username='admin',
             email='admin@admin.com',

@@ -48,6 +48,20 @@ async def create_employee(
         ) from None
 
 
+async def create_initial_admin(
+    employee: EmployeeSchema,
+    session: AsyncSession,
+):
+    try:
+        return await service.create_initial_admin(session, employee)
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail=str(error),
+        ) from None
+
+
 async def update_employee(
     employee_id: int,
     employee: EmployeeSchema,
