@@ -1,14 +1,69 @@
 import { router } from 'expo-router';
+
 import {
     View,
     Text,
     Pressable,
     StyleSheet,
     ScrollView,
-    Image,
+    useWindowDimensions,
+    type DimensionValue,
 } from 'react-native';
 
 export default function LandingPage() {
+    const { width } = useWindowDimensions();
+    const isMobile = width < 768;
+    const isTablet = width >= 768 && width < 1024;
+
+    let cardWidth: DimensionValue;
+
+    if (isMobile) {
+        cardWidth = '100%';
+    } else if (isTablet) {
+        cardWidth = '48%';
+    } else {
+        cardWidth = '31.5%';
+    }
+
+    const cards = [
+        {
+            number: '01',
+            title: 'Requisições de clientes',
+            description:
+                'Receba e gerencie solicitações de tradução dos clientes em um só lugar, organizando todas as demandas.',
+        },
+        {
+            number: '02',
+            title: 'Orçamentos',
+            description:
+                'Crie, analise e acompanhe orçamentos. Aprove ou rejeite solicitações com facilidade.',
+        },
+        {
+            number: '03',
+            title: 'Gestão de tradutores',
+            description:
+                'Aloque tradutores para projetos, acompanhe o progresso e gerencie prazos de entrega.',
+        },
+        {
+            number: '04',
+            title: 'Clientes centralizados',
+            description:
+                'Mantenha informações de clientes, histórico de projetos e comunicações em um único local.',
+        },
+        {
+            number: '05',
+            title: 'Acompanhamento de projetos',
+            description:
+                'Monitore o status de cada tradução, etapas concluídas e pendências em tempo real.',
+        },
+        {
+            number: '06',
+            title: 'Relatórios e analytics',
+            description:
+                'Gere relatórios detalhados sobre projetos, receita e desempenho da equipe.',
+        },
+    ];
+
     return (
         <ScrollView style={styles.container}>
 
@@ -16,96 +71,113 @@ export default function LandingPage() {
             <View style={styles.hero}>
 
                 {/* TOPO */}
-                <View style={styles.heroTop}>
+                <View
+                    style={[
+                        styles.heroTop,
+                        {
+                            paddingHorizontal: isMobile ? 16 : 24,
+                        },
+                    ]}
+                >
+                    <Text
+                        style={[
+                            styles.logo,
+                            {
+                                fontSize: isMobile ? 14 : 16,
+                            },
+                        ]}
+                    >
+                        SoftTranslations
+                    </Text>
 
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logo}>
-                            SoftTranslations
+                    <Pressable onPress={() => router.push('/login')}>
+                        <Text
+                            style={[
+                                styles.navLink,
+                                {
+                                    fontSize: isMobile ? 12 : 13,
+                                },
+                            ]}
+                        >
+                            Login
                         </Text>
-                    </View>
-
-                    <View style={styles.navLinks}>
-
-                        <Pressable onPress={() => router.push('/login')}>
-                            <Text style={styles.navLink}>
-                                Login
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/atendente')}>
-                            <Text style={styles.navLink}>
-                                Atendente
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/gestor')}>
-                            <Text style={styles.navLink}>
-                                Gestor
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/tradutor/completar-perfil')}>
-                            <Text style={styles.navLink}>
-                                Tradutor
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/drawer/GerenciarAdministracao')}>
-                            <Text style={styles.navLink}>
-                                Administrador
-                            </Text>
-                        </Pressable>
-
-                    </View>
-
+                    </Pressable>
                 </View>
 
                 {/* CONTEÚDO DO HERO */}
-                <View style={styles.heroContent}>
+                <View
+                    style={[
+                        styles.heroContent,
+                        {
+                            paddingHorizontal: isMobile ? 16 : 40,
+                            paddingTop: isMobile ? 30 : 45,
+                            paddingBottom: isMobile ? 40 : 55,
+                        },
+                    ]}
+                >
+                    <View style={{ width: '100%' }}>
 
-                    {/* INFORMAÇÕES */}
-                    <View style={styles.heroInfo}>
-
-                        <Text style={styles.heroLabel}>
+                        <Text
+                            style={[
+                                styles.heroLabel,
+                                {
+                                    fontSize: isMobile ? 9 : 10,
+                                },
+                            ]}
+                        >
                             GESTÃO DE TRADUÇÕES
                         </Text>
 
-                        <Text style={styles.heroTitle}>
+                        <Text
+                            style={[
+                                styles.heroTitle,
+                                {
+                                    fontSize: isMobile ? 24 : 32,
+                                    lineHeight: isMobile ? 30 : 39,
+                                },
+                            ]}
+                        >
                             Traduções organizadas.{'\n'}
                             Projetos sob controle.
                         </Text>
 
-                        <Text style={styles.heroSubtitle}>
+                        <Text
+                            style={[
+                                styles.heroSubtitle,
+                                {
+                                    fontSize: isMobile ? 12 : 14,
+                                    lineHeight: isMobile ? 18 : 21,
+                                },
+                            ]}
+                        >
                             Centralize clientes, equipes, orçamentos e projetos
                             em um único ambiente, facilitando o acompanhamento
                             de cada tradução do início à entrega.
                         </Text>
 
-                        <View style={styles.botoesHero}>
-
-                            <Pressable
-                                style={styles.ctaButton}
-                                onPress={() => router.push('/login')}
+                        <Pressable
+                            style={[
+                                styles.ctaButton,
+                                {
+                                    paddingHorizontal: isMobile ? 20 : 26,
+                                    paddingVertical: isMobile ? 10 : 11,
+                                },
+                            ]}
+                            onPress={() => router.push('/login')}
+                        >
+                            <Text
+                                style={[
+                                    styles.ctaText,
+                                    {
+                                        fontSize: isMobile ? 12 : 13,
+                                    },
+                                ]}
                             >
-                                <Text style={styles.ctaText}>
-                                    Fazer Login
-                                </Text>
-                            </Pressable>
-                        </View>
+                                Fazer Login
+                            </Text>
+                        </Pressable>
 
                     </View>
-
-                    {/* LOGO */}
-                    <View style={styles.heroLogoContainer}>
-
-                        <Image
-                            source={require('../assets/images/logo.png')}
-                            style={styles.heroLogo}
-                            resizeMode="contain"
-                        />
-
-                    </View>
-
                 </View>
 
             </View>
@@ -114,134 +186,65 @@ export default function LandingPage() {
             <View style={styles.resourcesSection}>
 
                 {/* CARDS */}
-                <View style={styles.resourcesGrid}>
+                <View
+                    style={[
+                        styles.resourcesGrid,
+                        {
+                            paddingHorizontal: isMobile ? 12 : 20,
+                            paddingTop: isMobile ? 16 : 28,
+                            rowGap: isMobile ? 12 : 16,
+                        },
+                    ]}
+                >
+                    {cards.map((card, index) => (
+                        <View
+                            key={index}
+                            style={{ width: cardWidth }}
+                        >
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.resourceCard,
+                                    {
+                                        minHeight: isMobile ? 140 : 160,
+                                    },
+                                    pressed && styles.resourceCardHover,
+                                ]}
+                            >
+                                <Text
+                                    style={[
+                                        styles.resourceNumber,
+                                        {
+                                            fontSize: isMobile ? 9 : 10,
+                                        },
+                                    ]}
+                                >
+                                    {card.number}
+                                </Text>
 
-                    {/* CARD 01 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            01
-                        </Text>
+                                <Text
+                                    style={[
+                                        styles.resourceTitle,
+                                        {
+                                            fontSize: isMobile ? 12 : 14,
+                                        },
+                                    ]}
+                                >
+                                    {card.title}
+                                </Text>
 
-                        <Text style={styles.resourceTitle}>
-                            Projetos organizados
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Crie novos projetos, organize as informações e acompanhe
-                            o andamento de cada tradução em um único lugar.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 02 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            02
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Gestão de equipe
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Organize gestores, atendentes e tradutores, definindo
-                            responsabilidades de acordo com cada projeto.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 03 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            03
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Etapas e prazos
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Acompanhe as etapas do trabalho, os responsáveis e os
-                            prazos para manter cada projeto dentro do cronograma.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 04 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            04
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Clientes centralizados
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Mantenha empresas, contatos, solicitações e histórico
-                            dos clientes reunidos em um único ambiente.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 05 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            05
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Orçamentos e serviços
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Crie e consulte orçamentos, registre os serviços
-                            solicitados e acompanhe cada negociação.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 06 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            06
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Acompanhamento do projeto
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Consulte o status, as entregas e o andamento de cada
-                            projeto para saber exatamente o que está acontecendo.
-                        </Text>
-                    </Pressable>
-
+                                <Text
+                                    style={[
+                                        styles.resourceDescription,
+                                        {
+                                            fontSize: isMobile ? 10 : 11,
+                                        },
+                                    ]}
+                                >
+                                    {card.description}
+                                </Text>
+                            </Pressable>
+                        </View>
+                    ))}
                 </View>
 
             </View>
@@ -252,7 +255,6 @@ export default function LandingPage() {
 
 const styles = StyleSheet.create({
 
-    /* CONTAINER */
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
@@ -265,58 +267,32 @@ const styles = StyleSheet.create({
 
     /* TOPO */
     heroTop: {
-        paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 10,
-
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
 
-    logoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
     logo: {
         color: '#FFFFFF',
-        fontSize: 16,
         fontWeight: '800',
     },
 
     /* LINKS */
-    navLinks: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 20,
-    },
-
     navLink: {
         color: '#AAAAAA',
-        fontSize: 13,
         fontWeight: '600',
     },
 
     /* CONTEÚDO DO HERO */
     heroContent: {
-        paddingHorizontal: 40,
-        paddingTop: 45,
-        paddingBottom: 55,
-
         flexDirection: 'row',
         alignItems: 'center',
     },
 
-    heroInfo: {
-        width: '50%',
-        paddingRight: 30,
-        marginLeft: 25,
-    },
-
     heroLabel: {
         color: '#888888',
-        fontSize: 10,
         fontWeight: '700',
         letterSpacing: 2,
         marginBottom: 14,
@@ -324,75 +300,25 @@ const styles = StyleSheet.create({
 
     heroTitle: {
         color: '#FFFFFF',
-        fontSize: 32,
         fontWeight: '800',
-        lineHeight: 39,
         marginBottom: 16,
     },
 
     heroSubtitle: {
         color: '#999999',
-        fontSize: 14,
-        lineHeight: 21,
         marginBottom: 26,
-        maxWidth: 500,
     },
 
     /* BOTÕES PRINCIPAIS */
-    botoesHero: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-
     ctaButton: {
         alignSelf: 'flex-start',
-
-        paddingHorizontal: 26,
-        paddingVertical: 11,
-
         backgroundColor: '#FFFFFF',
         borderRadius: 6,
     },
 
     ctaText: {
-        fontSize: 13,
         fontWeight: '800',
         color: '#000000',
-    },
-
-    ctaButtonSecundario: {
-        alignSelf: 'flex-start',
-
-        paddingHorizontal: 26,
-        paddingVertical: 11,
-
-        backgroundColor: '#000000',
-        borderWidth: 1,
-        borderColor: '#FFFFFF',
-        borderRadius: 6,
-    },
-
-    ctaTextSecundario: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-
-    /* LOGO */
-    heroLogoContainer: {
-        width: '50%',
-        height: 350,
-
-        alignItems: 'center',
-        justifyContent: 'center',
-
-        marginLeft: -150,
-    },
-
-    heroLogo: {
-        width: '100%',
-        height: '100%',
     },
 
     /* SEÇÃO DE RECURSOS */
@@ -400,57 +326,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
     },
 
-    /* CABEÇALHO DOS RECURSOS */
-    resourcesHeader: {
-        backgroundColor: '#000000',
-
-        paddingHorizontal: 24,
-        paddingTop: 55,
-        paddingBottom: 45,
-    },
-
-    resourcesLabel: {
-        color: '#888888',
-        fontSize: 11,
-        fontWeight: '700',
-        letterSpacing: 2,
-        marginBottom: 12,
-    },
-
-    resourcesTitle: {
-        color: '#FFFFFF',
-        fontSize: 29,
-        fontWeight: '800',
-        lineHeight: 36,
-        maxWidth: 800,
-    },
-
     /* GRID */
     resourcesGrid: {
-        paddingHorizontal: 20,
-        paddingTop: 28,
         paddingBottom: 40,
-
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'space-between',
-
-        rowGap: 16,
     },
 
     /* CARD */
     resourceCard: {
-        width: '31.5%',
-        height: 160,
-
         backgroundColor: '#FFFFFF',
-
         borderWidth: 1,
         borderColor: '#E5E5E5',
         borderRadius: 14,
-
         padding: 16,
-
         shadowColor: '#000000',
         shadowOffset: {
             width: 0,
@@ -458,18 +348,13 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.07,
         shadowRadius: 6,
-
         elevation: 2,
-
-        transitionDuration: '200ms',
     },
 
-    /* CARD AO PASSAR O MOUSE */
+    /* CARD AO PRESSIONAR */
     resourceCardHover: {
         backgroundColor: '#F5F5F5',
-
         borderColor: '#000000',
-
         shadowColor: '#000000',
         shadowOffset: {
             width: 0,
@@ -477,20 +362,12 @@ const styles = StyleSheet.create({
         },
         shadowOpacity: 0.15,
         shadowRadius: 10,
-
         elevation: 6,
-
-        transform: [
-            {
-                translateY: -4,
-            },
-        ],
     },
 
     /* NÚMERO */
     resourceNumber: {
         color: '#999999',
-        fontSize: 10,
         fontWeight: '700',
         marginBottom: 12,
     },
@@ -498,7 +375,6 @@ const styles = StyleSheet.create({
     /* TÍTULO DOS CARDS */
     resourceTitle: {
         color: '#000000',
-        fontSize: 14,
         fontWeight: '700',
         lineHeight: 18,
         marginBottom: 7,
@@ -507,35 +383,8 @@ const styles = StyleSheet.create({
     /* DESCRIÇÃO DOS CARDS */
     resourceDescription: {
         color: '#777777',
-        fontSize: 11,
         lineHeight: 16,
     },
 
-    /* RODAPÉ */
-    footer: {
-        paddingHorizontal: 20,
-        paddingVertical: 40,
-
-        backgroundColor: '#F5F5F5',
-
-        alignItems: 'center',
-    },
-
-    loginButton: {
-        width: '100%',
-        height: 50,
-
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        backgroundColor: '#000000',
-        borderRadius: 6,
-    },
-
-    loginText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-
 });
+
