@@ -17,10 +17,23 @@ class ProjectController:
         return await service.create(data, current_employee)
 
     @staticmethod
-    async def get_all(session: AsyncSession, current_employee: Employee):
+    async def get_all(
+        session: AsyncSession,
+        name: str | None = None,
+        status=None,
+        stage_name: str | None = None,
+        freelancer_name: str | None = None,
+        creator_name: str | None = None,
+    ):
         service = ProjectService(session)
 
-        return await service.get_all(current_employee)
+        return await service.get_all(
+            name=name,
+            status=status,
+            stage_name=stage_name,
+            freelancer_name=freelancer_name,
+            creator_name=creator_name,
+        )
 
     @staticmethod
     async def update(

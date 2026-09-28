@@ -14,7 +14,9 @@ class EmployeeService:
         session: AsyncSession,
         limit: int,
         offset: int,
-        current_employee: Employee,
+        username: str | None = None,
+        email: str | None = None,
+        role: Roles | None = None,
     ):
         if current_employee.role not in {Roles.ADMIN, Roles.PROJETOS}:
             raise HTTPException(
@@ -26,11 +28,9 @@ class EmployeeService:
             session,
             limit,
             offset,
-            (
-                Roles.FREELANCER
-                if current_employee.role == Roles.PROJETOS
-                else None
-            ),
+            username=username,
+            email=email,
+            role=role,
         )
 
     @staticmethod

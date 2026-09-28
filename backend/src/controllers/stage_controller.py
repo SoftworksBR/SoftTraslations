@@ -30,10 +30,21 @@ class StageController:
         )
 
     @staticmethod
-    async def get_all(session: AsyncSession, current_employee: Employee):
+    async def get_all(
+        session: AsyncSession,
+        name: str | None = None,
+        status=None,
+        project_name: str | None = None,
+        freelancer_name: str | None = None,
+    ):
         service = StageService(session)
 
-        return await service.get_all(current_employee)
+        return await service.get_all(
+            name=name,
+            status=status,
+            project_name=project_name,
+            freelancer_name=freelancer_name,
+        )
 
     @staticmethod
     async def update(

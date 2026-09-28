@@ -38,10 +38,24 @@ class RequestService:
 
         return request
 
-    async def get_all(self, current_employee: Employee) -> list[Request]:
-        self._require_atendimento_role(current_employee)
+    async def get_all(
+        self,
+        username: str | None = None,
+        email: str | None = None,
+        phone: str | None = None,
+        company: str | None = None,
+        translate_from=None,
+        translate_to=None,
+    ) -> list[Request]:
 
-        return await self.repository.get_all()
+        return await self.repository.get_all(
+            username=username,
+            email=email,
+            phone=phone,
+            company=company,
+            translate_from=translate_from,
+            translate_to=translate_to,
+        )
 
     async def update(
         self,

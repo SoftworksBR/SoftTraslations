@@ -11,13 +11,26 @@ class EmployeeRepository:
         session: AsyncSession,
         limit: int,
         offset: int,
-        role: Roles | None = None,
+        username: str | None = None,
+        email: str | None = None,
+        role: str | None = None,
     ):
-        query = select(Employee)
-        if role is not None:
-            query = query.where(Employee.role == role)
+        statement = select(Employee)
 
-        result = await session.scalars(query.offset(offset).limit(limit))
+        if username is not None:
+            statement = statement.where(
+                Employee.username.ilike(f'%{username}%')
+            )
+
+        if email is not None:
+            statement = statement.where(Employee.email.ilike(f'%{email}%'))
+
+        if role is not None:
+            statement = statement.where(Employee.role == role)
+
+        result = await session.scalars(
+            statement.offset(offset).limit(limit)
+        )
 
         return result.all()
 

@@ -26,6 +26,7 @@ class StageService:
         return await self._create_for_project(
             data.project_id,
             data.freelancer_id,
+            data.name,
             data.status,
         )
 
@@ -35,16 +36,11 @@ class StageService:
         stage_id: int,
         current_employee: Employee,
     ) -> Stage:
-        if current_employee.role != Roles.PROJETOS:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Only projetos can use this endpoint',
-            )
-
-        project = await self.repository.session.scalar(
-            select(Project)
-            .options(selectinload(Project.stages))
-            .where(Project.id == project_id)
+        return await self._create_for_project(
+            project_id,
+            data.freelancer_id,
+            data.name,
+            data.status,
         )
         if project is None:
             raise HTTPException(
@@ -68,6 +64,7 @@ class StageService:
         self,
         project_id: int,
         freelancer_id: int,
+        name: str,
         stage_status: Status,
     ) -> Stage:
         project = await self.repository.session.scalar(
@@ -88,7 +85,11 @@ class StageService:
                 detail='Freelancer not found',
             )
 
-        stage = Stage(freelancer_id=freelancer_id, status=stage_status)
+        stage = Stage(
+            freelancer_id=freelancer_id,
+            name=name,
+            status=stage_status,
+        )
         stage.projects.append(project)
 
         return await self.repository.create(stage)
@@ -105,14 +106,20 @@ class StageService:
 
         return stage
 
-    async def get_all(self, current_employee: Employee) -> list[Stage]:
-        if current_employee.role == Roles.PROJETOS:
-            return await self.repository.get_all()
+    async def get_all(
+        self,
+        name: str | None = None,
+        status=None,
+        project_name: str | None = None,
+        freelancer_name: str | None = None,
+    ) -> list[Stage]:
 
-        if current_employee.role == Roles.FREELANCER:
-            return await self.repository.get_all(current_employee.id)
-
-        self._raise_stage_access_denied()
+        return await self.repository.get_all(
+            name=name,
+            status=status,
+            project_name=project_name,
+            freelancer_name=freelancer_name,
+        )
 
     async def update(
         self,
@@ -150,6 +157,9 @@ class StageService:
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
+
+        if data.name is not None:
+            stage.name = data.name
 
         if data.status is not None:
             stage.status = data.status

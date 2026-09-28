@@ -21,6 +21,8 @@ class Stage:
         primary_key=True, init=False, autoincrement=True
     )
 
+    name: Mapped[str] = mapped_column(nullable=False)
+
     freelancer_id: Mapped[int] = mapped_column(
         ForeignKey('employees.id'), nullable=False
     )
