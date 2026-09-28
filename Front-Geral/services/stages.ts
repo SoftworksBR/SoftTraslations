@@ -2,12 +2,7 @@ import { apiRequest } from './api';
 import type { ProjectStatus, ProjectStage } from './projects';
 
 export type StageInput = {
-  project_id: number;
-  freelancer_id: number;
-  status: ProjectStatus;
-};
-
-export type ProjectStageInput = {
+  path_id: number;
   freelancer_id: number;
   status: ProjectStatus;
 };
@@ -24,16 +19,6 @@ export function getStage(id: number) {
 
 export function createStage(stage: StageInput) {
   return apiRequest<ProjectStage>('/stages/', {
-    method: 'POST',
-    body: JSON.stringify(stage),
-  });
-}
-
-export function createProjectStage(
-  projectId: number,
-  stage: ProjectStageInput,
-) {
-  return apiRequest<ProjectStage>(`/projects/${projectId}/stages`, {
     method: 'POST',
     body: JSON.stringify(stage),
   });

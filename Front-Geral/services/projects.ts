@@ -4,8 +4,15 @@ export type ProjectStatus = 'ready' | 'in_progress' | 'testing' | 'done';
 
 export type ProjectStage = {
   id: number;
+  path_id: number;
   freelancer_id: number;
   status: ProjectStatus;
+};
+
+export type ProjectPath = {
+  id: number;
+  name: string;
+  stages: ProjectStage[];
 };
 
 export type Project = {
@@ -13,13 +20,14 @@ export type Project = {
   name: string;
   status: ProjectStatus;
   creator_id: number;
-  stages: ProjectStage[];
+  paths: ProjectPath[];
 };
 
 export type ProjectInput = {
   name: string;
   status: ProjectStatus;
   creator_id: number;
+  path_ids: number[];
 };
 
 export async function getProjects() {
