@@ -4,11 +4,48 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
-from src.enums.enums import Roles
+from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import EmployeeSchema
+from src.schemas.path_schema import PathCreate
+from src.schemas.project_schema import ProjectCreate
 from src.services.employee_service import EmployeeService
+
+
+def test_pending_status_is_only_valid_for_freelancers():
+    employee = EmployeeSchema(
+        username='translator',
+        email='translator@example.com',
+        password='password',
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.PENDING,
+    )
+
+    assert employee.status == EmployeeStatus.PENDING
+
+    with pytest.raises(ValidationError):
+        EmployeeSchema(
+            username='staff',
+            email='staff@example.com',
+            password='password',
+            role=Roles.ATENDIMENTO,
+            status=EmployeeStatus.PENDING,
+        )
+
+
+def test_path_and_project_require_at_least_one_related_record():
+    with pytest.raises(ValidationError):
+        PathCreate(name='Translation', stages=[])
+
+    with pytest.raises(ValidationError):
+        ProjectCreate(
+            name='Website',
+            status=Status.READY,
+            creator_id=1,
+            path_ids=[],
+        )
 
 
 def test_admin_nao_pode_excluir_outro_admin(monkeypatch):
