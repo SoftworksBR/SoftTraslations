@@ -59,6 +59,13 @@ export default function Quadros() {
         Quadros
       </Text>
 
+      <Pressable
+        style={styles.botao}
+        onPress={() => router.push('/gestor/workflow/novo-stage')}
+      >
+        <Text style={styles.botaoText}>NOVO STAGE</Text>
+      </Pressable>
+
       {loading ? (
         <ActivityIndicator />
       ) : (
@@ -96,6 +103,20 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
+  },
+
+  botao: {
+    minHeight: 48,
+    backgroundColor: '#000',
+    borderRadius: 6,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  botaoText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 
   card: {
