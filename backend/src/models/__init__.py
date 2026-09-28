@@ -4,6 +4,7 @@ from .empresa_model import Departamento as Departamento
 from .empresa_model import Empresa as Empresa
 from .file_model import RequestFile as RequestFile
 from .file_model import StageFile as StageFile
+from .path_model import Path as Path
 from .project_model import Project as Project
 from .request_model import Request as Request
 from .stage_model import Stage as Stage
