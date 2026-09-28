@@ -4,7 +4,7 @@ from src.enums.enums import Status
 
 
 class StageCreate(BaseModel):
-    project_id: int
+    path_id: int
     freelancer_id: int
     status: Status
 
@@ -18,12 +18,13 @@ class StageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    path_id: int
     freelancer_id: int
     status: Status
 
 
-class ProjectStageResponse(BaseModel):
+class PathProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+    path_id: int
     project_id: int
-    stage_id: int

@@ -1,13 +1,14 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.enums.enums import Status
-from src.schemas.stage_schema import StageResponse
+from src.schemas.path_schema import PathResponse
 
 
 class ProjectCreate(BaseModel):
     name: str
     status: Status
     creator_id: int
+    path_ids: list[int] = Field(min_length=1)
 
 
 class ProjectUpdate(BaseModel):
@@ -21,6 +22,6 @@ class ProjectResponse(BaseModel):
     name: str
     status: Status
     creator_id: int
-    stages: list[StageResponse] = Field(default_factory=list)
+    paths: list[PathResponse]
 
     model_config = ConfigDict(from_attributes=True)

@@ -17,12 +17,6 @@ class StageRepository:
 
         return stage
 
-    async def assign_to_project(self, stage: Stage) -> Stage:
-        await self.session.commit()
-        await self.session.refresh(stage)
-
-        return stage
-
     async def get_by_id(self, stage_id: int) -> Stage | None:
 
         result = await self.session.execute(

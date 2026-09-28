@@ -1,8 +1,10 @@
 from fastapi import HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import Roles
 from src.models.employee_model import Employee
+from src.models.path_model import Path
 from src.models.project_model import Project
 from src.repositories.project_repository import ProjectRepository
 from src.schemas.project_schema import ProjectCreate, ProjectUpdate
@@ -17,8 +19,24 @@ class ProjectService:
     ) -> Project:
         self._require_projects_role(current_employee)
 
+        paths = list(
+            (
+                await self.repository.session.scalars(
+                    select(Path).where(Path.id.in_(set(data.path_ids)))
+                )
+            ).all()
+        )
+        if len(paths) != len(set(data.path_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='One or more paths were not found',
+            )
+
         project = Project(
-            name=data.name, status=data.status, creator_id=data.creator_id
+            name=data.name,
+            status=data.status,
+            creator_id=data.creator_id,
+            paths=paths,
         )
 
         return await self.repository.create(project)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from src.enums.enums import Roles, Status
 from src.models.employee_model import Employee
+from src.models.path_model import Path
 from src.models.project_model import Project
 from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
@@ -23,18 +24,18 @@ class StageService:
     ) -> Stage:
         self._require_projects_role(current_employee)
 
-        return await self._create_for_project(
-            data.project_id,
+        return await self._create_for_path(
+            data.path_id,
             data.freelancer_id,
             data.status,
         )
 
-    async def assign_to_project(
+    async def assign_path_to_project(
         self,
         project_id: int,
-        stage_id: int,
+        path_id: int,
         current_employee: Employee,
-    ) -> Stage:
+    ) -> Path:
         if current_employee.role != Roles.PROJETOS:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -43,7 +44,7 @@ class StageService:
 
         project = await self.repository.session.scalar(
             select(Project)
-            .options(selectinload(Project.stages))
+            .options(selectinload(Project.paths))
             .where(Project.id == project_id)
         )
         if project is None:
@@ -52,31 +53,38 @@ class StageService:
                 detail='Project not found',
             )
 
-        stage = await self.repository.get_by_id(stage_id)
-        if stage is None:
+        path = await self.repository.session.scalar(
+            select(Path)
+            .options(selectinload(Path.projects))
+            .where(Path.id == path_id)
+        )
+        if path is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Stage not found',
+                detail='Path not found',
             )
 
-        if stage not in project.stages:
-            project.stages.append(stage)
+        if project not in path.projects:
+            path.projects.append(project)
 
-        return await self.repository.assign_to_project(stage)
+        await self.repository.session.commit()
+        await self.repository.session.refresh(path)
 
-    async def _create_for_project(
+        return path
+
+    async def _create_for_path(
         self,
-        project_id: int,
+        path_id: int,
         freelancer_id: int,
         stage_status: Status,
     ) -> Stage:
-        project = await self.repository.session.scalar(
-            select(Project).where(Project.id == project_id)
+        path = await self.repository.session.scalar(
+            select(Path).where(Path.id == path_id)
         )
-        if project is None:
+        if path is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Project not found',
+                detail='Path not found',
             )
 
         freelancer = await self.repository.session.scalar(
@@ -88,8 +96,11 @@ class StageService:
                 detail='Freelancer not found',
             )
 
-        stage = Stage(freelancer_id=freelancer_id, status=stage_status)
-        stage.projects.append(project)
+        stage = Stage(
+            path=path,
+            freelancer_id=freelancer_id,
+            status=stage_status,
+        )
 
         return await self.repository.create(stage)
 
