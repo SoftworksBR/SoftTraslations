@@ -28,7 +28,31 @@ export default function LandingPage() {
 
                         <Pressable onPress={() => router.push('/login')}>
                             <Text style={styles.navLink}>
-                                Entrar
+                                Login
+                            </Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => router.push('/atendente')}>
+                            <Text style={styles.navLink}>
+                                Atendente
+                            </Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => router.push('/gestor')}>
+                            <Text style={styles.navLink}>
+                                Gestor
+                            </Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => router.push('/tradutor/completar-perfil')}>
+                            <Text style={styles.navLink}>
+                                Tradutor
+                            </Text>
+                        </Pressable>
+
+                        <Pressable onPress={() => router.push('/drawer/GerenciarAdministracao')}>
+                            <Text style={styles.navLink}>
+                                Administrador
                             </Text>
                         </Pressable>
 
@@ -67,18 +91,6 @@ export default function LandingPage() {
                                     Fazer Login
                                 </Text>
                             </Pressable>
-
-                            <Pressable
-                                style={styles.ctaButtonSecundario}
-                                onPress={() =>
-                                    router.push('/orcamentos/FazerSolicitacao')
-                                }
-                            >
-                                <Text style={styles.ctaTextSecundario}>
-                                    Solicitar Orçamento
-                                </Text>
-                            </Pressable>
-
                         </View>
 
                     </View>
