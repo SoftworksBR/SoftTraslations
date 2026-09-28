@@ -108,6 +108,7 @@ class EmployeeService:
             username=employee.username,
             email=employee.email,
             role=employee.role,
+            status=employee.status,
             password=get_password_hash(employee.password),
         )
 
@@ -146,6 +147,7 @@ class EmployeeService:
         target_employee.email = employee.email
         target_employee.password = get_password_hash(employee.password)
         target_employee.role = employee.role
+        target_employee.status = employee.status
 
         return await EmployeeRepository.update(
             session,
