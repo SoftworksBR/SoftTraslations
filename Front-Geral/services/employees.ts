@@ -9,12 +9,19 @@ export type EmployeeRole =
 
 export type EmployeeStatus = 'available' | 'busy' | 'pending';
 
+export type FreelancerType =
+  | 'tradutor'
+  | 'revisor'
+  | 'formatador'
+  | 'interprete';
+
 export type Employee = {
   id: number;
   username: string;
   email: string;
   role: EmployeeRole;
   status: EmployeeStatus;
+  freelancer_type: FreelancerType | null;
 };
 
 export type EmployeeInput = {
@@ -32,6 +39,7 @@ export type FreelancerPreRegistrationInput = {
 
 export type FreelancerProfileInput = {
   name: string;
+  freelancer_type: FreelancerType;
 };
 
 type EmployeeList = {

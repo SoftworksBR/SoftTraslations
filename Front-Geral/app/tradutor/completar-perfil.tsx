@@ -14,11 +14,23 @@ import {
 
 import { completeFreelancerProfile } from '@/services/employees';
 import { getCurrentEmployee } from '@/services/auth';
-import type { Employee } from '@/services/employees';
+import type { Employee, FreelancerType } from '@/services/employees';
+
+const TIPOS_DE_FREELANCER: {
+  valor: FreelancerType;
+  rotulo: string;
+}[] = [
+  { valor: 'tradutor', rotulo: 'Tradutor' },
+  { valor: 'revisor', rotulo: 'Revisor' },
+  { valor: 'formatador', rotulo: 'Formatador' },
+  { valor: 'interprete', rotulo: 'Intérprete' },
+];
 
 export default function CompletarPerfil() {
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [name, setName] = useState('');
+  const [freelancerType, setFreelancerType] =
+    useState<FreelancerType | null>(null);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -62,10 +74,16 @@ export default function CompletarPerfil() {
       return;
     }
 
+    if (!freelancerType) {
+      Alert.alert('Atenção', 'Selecione seu tipo de atuação.');
+      return;
+    }
+
     setSalvando(true);
     try {
       await completeFreelancerProfile({
         name: name.trim(),
+        freelancer_type: freelancerType,
       });
       router.replace('/tradutor');
     } catch (error) {
@@ -130,6 +148,36 @@ export default function CompletarPerfil() {
             editable={false}
             style={styles.input}
           />
+
+          <Text style={styles.label}>
+            Tipo de atuação
+          </Text>
+
+          <View style={styles.tipos}>
+            {TIPOS_DE_FREELANCER.map((tipo) => {
+              const selecionado = freelancerType === tipo.valor;
+
+              return (
+                <Pressable
+                  key={tipo.valor}
+                  onPress={() => setFreelancerType(tipo.valor)}
+                  style={[
+                    styles.tipoBotao,
+                    selecionado && styles.tipoBotaoSelecionado,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tipoTexto,
+                      selecionado && styles.tipoTextoSelecionado,
+                    ]}
+                  >
+                    {tipo.rotulo}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           <Pressable
             style={styles.botao}
@@ -199,6 +247,35 @@ const styles = StyleSheet.create({
   disabled: {
     backgroundColor: '#eee',
     color: '#666',
+  },
+
+  tipos: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  tipoBotao: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#bbb',
+  },
+
+  tipoBotaoSelecionado: {
+    backgroundColor: '#000',
+    borderColor: '#000',
+  },
+
+  tipoTexto: {
+    fontSize: 15,
+    color: '#000',
+  },
+
+  tipoTextoSelecionado: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 
   botao: {

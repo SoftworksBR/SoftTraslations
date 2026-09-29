@@ -150,6 +150,7 @@ class EmployeeService:
             )
 
         employee.username = data.name.strip()
+        employee.freelancer_type = data.freelancer_type
         employee.status = EmployeeStatus.AVAILABLE
 
         return await EmployeeRepository.update(session, employee)

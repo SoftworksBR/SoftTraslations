@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from src.enums.enums import EmployeeStatus, Roles, Status
+from src.enums.enums import EmployeeStatus, FreelancerType, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
@@ -37,6 +37,33 @@ def test_pending_status_is_only_valid_for_freelancers():
             role=Roles.ATENDIMENTO,
             status=EmployeeStatus.PENDING,
         )
+
+
+def test_freelancer_profile_requires_freelancer_type():
+    with pytest.raises(ValidationError):
+        FreelancerProfileSchema(name='Someone')
+
+
+@pytest.mark.parametrize(
+    'freelancer_type',
+    [
+        FreelancerType.TRADUTOR,
+        FreelancerType.REVISOR,
+        FreelancerType.FORMATADOR,
+        FreelancerType.INTERPRETE,
+    ],
+)
+def test_freelancer_profile_accepts_every_freelancer_type(freelancer_type):
+    profile = FreelancerProfileSchema(
+        name='Someone', freelancer_type=freelancer_type
+    )
+
+    assert profile.freelancer_type == freelancer_type
+
+
+def test_freelancer_profile_rejects_invalid_freelancer_type():
+    with pytest.raises(ValidationError):
+        FreelancerProfileSchema(name='Someone', freelancer_type='gerente')
 
 
 def test_path_and_project_require_at_least_one_related_record():
@@ -121,6 +148,7 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
             session=None,
             data=FreelancerProfileSchema(
                 name='Freelancer Name',
+                freelancer_type=FreelancerType.TRADUTOR,
             ),
             current_employee=employee,
         )
@@ -128,6 +156,7 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
 
     assert updated_employee.username == 'Freelancer Name'
     assert updated_employee.status == EmployeeStatus.AVAILABLE
+    assert updated_employee.freelancer_type == FreelancerType.TRADUTOR
 
 
 def test_only_freelancers_can_complete_profile():
@@ -135,7 +164,9 @@ def test_only_freelancers_can_complete_profile():
         asyncio.run(
             EmployeeService.complete_freelancer_profile(
                 session=None,
-                data=FreelancerProfileSchema(name='Someone'),
+                data=FreelancerProfileSchema(
+                    name='Someone', freelancer_type=FreelancerType.REVISOR
+                ),
                 current_employee=SimpleNamespace(
                     id=1,
                     role=Roles.PROJETOS,

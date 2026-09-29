@@ -6,7 +6,7 @@ from pydantic import (
     model_validator,
 )
 
-from src.enums.enums import EmployeeStatus, Roles
+from src.enums.enums import EmployeeStatus, FreelancerType, Roles
 
 
 class EmployeePublicSchema(BaseModel):
@@ -15,6 +15,7 @@ class EmployeePublicSchema(BaseModel):
     email: EmailStr
     role: Roles
     status: EmployeeStatus
+    freelancer_type: FreelancerType | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -48,3 +49,4 @@ class FreelancerPreRegistrationSchema(BaseModel):
 
 class FreelancerProfileSchema(BaseModel):
     name: str = Field(min_length=1)
+    freelancer_type: FreelancerType

@@ -29,3 +29,10 @@ class Roles(Enum):
     PROJETOS = 'projetos'
     ATENDIMENTO = 'atendimento'
     FREELANCER = 'freelancer'
+
+
+class FreelancerType(Enum):
+    TRADUTOR = 'tradutor'
+    REVISOR = 'revisor'
+    FORMATADOR = 'formatador'
+    INTERPRETE = 'interprete'
