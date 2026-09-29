@@ -46,6 +46,14 @@ function CustomDrawerContent(props: any) {
           labelStyle={styles.label}
         />
 
+        <DrawerItem
+          label="Empresas"
+          onPress={() =>
+            router.push('/atendente/empresas')
+          }
+          labelStyle={styles.label}
+        />
+
       </View>
 
       <View style={styles.rodape}>
@@ -110,6 +118,24 @@ export default function AtendenteLayout() {
             display: 'none',
           },
           title: 'Novo Orçamento',
+        }}
+      />
+
+      <Drawer.Screen
+        name="empresas"
+        options={{
+          drawerLabel: 'Empresas',
+          title: 'Empresas',
+        }}
+      />
+
+      <Drawer.Screen
+        name="nova-empresa"
+        options={{
+          drawerItemStyle: {
+            display: 'none',
+          },
+          title: 'Nova Empresa',
         }}
       />
 
