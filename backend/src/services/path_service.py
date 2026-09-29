@@ -31,8 +31,17 @@ class PathService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='One or more stages were not found',
             )
+
+        # O "IN" acima não garante nenhuma ordem específica de retorno, então
+        # a lista é reordenada aqui para bater com a ordem escolhida em
+        # data.stage_ids (a ordem em que o gestor selecionou os Stages).
+        stages_by_id = {stage.id: stage for stage in stages}
+        ordered_stages = [
+            stages_by_id[stage_id] for stage_id in data.stage_ids
+        ]
+
         path = Path(name=data.name)
-        path.stages.extend(stages)
+        path.stages.extend(ordered_stages)
 
         return await self.repository.create(path)
 
@@ -40,6 +49,24 @@ class PathService:
         self._require_projects_role(current_employee)
 
         return await self.repository.get_all()
+
+    async def get_by_id(self, path_id: int) -> Path:
+        path = await self.repository.get_by_id(path_id)
+
+        if path is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Path not found',
+            )
+
+        return path
+
+    async def delete(self, path_id: int, current_employee: Employee) -> None:
+        self._require_projects_role(current_employee)
+
+        path = await self.get_by_id(path_id)
+
+        await self.repository.delete(path)
 
     @staticmethod
     def _require_projects_role(current_employee: Employee) -> None:

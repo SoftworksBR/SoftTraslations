@@ -9,9 +9,10 @@ import {
   Pressable,
   FlatList,
 } from 'react-native';
-import { getPaths } from '@/services/paths';
+import { deletePath, getPaths } from '@/services/paths';
 import type { Path } from '@/services/paths';
 import type { ProjectStatus } from '@/services/projects';
+import { alertar } from '@/services/alerta';
 
 const statusLabels: Record<ProjectStatus, string> = {
   ready: 'Pronto',
@@ -45,6 +46,33 @@ export default function Trilhas() {
     }, [loadPaths]),
   );
 
+  function excluirTrilha(id: number, nome: string) {
+    alertar(
+      'Excluir trilha',
+      `Tem certeza que deseja excluir a trilha "${nome}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deletePath(id);
+                await loadPaths();
+              } catch (error) {
+                alertar(
+                  'Não foi possível excluir',
+                  error instanceof Error ? error.message : 'Tente novamente.',
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <View style={styles.container}>
 
@@ -76,13 +104,19 @@ export default function Trilhas() {
 
           <View style={styles.card}>
 
-            <Text style={styles.nome}>
-              {item.name}
-            </Text>
+            <View style={styles.cardHeader}>
+              <Text style={styles.nome}>
+                {item.name}
+              </Text>
 
-            {[...item.stages]
-              .sort((left, right) => left.id - right.id)
-              .map((stage, index) => (
+              <Pressable
+                onPress={() => excluirTrilha(item.id, item.name)}
+              >
+                <Text style={styles.excluir}>Excluir</Text>
+              </Pressable>
+            </View>
+
+            {item.stages.map((stage, index) => (
                 <View
                   key={stage.id}
                   style={styles.etapa}
@@ -142,10 +176,22 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+
   nome: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 15,
+  },
+
+  excluir: {
+    color: '#a32020',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 
   etapa: {

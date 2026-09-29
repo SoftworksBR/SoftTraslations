@@ -31,3 +31,12 @@ async def get_paths(
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await PathController.get_all(session, current_employee)
+
+
+@router.delete('/{path_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_path(
+    path_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    await PathController.delete(path_id, session, current_employee)

@@ -42,5 +42,6 @@ class Stage:
     paths: Mapped[list['Path']] = relationship(
         secondary=path_stages,
         back_populates='stages',
+        order_by=path_stages.c.id,
         default_factory=list,
     )

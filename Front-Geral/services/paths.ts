@@ -22,3 +22,9 @@ export function createPath(path: PathInput) {
     body: JSON.stringify(path),
   });
 }
+
+export function deletePath(id: number) {
+  return apiRequest<void>(`/paths/${id}`, {
+    method: 'DELETE',
+  });
+}

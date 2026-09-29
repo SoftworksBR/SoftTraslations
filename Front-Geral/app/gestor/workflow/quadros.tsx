@@ -8,8 +8,9 @@ import {
   Pressable,
   FlatList,
 } from 'react-native';
-import { getStages } from '@/services/stages';
+import { deleteStage, getStages } from '@/services/stages';
 import type { ProjectStage, ProjectStatus } from '@/services/projects';
+import { alertar } from '@/services/alerta';
 
 const statusLabels: Record<ProjectStatus, string> = {
   ready: 'Pronto',
@@ -42,6 +43,33 @@ export default function Quadros() {
       void loadStages();
     }, [loadStages]),
   );
+
+  function excluirQuadro(id: number, nome: string) {
+    alertar(
+      'Excluir quadro',
+      `Tem certeza que deseja excluir o quadro "${nome}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              try {
+                await deleteStage(id);
+                await loadStages();
+              } catch (error) {
+                alertar(
+                  'Não foi possível excluir',
+                  error instanceof Error ? error.message : 'Tente novamente.',
+                );
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -79,10 +107,18 @@ export default function Quadros() {
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <Text style={styles.nome}>{item.name}</Text>
-              <Text style={styles.detalhe}>
-                {statusLabels[item.status]} · Freelancer #{item.freelancer_id}
-              </Text>
+              <View style={styles.cardInfo}>
+                <Text style={styles.nome}>{item.name}</Text>
+                <Text style={styles.detalhe}>
+                  {statusLabels[item.status]} · Freelancer #
+                  {item.freelancer_id ?? '—'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => excluirQuadro(item.id, item.name)}
+              >
+                <Text style={styles.excluir}>Excluir</Text>
+              </Pressable>
             </View>
           )}
         />
@@ -126,9 +162,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minHeight: 70,
     marginBottom: 12,
-    paddingLeft: 18,
+    paddingHorizontal: 18,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
+  cardInfo: {
+    flexShrink: 1,
   },
 
   nome: {
@@ -139,6 +180,12 @@ const styles = StyleSheet.create({
   detalhe: {
     marginTop: 6,
     color: '#666',
+  },
+
+  excluir: {
+    color: '#a32020',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 
   empty: { color: '#666', paddingVertical: 16 },

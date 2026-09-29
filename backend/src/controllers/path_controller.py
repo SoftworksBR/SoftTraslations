@@ -21,3 +21,13 @@ class PathController:
         service = PathService(session)
 
         return await service.get_all(current_employee)
+
+    @staticmethod
+    async def delete(
+        path_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        service = PathService(session)
+
+        await service.delete(path_id, current_employee)

@@ -1,6 +1,13 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, ForeignKey, String, Table
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.project_model import path_projects
@@ -12,11 +19,16 @@ if TYPE_CHECKING:
     from src.models.stage_model import Stage
 
 
+# 'id' preserva a ordem de inserção (a ordem que o gestor escolheu ao montar
+# a trilha), já que uma chave primária composta (path_id, stage_id) não
+# garante nenhuma ordem específica na leitura.
 path_stages = Table(
     'path_stages',
     table_registry.metadata,
-    Column('path_id', ForeignKey('paths.id'), primary_key=True),
-    Column('stage_id', ForeignKey('stages.id'), primary_key=True),
+    Column('id', Integer, primary_key=True, autoincrement=True),
+    Column('path_id', ForeignKey('paths.id'), nullable=False),
+    Column('stage_id', ForeignKey('stages.id'), nullable=False),
+    UniqueConstraint('path_id', 'stage_id', name='uq_path_stages_path_stage'),
 )
 
 
@@ -32,6 +44,7 @@ class Path:
     stages: Mapped[list['Stage']] = relationship(
         secondary=path_stages,
         back_populates='paths',
+        order_by=path_stages.c.id,
         default_factory=list,
     )
     projects: Mapped[list['Project']] = relationship(

@@ -30,3 +30,7 @@ class PathRepository:
         )
 
         return list(result.scalars().all())
+
+    async def delete(self, path: Path) -> None:
+        await self.session.delete(path)
+        await self.session.commit()
