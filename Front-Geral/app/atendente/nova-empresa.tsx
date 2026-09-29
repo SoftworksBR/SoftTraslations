@@ -45,6 +45,12 @@ export default function NovaEmpresa() {
     ]);
   }
 
+  function removerDepartamento(indice: number) {
+    setDepartamentos((atual) =>
+      atual.filter((_, i) => i !== indice),
+    );
+  }
+
   function atualizarNomeDepartamento(indice: number, nome: string) {
     setDepartamentos((atual) =>
       atual.map((departamento, i) =>
@@ -60,6 +66,21 @@ export default function NovaEmpresa() {
           ? {
               ...departamento,
               contatos: [...departamento.contatos, { ...CONTATO_VAZIO }],
+            }
+          : departamento,
+      ),
+    );
+  }
+
+  function removerContato(indiceDepartamento: number, indiceContato: number) {
+    setDepartamentos((atual) =>
+      atual.map((departamento, i) =>
+        i === indiceDepartamento
+          ? {
+              ...departamento,
+              contatos: departamento.contatos.filter(
+                (_, j) => j !== indiceContato,
+              ),
             }
           : departamento,
       ),
@@ -190,11 +211,27 @@ export default function NovaEmpresa() {
           Departamentos
         </Text>
 
+        <Text style={styles.helper}>
+          Departamentos e contatos são opcionais — você pode cadastrar a
+          empresa só com razão social e CNPJ.
+        </Text>
+
         {departamentos.length === 0 ? (
           <Text style={styles.helper}>Nenhum departamento adicionado.</Text>
         ) : (
           departamentos.map((departamento, indiceDepartamento) => (
             <View key={indiceDepartamento} style={styles.departamento}>
+
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardHeaderTitulo}>
+                  Departamento {indiceDepartamento + 1}
+                </Text>
+                <Pressable
+                  onPress={() => removerDepartamento(indiceDepartamento)}
+                >
+                  <Text style={styles.remover}>Remover</Text>
+                </Pressable>
+              </View>
 
               <Text style={styles.label}>
                 Nome do departamento
@@ -218,6 +255,19 @@ export default function NovaEmpresa() {
               ) : (
                 departamento.contatos.map((contato, indiceContato) => (
                   <View key={indiceContato} style={styles.contato}>
+
+                    <View style={styles.cardHeader}>
+                      <Text style={styles.cardHeaderTitulo}>
+                        Contato {indiceContato + 1}
+                      </Text>
+                      <Pressable
+                        onPress={() =>
+                          removerContato(indiceDepartamento, indiceContato)
+                        }
+                      >
+                        <Text style={styles.remover}>Remover</Text>
+                      </Pressable>
+                    </View>
 
                     <Text style={styles.label}>Nome</Text>
                     <TextInput
@@ -384,6 +434,23 @@ const styles = StyleSheet.create({
   helper: {
     color: '#666',
     marginBottom: 8,
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  cardHeaderTitulo: {
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+
+  remover: {
+    color: '#a32020',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 
   departamento: {
