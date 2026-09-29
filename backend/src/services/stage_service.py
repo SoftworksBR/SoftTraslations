@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.enums.enums import Roles, Status
+from src.enums.enums import FreelancerType, Roles, Status
 from src.models.employee_model import Employee
 from src.models.path_model import Path
 from src.models.project_model import Project
@@ -24,8 +24,9 @@ class StageService:
     ) -> Stage:
         self._require_projects_role(current_employee)
 
-        return await self._create_for_freelancer(
+        return await self._create_stage(
             data.freelancer_id,
+            data.freelancer_type,
             data.name,
             data.status,
         )
@@ -72,23 +73,32 @@ class StageService:
 
         return path
 
-    async def _create_for_freelancer(
+    async def _create_stage(
         self,
-        freelancer_id: int,
+        freelancer_id: int | None,
+        freelancer_type: FreelancerType | None,
         name: str,
         stage_status: Status,
     ) -> Stage:
-        freelancer = await self.repository.session.scalar(
-            select(Employee).where(Employee.id == freelancer_id)
-        )
-        if freelancer is None:
+        if freelancer_id is None and freelancer_type is None:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Freelancer not found',
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Stage must have a freelancer_id or a freelancer_type',
             )
+
+        if freelancer_id is not None:
+            freelancer = await self.repository.session.scalar(
+                select(Employee).where(Employee.id == freelancer_id)
+            )
+            if freelancer is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail='Freelancer not found',
+                )
 
         stage = Stage(
             freelancer_id=freelancer_id,
+            freelancer_type=freelancer_type,
             name=name,
             status=stage_status,
         )
@@ -137,9 +147,9 @@ class StageService:
                 )
             if (
                 data.freelancer_id is not None
+                or data.freelancer_type is not None
                 or data.name is not None
-                or data.status
-                not in {Status.IN_PROGRESS, Status.TESTING}
+                or data.status not in {Status.IN_PROGRESS, Status.TESTING}
             ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -153,6 +163,9 @@ class StageService:
 
         if data.freelancer_id is not None:
             stage.freelancer_id = data.freelancer_id
+
+        if data.freelancer_type is not None:
+            stage.freelancer_type = data.freelancer_type
 
         if data.name is not None:
             stage.name = data.name

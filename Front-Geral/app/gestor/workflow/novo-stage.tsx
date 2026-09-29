@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 
 import { getEmployees } from '@/services/employees';
-import type { Employee } from '@/services/employees';
+import type { Employee, FreelancerType } from '@/services/employees';
 import { createStage } from '@/services/stages';
 import type { ProjectStatus } from '@/services/projects';
 
@@ -30,10 +30,23 @@ const statusLabels: Record<ProjectStatus, string> = {
   done: 'Concluído',
 };
 
+type ModoResponsavel = 'freelancer' | 'tipo';
+
+const tiposDeFreelancer: { valor: FreelancerType; rotulo: string }[] = [
+  { valor: 'tradutor', rotulo: 'Tradutor' },
+  { valor: 'revisor', rotulo: 'Revisor' },
+  { valor: 'formatador', rotulo: 'Formatador' },
+  { valor: 'interprete', rotulo: 'Intérprete' },
+];
+
 export default function NovoStage() {
   const [freelancers, setFreelancers] = useState<Employee[]>([]);
   const [stageName, setStageName] = useState('');
+  const [modoResponsavel, setModoResponsavel] =
+    useState<ModoResponsavel>('freelancer');
   const [freelancerId, setFreelancerId] = useState<number | null>(null);
+  const [freelancerType, setFreelancerType] =
+    useState<FreelancerType | null>(null);
   const [stageStatus, setStageStatus] = useState<ProjectStatus>('ready');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,15 +87,22 @@ export default function NovoStage() {
       return;
     }
 
-    if (freelancerId === null) {
+    if (modoResponsavel === 'freelancer' && freelancerId === null) {
       Alert.alert('Novo Stage', 'Selecione um freelancer.');
+      return;
+    }
+
+    if (modoResponsavel === 'tipo' && freelancerType === null) {
+      Alert.alert('Novo Stage', 'Selecione um tipo de freelancer.');
       return;
     }
 
     setSaving(true);
     try {
       await createStage({
-        freelancer_id: freelancerId,
+        ...(modoResponsavel === 'freelancer'
+          ? { freelancer_id: freelancerId }
+          : { freelancer_type: freelancerType }),
         name: stageName.trim(),
         status: stageStatus,
       });
@@ -122,22 +142,72 @@ export default function NovoStage() {
             maxLength={120}
           />
 
-          <Text style={styles.label}>Freelancer disponível</Text>
-          {freelancers.length === 0 ? (
-            <Text style={styles.helper}>Nenhum freelancer disponível.</Text>
+          <Text style={styles.label}>Responsável pela etapa</Text>
+          <View style={styles.tabs}>
+            <Pressable
+              style={[
+                styles.tab,
+                modoResponsavel === 'freelancer' && styles.tabSelected,
+              ]}
+              onPress={() => setModoResponsavel('freelancer')}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  modoResponsavel === 'freelancer' && styles.tabTextSelected,
+                ]}
+              >
+                Freelancer específico
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.tab,
+                modoResponsavel === 'tipo' && styles.tabSelected,
+              ]}
+              onPress={() => setModoResponsavel('tipo')}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  modoResponsavel === 'tipo' && styles.tabTextSelected,
+                ]}
+              >
+                Tipo de freelancer
+              </Text>
+            </Pressable>
+          </View>
+
+          {modoResponsavel === 'freelancer' ? (
+            freelancers.length === 0 ? (
+              <Text style={styles.helper}>Nenhum freelancer disponível.</Text>
+            ) : (
+              freelancers.map((freelancer) => (
+                <Pressable
+                  key={freelancer.id}
+                  style={[
+                    styles.option,
+                    freelancerId === freelancer.id && styles.selected,
+                  ]}
+                  onPress={() => setFreelancerId(freelancer.id)}
+                >
+                  <Text style={styles.optionText}>
+                    {freelancer.username} · #{freelancer.id}
+                  </Text>
+                </Pressable>
+              ))
+            )
           ) : (
-            freelancers.map((freelancer) => (
+            tiposDeFreelancer.map((tipo) => (
               <Pressable
-                key={freelancer.id}
+                key={tipo.valor}
                 style={[
                   styles.option,
-                  freelancerId === freelancer.id && styles.selected,
+                  freelancerType === tipo.valor && styles.selected,
                 ]}
-                onPress={() => setFreelancerId(freelancer.id)}
+                onPress={() => setFreelancerType(tipo.valor)}
               >
-                <Text style={styles.optionText}>
-                  {freelancer.username} · #{freelancer.id}
-                </Text>
+                <Text style={styles.optionText}>{tipo.rotulo}</Text>
               </Pressable>
             ))
           )}
@@ -161,10 +231,16 @@ export default function NovoStage() {
           <Pressable
             style={[
               styles.submit,
-              (saving || freelancers.length === 0) && styles.submitDisabled,
+              (saving ||
+                (modoResponsavel === 'freelancer' &&
+                  freelancers.length === 0)) &&
+                styles.submitDisabled,
             ]}
             onPress={() => void saveStage()}
-            disabled={saving || freelancers.length === 0}
+            disabled={
+              saving ||
+              (modoResponsavel === 'freelancer' && freelancers.length === 0)
+            }
           >
             <Text style={styles.submitText}>
               {saving ? 'CADASTRANDO...' : 'CADASTRAR STAGE'}
@@ -211,6 +287,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 6,
+  },
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  tab: {
+    flex: 1,
+    minHeight: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+  },
+  tabSelected: {
+    borderColor: '#111',
+    backgroundColor: '#111',
+  },
+  tabText: {
+    color: '#222',
+    fontWeight: '600',
+  },
+  tabTextSelected: {
+    color: '#fff',
   },
   option: {
     minHeight: 48,

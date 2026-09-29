@@ -1,14 +1,19 @@
 import { apiRequest } from './api';
+import type { FreelancerType } from './employees';
 import type { ProjectStatus, ProjectStage } from './projects';
 
 export type StageInput = {
-  freelancer_id: number;
+  freelancer_id?: number | null;
+  freelancer_type?: FreelancerType | null;
   name: string;
   status: ProjectStatus;
 };
 
 export type StageUpdate = Partial<
-  Pick<ProjectStage, 'freelancer_id' | 'name' | 'status'>
+  Pick<
+    ProjectStage,
+    'freelancer_id' | 'freelancer_type' | 'name' | 'status'
+  >
 >;
 
 export async function getStages() {

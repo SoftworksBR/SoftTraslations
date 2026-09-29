@@ -1,11 +1,13 @@
 import { apiRequest } from './api';
+import type { FreelancerType } from './employees';
 
 export type ProjectStatus = 'ready' | 'in_progress' | 'testing' | 'done';
 
 export type ProjectStage = {
   id: number;
   name: string;
-  freelancer_id: number;
+  freelancer_id: number | null;
+  freelancer_type: FreelancerType | null;
   status: ProjectStatus;
 };
 
