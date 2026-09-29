@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { preRegisterFreelancer } from '@/services/employees';
+import { alertar } from '@/services/alerta';
 
 import {
   View,
@@ -9,7 +10,6 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 
 export default function NovoTradutor() {
@@ -20,7 +20,7 @@ export default function NovoTradutor() {
 
   async function salvar() {
     if (!email.trim() || !senha) {
-      Alert.alert('Pré-cadastro', 'Preencha e-mail e senha.');
+      alertar('Pré-cadastro', 'Preencha e-mail e senha.');
       return;
     }
 
@@ -30,9 +30,10 @@ export default function NovoTradutor() {
         email: email.trim(),
         password: senha,
       });
+      alertar('Pré-cadastro', 'Freelancer pré-cadastrado com sucesso.');
       router.back();
     } catch (error) {
-      Alert.alert(
+      alertar(
         'Não foi possível cadastrar',
         error instanceof Error ? error.message : 'Tente novamente.',
       );
