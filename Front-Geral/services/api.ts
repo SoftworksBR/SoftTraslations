@@ -1,16 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:8000'
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000'
 ).replace(/\/$/, '');
 
 const ACCESS_TOKEN_KEY = 'softtranslations.accessToken';
 
-export async function setAccessToken(token: string) {
-  await AsyncStorage.setItem(ACCESS_TOKEN_KEY, token);
-}
-
-export async function clearAccessToken() {
+export async function clearLegacyAccessToken() {
   await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
@@ -57,7 +53,6 @@ export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
   const headers = new Headers(options.headers);
   const hasBody = options.body !== undefined && options.body !== null;
   const isFormData =
@@ -67,12 +62,9 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
@@ -91,7 +83,9 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const detail =
-      typeof responseBody === 'object' && responseBody !== null && 'detail' in responseBody
+      typeof responseBody === 'object' &&
+      responseBody !== null &&
+      'detail' in responseBody
         ? responseBody.detail
         : undefined;
     const message =
