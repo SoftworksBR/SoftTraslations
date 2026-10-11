@@ -17,6 +17,14 @@ class ProjectUpdate(BaseModel):
     creator_id: int | None = None
 
 
+class ProjectSearchFilters(BaseModel):
+    name: str | None = None
+    status: Status | None = None
+    stage_name: str | None = None
+    freelancer_name: str | None = None
+    creator_name: str | None = None
+
+
 class ProjectResponse(BaseModel):
     id: int
     name: str
