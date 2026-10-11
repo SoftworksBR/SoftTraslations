@@ -37,8 +37,124 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 ## 📚 <span id="documents">Manuais e Documentação</span>
 
-- 📖 [Manual de Instalação](Em produção ...)  
-- 👨‍💻 [Manual do Usuário](Em produção...)
+- 📖 [Manual de Instalação]  
+
+1. Requisitos
+
+Antes de começar, instale as seguintes ferramentas:
+
+Git
+Node.js e npm
+Python 3.13
+uv
+PostgreSQL
+
+No terminal, verifique as instalações:
+
+git --version
+node --version
+npm --version
+python3.13 --version
+uv --version
+psql --version
+
+2. Clonar o repositório
+
+git clone https://github.com/SoftworksBR/SoftTraslations.git
+cd SoftTraslations
+
+3. Configurar o banco de dados
+
+Inicie o PostgreSQL no Linux/Ubuntu:
+
+sudo systemctl start postgresql
+
+Crie o banco de dados da aplicação:
+
+sudo -u postgres psql
+
+No console do PostgreSQL, execute:
+
+CREATE DATABASE soft_translations_db;
+
+Para sair:
+
+\q
+
+4. Instalar e executar o backend
+
+Entre na pasta do backend:
+
+cd backend
+
+Instale as dependências:
+
+uv sync
+
+Configure o arquivo .env a partir do exemplo:
+
+cp .env.example .env
+
+Edite o arquivo .env e informe as credenciais corretas do PostgreSQL, mantendo o nome do banco soft_translations_db e os demais parâmetros exigidos pelo projeto.
+
+Ative o ambiente virtual:
+
+source .venv/bin/activate
+
+Aplique as migrações do banco:
+
+alembic upgrade head
+
+Inicie o backend:
+
+task run
+
+Mantenha esse terminal aberto enquanto utiliza a aplicação.
+
+5. Instalar e executar o frontend
+
+Abra outro terminal e entre na pasta do frontend:
+
+cd SoftTraslations/Front-Geral
+
+Instale as dependências:
+
+npm install
+
+Inicie a aplicação web:
+
+npm run web
+
+Abra no navegador o endereço exibido pelo Expo, normalmente:
+
+http://localhost:8081
+
+6. Execuções futuras
+
+Depois da instalação inicial, não é necessário repetir todos os passos.
+
+Terminal 1 — PostgreSQL
+
+sudo systemctl start postgresql
+
+Terminal 2 — Backend
+
+cd SoftTraslations/backend
+source .venv/bin/activate
+task run
+
+Terminal 3 — Frontend
+
+cd SoftTraslations/Front-Geral
+
+npm run web
+
+7. Executar os testes do backend
+
+Dentro da pasta backend, com o ambiente virtual ativado:
+
+task test
+
 
 ---
 
@@ -81,11 +197,22 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 ## 🏃‍ DoR - Definition of Ready
 
-- em andamento ...
+- [ ] Possui descrição clara.
+- [ ] Possui critérios de aceitação definidos.
+- [ ] As dependências foram identificadas.
+- [ ] As dúvidas foram esclarecidas.
+- [ ] Pode ser estimada e desenvolvida pela equipe.
 
 ## 🏆 DoD - Definition of Done
 
-- em andamento ... 
+- [ ] Todos os critérios de aceitação foram atendidos.
+- [ ] O desenvolvimento foi finalizado.
+- [ ] Os testes necessários foram realizados.
+- [ ] O código foi revisado.
+- [ ] Não existem erros críticos conhecidos.
+- [ ] A documentação foi atualizada, quando necessário.
+- [ ] A funcionalidade foi validada pela equipe.
+- [ ] A alteração foi integrada ao projeto.
 
 ## 📅 <span id="sprint">Programação por Sprint </span>
 
@@ -106,7 +233,34 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 | 7 | Como administrador, quero cadastrar tabelas de preço por par de idioma e itens adicionais, para uso na montagem de orçamentos. | Sprint 1 |
 
 ## 🚀 MVP(Mínimo Produto Viável) Sprint 1:
-Em andamento...
+
+- [1] CRUD básico de Administradores, Gestores, Atendente por parte do Administrador.
+- [2] Pré-cadastro do Freelancer por parte do Gestor.
+- [3] Conclusão de cadastro por parte do Freelancer.
+- [3] Cadastro de Workflow por parte do Gestor.
+
+---
+
+### 📈 Backlog da Sprint 2
+
+| Rank | User Story | Sprint |
+|---:|---|---|
+| 8 | Como atendimento, quero criar um orçamento a partir de uma Requisição ou solicitação do cliente, para formalizar o pedido de serviço. | Sprint 2 |
+| 9 | Como atendimento, quero registrar a aprovação do orçamento pelo cliente, para gerar a ordem de serviço. | Sprint 2 |
+| 10 | Como gestor de projeto, quero definir as etapas de uma ordem de serviço a partir de um modelo de workflow, para estruturar o projeto. | Sprint 2 |
+| 11 | Como gestor de projeto, quero selecionar ou atribuir freelancers para cada etapa, escolhendo entre atribuição automática (melhor posicionado ou primeiro a aceitar) ou manual (requisitar disponibilidade ou atribuição direta), para adequar o método a cada caso. | Sprint 2 |
+| 12 | Como freelancer, quero visualizar e aceitar os trabalhos disponibilizados a mim, para saber o que preciso executar. | Sprint 2 |
+| 13 | Como freelancer, quero entregar o arquivo referente à minha etapa, para concluir minha parte do trabalho. | Sprint 2 |
+| 14 | Como gestor de projeto, quero que o sistema encaminhe automaticamente o trabalho para o freelancer da próxima etapa assim que uma etapa for entregue, para manter o fluxo sem intervenção manual. | Sprint 2 |
+| 15 | Como gestor de projeto, quero verificar todas as etapas concluídas antes de enviar o resultado final ao cliente, para garantir que nada ficou pendente. | Sprint 2 |
+| 16 | Como freelancer, quero ter acesso apenas à etapa em que fui alocado, para preservar a confidencialidade das demais partes do projeto. | Sprint 2 |
+| 17 | Como atendimento, quero ajustar manualmente o valor final de um orçamento sem alterar a tabela de preço padrão, para atender casos específicos. | Sprint 2 |
+| 18 | Como gestor de projeto, quero visualizar a lista de ordens de serviço sem freelancer atribuído e já atribuídas, para acompanhar a distribuição do trabalho. | Sprint 2 |
+| 19 | Como administrador, quero criar e editar grupos de permissão com controles por módulo e ação, para adaptar os perfis internos da equipe conforme a estrutura real da empresa. | Sprint 2 |
+
+## 🚀 MVP(Mínimo Produto Viável) Sprint 2:
+
+- [ ] Em andamento...
 
 ---
 
