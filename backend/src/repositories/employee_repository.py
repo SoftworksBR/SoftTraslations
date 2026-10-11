@@ -1,8 +1,8 @@
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.enums.enums import Roles
 from src.models.employee_model import Employee
+from src.schemas.employee_schema import EmployeeSearchFilters
 
 
 class EmployeeRepository:
@@ -11,11 +11,21 @@ class EmployeeRepository:
         session: AsyncSession,
         limit: int,
         offset: int,
-        role: Roles | None = None,
+        filters: EmployeeSearchFilters | None = None,
     ):
         query = select(Employee)
-        if role is not None:
-            query = query.where(Employee.role == role)
+
+        if filters is not None:
+            if filters.role is not None:
+                query = query.where(Employee.role == filters.role)
+
+            if filters.username is not None:
+                query = query.where(
+                    Employee.username.ilike(f'%{filters.username}%')
+                )
+
+            if filters.email is not None:
+                query = query.where(Employee.email.ilike(f'%{filters.email}%'))
 
         result = await session.scalars(query.offset(offset).limit(limit))
 
