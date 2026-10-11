@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.request_controller import RequestController
@@ -7,6 +9,7 @@ from src.models.employee_model import Employee
 from src.schemas.request_schema import (
     RequestCreate,
     RequestResponse,
+    RequestSearchFilters,
     RequestUpdate,
 )
 from src.security import get_current_employee
@@ -31,11 +34,16 @@ async def create_request(
 
 @protected_router.get('/', response_model=list[RequestResponse])
 async def get_requests(
+    filters: Annotated[RequestSearchFilters, Query()],
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
 
-    return await RequestController.get_all(session, current_employee)
+    return await RequestController.get_all(
+        session,
+        current_employee,
+        filters,
+    )
 
 
 @protected_router.put('/{request_id}', response_model=RequestResponse)
