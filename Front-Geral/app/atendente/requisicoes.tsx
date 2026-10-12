@@ -1,7 +1,5 @@
-import { useCallback, useState } from 'react';
-import { router, useFocusEffect } from 'expo-router';
+import { useState } from 'react';
 import {
-  ActivityIndicator,
   View,
   Text,
   FlatList,
@@ -9,76 +7,46 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import {
-  deleteRequest,
-  getRequests,
-  type TranslationLanguage,
-  type TranslationRequest,
-} from '@/services/requests';
 
-const languageLabels: Record<TranslationLanguage, string> = {
-  portuguese: 'Português',
-  english: 'Inglês',
-  spanish: 'Espanhol',
-  german: 'Alemão',
-  italian: 'Italiano',
-  french: 'Francês',
-  other: 'Outro',
-};
+import { router } from 'expo-router';
+
+import { requisicoes } from '@/data/requisicoes';
 
 export default function Requisicoes() {
-  const [listaRequisicoes, setListaRequisicoes] = useState<TranslationRequest[]>([]);
-  const [aberto, setAberto] = useState<number | null>(null);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState('');
 
-  const carregarRequisicoes = useCallback(async () => {
-    setCarregando(true);
-    try {
-      setListaRequisicoes(await getRequests());
-      setErro('');
-    } catch (error) {
-      setErro(
-        error instanceof Error ? error.message : 'Falha ao carregar solicitações.',
-      );
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
+  const [listaRequisicoes, setListaRequisicoes] =
+    useState([...requisicoes]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void carregarRequisicoes();
-    }, [carregarRequisicoes]),
-  );
+    const [aberto, setAberto] =
+    useState<number | null>(null);
 
-  function excluirRequisicao(id: number) {
-    Alert.alert(
-      'Excluir solicitação',
-      'Tem certeza que deseja excluir esta solicitação?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: () => {
-            void (async () => {
-              try {
-                await deleteRequest(id);
-                setAberto(null);
-                await carregarRequisicoes();
-              } catch (error) {
-                Alert.alert(
-                  'Não foi possível excluir',
-                  error instanceof Error ? error.message : 'Tente novamente.',
+    function excluirRequisicao(id: number) {
+        Alert.alert(
+            'Excluir solicitação',
+            'Tem certeza que deseja excluir esta solicitação?',
+            [
+            {
+                text: 'Cancelar',
+                style: 'cancel',
+            },
+            {
+                text: 'Excluir',
+                style: 'destructive',
+                onPress: () => {
+                setListaRequisicoes((lista) =>
+                    lista.filter(
+                    (item) => item.id !== id
+                    )
                 );
-              }
-            })();
-          },
-        },
-      ],
-    );
-  }
+
+                if (aberto === id) {
+                    setAberto(null);
+                }
+                },
+            },
+            ]
+        );
+    }
 
   function alternar(id: number) {
 
@@ -97,19 +65,15 @@ export default function Requisicoes() {
         Requisições
       </Text>
 
-      {carregando ? (
-        <ActivityIndicator />
-      ) : (
-        <FlatList
-          data={listaRequisicoes}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.lista}
-          ListEmptyComponent={
-            <Text style={styles.vazio}>
-              {erro || 'Nenhuma solicitação cadastrada.'}
-            </Text>
-          }
-          renderItem={({ item }) => {
+      <FlatList
+        data={listaRequisicoes}
+        keyExtractor={(item) =>
+          item.id.toString()
+        }
+
+        contentContainerStyle={styles.lista}
+
+        renderItem={({ item }) => {
 
           const expandido = aberto === item.id;
 
@@ -126,17 +90,17 @@ export default function Requisicoes() {
                 <View style={styles.resumo}>
 
                   <Text style={styles.nome}>
-                    {item.username}
+                    {item.nome}
                   </Text>
 
                   <Text style={styles.servico}>
-                    {item.phone}
+                    {item.servico}
                   </Text>
 
                   <Text style={styles.idiomas}>
-                    {languageLabels[item.translate_from]}
+                    {item.traducaoDe}
                     {' → '}
-                    {languageLabels[item.translate_to]}
+                    {item.traducaoPara}
                   </Text>
 
                 </View>
@@ -166,7 +130,7 @@ export default function Requisicoes() {
                   </Text>
 
                   <Text style={styles.valor}>
-                    {item.phone}
+                    {item.telefone}
                   </Text>
 
 
@@ -175,7 +139,7 @@ export default function Requisicoes() {
                   </Text>
 
                   <Text style={styles.valor}>
-                    {item.company || 'Não informado'}
+                    {item.empresa || 'Não informado'}
                   </Text>
 
 
@@ -184,7 +148,7 @@ export default function Requisicoes() {
                   </Text>
 
                   <Text style={styles.valor}>
-                    {item.phone}
+                    {item.servico}
                   </Text>
 
 
@@ -193,9 +157,9 @@ export default function Requisicoes() {
                   </Text>
 
                   <Text style={styles.valor}>
-                    {languageLabels[item.translate_from]}
+                    {item.traducaoDe}
                     {' → '}
-                    {languageLabels[item.translate_to]}
+                    {item.traducaoPara}
                   </Text>
 
 
@@ -204,8 +168,40 @@ export default function Requisicoes() {
                   </Text>
 
                   <Text style={styles.valor}>
-                    {item.observations || 'Nenhuma'}
+                    {item.observacoes || 'Nenhuma'}
                   </Text>
+
+
+                  <Text style={styles.label}>
+                    Arquivos
+                  </Text>
+
+                  {item.arquivos.length > 0 ? (
+
+                    item.arquivos.map(
+                      (arquivo, index) => (
+                        <Text
+                          key={index}
+                          style={styles.arquivo}
+                        >
+                          📎 {arquivo}
+                        </Text>
+                      )
+                    )
+
+                  ) : (
+
+                    <Text style={styles.valor}>
+                      Nenhum arquivo
+                    </Text>
+
+                  )}
+
+
+                  <Text style={styles.data}>
+                    Solicitação: {item.data}
+                  </Text>
+
 
                   <Pressable
                     style={styles.botao}
@@ -245,9 +241,8 @@ export default function Requisicoes() {
 
             </View>
           );
-          }}
-        />
-      )}
+        }}
+      />
 
     </View>
   );
@@ -269,11 +264,6 @@ const styles = StyleSheet.create({
 
   lista: {
     paddingBottom: 30,
-  },
-
-  vazio: {
-    color: '#666',
-    paddingVertical: 16,
   },
 
   card: {
@@ -332,6 +322,17 @@ const styles = StyleSheet.create({
   valor: {
     fontSize: 15,
     marginTop: 3,
+  },
+
+  arquivo: {
+    fontSize: 15,
+    marginTop: 5,
+  },
+
+  data: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 15,
   },
 
   botao: {

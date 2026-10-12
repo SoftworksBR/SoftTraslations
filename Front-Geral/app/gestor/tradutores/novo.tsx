@@ -1,6 +1,4 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { preRegisterFreelancer } from '@/services/employees';
 
 import {
   View,
@@ -9,36 +7,26 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
+
+import { useState } from 'react';
 
 export default function NovoTradutor() {
 
-  const [email, setEmail] = useState('');
+  const [nome, setNome] = useState('');
   const [senha, setSenha] = useState('');
-  const [salvando, setSalvando] = useState(false);
 
-  async function salvar() {
-    if (!email.trim() || !senha) {
-      Alert.alert('Pré-cadastro', 'Preencha e-mail e senha.');
-      return;
-    }
+  function salvar() {
 
-    setSalvando(true);
-    try {
-      await preRegisterFreelancer({
-        email: email.trim(),
-        password: senha,
-      });
-      router.back();
-    } catch (error) {
-      Alert.alert(
-        'Não foi possível cadastrar',
-        error instanceof Error ? error.message : 'Tente novamente.',
-      );
-    } finally {
-      setSalvando(false);
-    }
+    const tradutor = {
+      nome,
+      senha,
+      status: 'aguardando_perfil',
+    };
+
+    console.log('Pré-cadastro do tradutor:', tradutor);
+
+    router.back();
   }
 
   return (
@@ -47,21 +35,19 @@ export default function NovoTradutor() {
       <View style={styles.form}>
 
         <Text style={styles.title}>
-          Pré-cadastro de Freelancer
+          Pré-cadastro de Tradutor
         </Text>
 
         <ScrollView>
 
           <Text style={styles.label}>
-            E-mail
+            Nome
           </Text>
 
           <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Digite o e-mail"
-            keyboardType="email-address"
-            autoCapitalize="none"
+            value={nome}
+            onChangeText={setNome}
+            placeholder="Digite o nome"
             style={styles.input}
           />
 
@@ -80,10 +66,9 @@ export default function NovoTradutor() {
           <Pressable
             style={styles.botao}
             onPress={salvar}
-            disabled={salvando}
           >
             <Text style={styles.botaoText}>
-              {salvando ? 'CADASTRANDO...' : 'PRÉ-CADASTRAR'}
+              PRÉ-CADASTRAR
             </Text>
           </Pressable>
 

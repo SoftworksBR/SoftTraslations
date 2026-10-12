@@ -1,81 +1,90 @@
+
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
 import {
-  DrawerContentScrollView,
-  DrawerItem,
-} from '@react-navigation/drawer';
-import { View, Text, StyleSheet } from 'react-native';
-import { logout } from '@/services/auth';
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+} from 'react-native';
 
-function CustomDrawerContent(props: any) {
-  async function deslogar() {
-    await logout();
+function CustomDrawerContent() {
+  function deslogar() {
+    // Futuramente podemos limpar o token/sessão aqui
     router.replace('/');
   }
 
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={styles.drawerContent}
-    >
-      {/* Opções do menu */}
+    <View style={styles.drawerContent}>
       <View>
         <Text style={styles.titulo}>Menu</Text>
 
-        <DrawerItem
-          label="Gerenciar Atendimento"
+        <Pressable
+          style={styles.itemMenu}
           onPress={() =>
             router.push('/drawer/GerenciarAtendimento')
           }
-          labelStyle={styles.label}
-        />
+        >
+          <Text style={styles.label}>
+            Gerenciar Atendimento
+          </Text>
+        </Pressable>
 
-        <DrawerItem
-          label="Gerenciar Administradores"
+        <Pressable
+          style={styles.itemMenu}
           onPress={() =>
             router.push('/drawer/GerenciarAdministracao')
           }
-          labelStyle={styles.label}
-        />
+        >
+          <Text style={styles.label}>
+            Gerenciar Administradores
+          </Text>
+        </Pressable>
 
-        <DrawerItem
-          label="Gerenciar Gestores"
+        <Pressable
+          style={styles.itemMenu}
           onPress={() =>
             router.push('/drawer/GerenciarGestor')
           }
-          labelStyle={styles.label}
-        />
+        >
+          <Text style={styles.label}>
+            Gerenciar Gestores
+          </Text>
+        </Pressable>
       </View>
 
-      {/* Deslogar */}
       <View style={styles.rodape}>
-        <DrawerItem
-          label="Deslogar"
-          onPress={() => void deslogar()}
-          labelStyle={styles.deslogar}
-        />
+        <Pressable
+          style={styles.itemMenu}
+          onPress={deslogar}
+        >
+          <Text style={styles.deslogar}>
+            Deslogar
+          </Text>
+        </Pressable>
       </View>
-    </DrawerContentScrollView>
+    </View>
   );
 }
 
 export default function DrawerLayout() {
   return (
     <Drawer
-      drawerContent={(props) => <CustomDrawerContent {...props} />}
+      drawerContent={() => <CustomDrawerContent />}
       screenOptions={{
         drawerStyle: {
           backgroundColor: '#000',
           width: 280,
         },
-
         drawerActiveTintColor: '#fff',
         drawerInactiveTintColor: '#aaa',
-
+        drawerLabelStyle: {
+          color: '#fff',
+          fontSize: 16,
+        },
         headerStyle: {
           backgroundColor: '#000',
         },
-
         headerTintColor: '#fff',
       }}
     >
@@ -108,8 +117,10 @@ export default function DrawerLayout() {
 
 const styles = StyleSheet.create({
   drawerContent: {
-    flexGrow: 1,
+    flex: 1,
     justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingTop: 20,
   },
 
   titulo: {
@@ -119,6 +130,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 10,
+  },
+
+  itemMenu: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 
   label: {
