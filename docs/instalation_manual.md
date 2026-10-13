@@ -1,17 +1,20 @@
 # Manual de Instalação
 
-## 📖 Sumário
+Este manual explica como preparar o ambiente de desenvolvimento e executar o SoftTranslations localmente no **Windows** ou no **Linux**. Os comandos são diferentes em cada sistema; siga somente a seção correspondente ao seu computador.
 
-- [Requisitos](#requirements)
-- [Clone o repositório](#clone)
-- [Configure o banco de dados](#database)
-- [Instale e execute o backend](#backend)
-- [Instale e execute o frontend](#frontend)
-- [Execuções futuras](#post-config)
+## Sumário
 
-## <span id="requirements">Requisitos</span>
+- [Requisitos](#requisitos)
+- [Clonar o repositório](#clonar-o-repositorio)
+- [Configurar o PostgreSQL](#configurar-o-postgresql)
+- [Preparar e executar o backend](#preparar-e-executar-o-backend)
+- [Preparar e executar o frontend](#preparar-e-executar-o-frontend)
+- [Executar o sistema em outros dias](#executar-o-sistema-em-outros-dias)
+- [Solução de problemas](#solucao-de-problemas)
 
-Antes de começar, instale as seguintes ferramentas:
+## Requisitos
+
+Instale as seguintes ferramentas:
 
 - Git
 - Node.js e npm
@@ -19,143 +22,188 @@ Antes de começar, instale as seguintes ferramentas:
 - uv
 - PostgreSQL
 
-No terminal, verifique as instalações:
+Verifique as instalações em um terminal:
 
-```
+```text
 git --version
-
 node --version
-
 npm --version
-
-python3.13 --version
-
 uv --version
-
 psql --version
 ```
 
-## <span id="clone">Clone o repositório</span>
+No Windows, verifique também o Python pelo inicializador `py`:
 
-
+```powershell
+py -3.13 --version
 ```
-git clone https://github.com/SoftworksBR/SoftTraslations.git
 
+No Linux, o comando pode ser `python3.13 --version`:
+
+```bash
+python3.13 --version
+```
+
+Instale o Python 3.13 e o PostgreSQL pelos instaladores ou pacotes oficiais para seu sistema. Instale o `uv` seguindo as instruções da documentação oficial do projeto `uv`.
+
+## Clonar o repositório
+
+Os comandos abaixo são iguais nos dois sistemas:
+
+```text
+git clone https://github.com/SoftworksBR/SoftTraslations.git
 cd SoftTraslations
 ```
 
-## <span id="database">Configure o banco de dados</span>
+Execute os comandos seguintes a partir da pasta do repositório, salvo indicação contrária.
 
-- Inicie o PostgreSQL no Linux/Ubuntu:
+## Configurar o PostgreSQL
+
+Crie um banco vazio chamado `soft_translations_db`. Escolha a instrução correspondente ao seu sistema.
+
+### Windows
+
+1. Abra o **pgAdmin** instalado com o PostgreSQL e conecte-se ao servidor local.
+2. Clique com o botão direito em **Databases** e selecione **Create > Database...**.
+3. Informe `soft_translations_db` como nome e salve.
+
+Como alternativa, em um terminal com `psql` disponível, execute:
+
+```powershell
+psql -U postgres -c "CREATE DATABASE soft_translations_db;"
 ```
+
+O PostgreSQL normalmente é iniciado como serviço do Windows. Se o serviço não estiver ativo, abra **Serviços**, localize o serviço PostgreSQL instalado e selecione **Iniciar**.
+
+### Linux (Ubuntu/Debian)
+
+Inicie o serviço e crie o banco:
+
+```bash
 sudo systemctl start postgresql
+sudo -u postgres psql -c "CREATE DATABASE soft_translations_db;"
 ```
 
-- Crie o banco de dados da aplicação:
-```
-sudo -u postgres psql
-```
+Se `systemctl` não estiver disponível em sua distribuição, inicie o PostgreSQL pelo gerenciador de serviços correspondente.
 
-- No console do PostgreSQL, execute:
-```
-CREATE DATABASE soft_translations_db;
-```
+## Preparar e executar o backend
 
-- Para sair:
-```
-\q
-```
+### Windows (PowerShell)
 
-## <span id="backend">Instale e execute o backend</span>
-
-- Entre na pasta do backend:
-```
+```powershell
 cd backend
-```
-
-- Instale as dependências:
-```
 uv sync
+Copy-Item .env.example .env
 ```
 
-- Configure o arquivo .env a partir do exemplo:
-```
-cp .env.example .env
-```
+Abra `backend/.env` e ajuste a variável `DATABASE_URL` com o usuário, a senha e o nome do banco criados para o PostgreSQL. O banco deve ser `soft_translations_db`. Defina também uma `SECRET_KEY` própria para o ambiente.
 
-Você deve fazer as seguintes alterações no seu .env:
-- Na linha 1, troque **postgres_username** pelo nome de usuário que você utilizou
-- Na linha 1, troque **postgres_password** pela senha que você colocou
-- Na linha 2, troque **soft_translations_ultra_secret_key** por uma chave secreta da sua preferência
-- Na linha 4, troque **60** pela quantidade (em minutos) que você deseja que o usuário permaneça logado no site  
+Ative o ambiente virtual e aplique as migrações:
 
-Vale lembrar que apenas os dois primeiros itens irão impactar a funcionalidade do sistema, caso decida não alterar os outros tópicos vai continuar funcionando normalmente.
-
-- Ative o ambiente virtual:
-```
-source .venv/bin/activate
-```
-
-- Aplique as migrações do banco:
-```
+```powershell
+.\.venv\Scripts\Activate.ps1
 alembic upgrade head
 ```
 
-- Inicie o backend:
+Se o PowerShell bloquear a ativação do ambiente virtual, permita scripts somente na sessão atual e tente novamente:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
 ```
+
+Inicie o servidor:
+
+```powershell
 task run
 ```
 
-Mantenha esse terminal aberto enquanto utiliza a aplicação.
+Mantenha este terminal aberto enquanto usa a aplicação.
 
-## <span id="frontend">Instale e executar o frontend</span>
+### Linux
 
-- Abra outro terminal e entre na pasta do frontend:
-```
-cd SoftTraslations/Front-Geral
-```
-
-- Instale as dependências:
-```
-npm install
+```bash
+cd backend
+uv sync
+cp .env.example .env
 ```
 
-- Inicie a aplicação web:
-```
-npm run web
-```
+Abra `backend/.env` e ajuste `DATABASE_URL` com o usuário, a senha e o nome do banco criados para o PostgreSQL. O banco deve ser `soft_translations_db`. Defina também uma `SECRET_KEY` própria para o ambiente.
 
-- Abra no navegador o endereço exibido pelo Expo, normalmente:
+Ative o ambiente virtual e aplique as migrações:
 
-http://localhost:8081
-
-## <span id="post-config">Execuções futuras</span>
-
-Depois da instalação inicial, não é necessário repetir todos os passos. Basta executar os seguintes comandos que são utilizados para iniciar a aplicação:
-
-- Terminal 1 — PostgreSQL
-```
-# Inicia o banco de dados
-sudo systemctl start postgresql
-```
-
-- Terminal 2 — Backend
-```
-# Entra na pasta do backend
-cd SoftTraslations/backend
-
-# Ativa o ambiente virtual
+```bash
 source .venv/bin/activate
+alembic upgrade head
+```
 
-# Executa o backend
+Inicie o servidor:
+
+```bash
 task run
 ```
 
-- Terminal 3 — Frontend
-```
-# Entra na pasta do frontend
-cd SoftTraslations/Front-Geral
+Mantenha este terminal aberto enquanto usa a aplicação.
 
-# Executa o frontend
+## Preparar e executar o frontend
+
+Abra **outro terminal** na pasta raiz do repositório.
+
+### Windows (PowerShell)
+
+```powershell
+cd Front-Geral
+npm install
 npm run web
 ```
+
+### Linux
+
+```bash
+cd Front-Geral
+npm install
+npm run web
+```
+
+Quando o Expo iniciar, acesse no navegador o endereço informado no terminal; normalmente é `http://localhost:8081`.
+
+O frontend usa `http://127.0.0.1:8000` como endereço padrão do backend. Para apontá-lo a outro endereço, crie `Front-Geral/.env` com `EXPO_PUBLIC_API_URL=http://<endereco-do-backend>:8000` e reinicie o Expo.
+
+## Executar o sistema em outros dias
+
+Inicie o PostgreSQL (no Linux, use `sudo systemctl start postgresql`; no Windows, inicie o serviço PostgreSQL pelo aplicativo **Serviços**). Depois, abra dois terminais na raiz do repositório.
+
+No primeiro terminal, inicie o backend:
+
+### Windows (PowerShell)
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+task run
+```
+
+### Linux
+
+```bash
+cd backend
+source .venv/bin/activate
+task run
+```
+
+No segundo terminal, inicie o frontend:
+
+```text
+cd Front-Geral
+npm run web
+```
+
+Abra `http://localhost:8081` no navegador.
+
+## Solução de problemas
+
+- **Falha de conexão com o banco:** confirme que o serviço PostgreSQL está ativo, que o banco `soft_translations_db` existe e que os dados em `backend/.env` estão corretos.
+- **Erro ao aplicar migrações:** verifique se o ambiente virtual está ativado e se você está dentro da pasta `backend`.
+- **O PowerShell não permite ativar o ambiente virtual:** execute a instrução `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` indicada acima na mesma janela.
+- **A tela não consegue acessar a API:** mantenha o backend em execução e confirme se o frontend está apontando para o endereço correto do backend.
+- **A porta já está em uso:** encerre a aplicação que está usando a porta ou siga as instruções exibidas pelo Expo para selecionar outra porta.
