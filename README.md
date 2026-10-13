@@ -142,9 +142,13 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 | 18 | Como gestor de projeto, quero visualizar a lista de ordens de serviço sem freelancer atribuído e já atribuídas, para acompanhar a distribuição do trabalho. | Sprint 2 |
 | 19 | Como administrador, quero criar e editar grupos de permissão com controles por módulo e ação, para adaptar os perfis internos da equipe conforme a estrutura real da empresa. | Sprint 2 |
 
-## 🚀 MVP(Mínimo Produto Viável) Sprint 2:
+## 🚀 MVP (Mínimo Produto Viável) — Sprint 2
 
-- [ ] Em andamento...
+1. **Orçamento e ordem de serviço (itens 8, 9 e 17):** o atendimento cria um orçamento a partir de uma requisição, informa prazo e observações, ajusta o valor final sem alterar a tabela de preços e registra a aprovação do cliente. A aprovação gera uma ordem de serviço vinculada à requisição e ao orçamento.
+2. **Preparação e distribuição do projeto (itens 10, 11 e 18):** o gestor cria o projeto da ordem de serviço usando um workflow existente, acompanha ordens com e sem freelancer atribuído e distribui cada etapa. No MVP, a atribuição pode ser direta pelo gestor ou por solicitação de disponibilidade a candidatos selecionados, com encaminhamento ao primeiro candidato que aceitar. A seleção automática por “melhor posicionado” fica para uma evolução posterior.
+3. **Execução das etapas (itens 12, 13 e 16):** o freelancer consulta os trabalhos disponibilizados, aceita uma solicitação de disponibilidade e visualiza somente as etapas atribuídas a si. Em cada etapa, pode enviar o arquivo de entrega e acompanhar sua situação.
+4. **Progressão e encerramento (itens 14 e 15):** após a entrega de uma etapa, o sistema encaminha o trabalho à próxima etapa definida no workflow. O gestor consegue conferir o progresso e só pode marcar o projeto como concluído quando todas as etapas tiverem sido entregues.
+5. **Acesso por perfil (item 19, versão mínima):** o MVP mantém o controle de acesso pelos perfis existentes — atendimento, gestor, administrador e freelancer — e garante que cada perfil opere somente nas áreas autorizadas. A criação de grupos configuráveis com permissões por módulo e ação fica para uma evolução posterior.
 
 ---
 
