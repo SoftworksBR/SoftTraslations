@@ -14,7 +14,7 @@ import {
 
 import {
   useFocusEffect,
-} from '@react-navigation/native';
+} from 'expo-router';
 
 import { router } from 'expo-router';
 

@@ -1,124 +1,95 @@
+
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { getCurrentEmployee, logout } from '@/services/auth';
-import type { Employee } from '@/services/employees';
-
-import {
-  DrawerContentScrollView,
-  DrawerItem,
-} from '@react-navigation/drawer';
+import { useTradutor } from '@/context/TradutorContext';
 
 import {
   View,
   Text,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 
-function CustomDrawerContent(props: any) {
-  const [employee, setEmployee] = useState<Employee | null>(null);
+function CustomDrawerContent() {
+  const { tradutorAtual } = useTradutor();
 
-  useEffect(() => {
-    void getCurrentEmployee()
-      .then(setEmployee)
-      .catch(() => setEmployee(null));
-  }, []);
-
-  async function deslogar() {
-    await logout();
+  function deslogar() {
     router.replace('/');
   }
 
-
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={styles.drawerContent}
-    >
-
-    <View>
-
+    <View style={styles.drawerContent}>
+      <View>
         <Text style={styles.titulo}>
-            Menu Tradutor
+          Menu Tradutor
         </Text>
 
-        {employee?.role === 'freelancer' &&
-          employee.status === 'available' && (
-            <DrawerItem
-            label="Serviços"
+        {tradutorAtual?.status === 'autorizado' && (
+          <Pressable
+            style={styles.itemMenu}
             onPress={() =>
-            router.push('/tradutor/servicos')
+              router.push(
+                `/tradutor/servicos?id=${tradutorAtual.id}`
+              )
             }
-            labelStyle={styles.label}
-            />
+          >
+            <Text style={styles.label}>
+              Serviços
+            </Text>
+          </Pressable>
         )}
-
-    </View>
-
-
-      <View style={styles.rodape}>
-
-        <DrawerItem
-          label="Deslogar"
-          onPress={() => void deslogar()}
-          labelStyle={styles.deslogar}
-        />
-
       </View>
 
-    </DrawerContentScrollView>
+      <View style={styles.rodape}>
+        <Pressable
+          style={styles.itemMenu}
+          onPress={deslogar}
+        >
+          <Text style={styles.deslogar}>
+            Deslogar
+          </Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
-
 export default function TradutorLayout() {
-
   return (
     <Drawer
-      drawerContent={(props) => (
-        <CustomDrawerContent {...props} />
-      )}
-
+      drawerContent={() => <CustomDrawerContent />}
       screenOptions={{
         drawerStyle: {
           backgroundColor: '#000',
           width: 280,
         },
-
         drawerActiveTintColor: '#fff',
         drawerInactiveTintColor: '#aaa',
-
+        drawerLabelStyle: {
+          color: '#fff',
+          fontSize: 16,
+        },
         headerStyle: {
           backgroundColor: '#000',
         },
-
         headerTintColor: '#fff',
       }}
     >
-
       <Drawer.Screen
         name="index"
         options={{
-          drawerItemStyle: {
-            display: 'none',
-          },
-
+          drawerItemStyle: { display: 'none' },
           title: 'Área do Tradutor',
         }}
       />
-
 
       <Drawer.Screen
         name="completar-perfil"
         options={{
           title: 'Completar Perfil',
-
-          drawerItemStyle: {
-            display: 'none',
-          },
+          drawerItemStyle: { display: 'none' },
         }}
       />
-
 
       <Drawer.Screen
         name="servicos"
@@ -127,17 +98,16 @@ export default function TradutorLayout() {
           title: 'Serviços',
         }}
       />
-
     </Drawer>
   );
 }
 
-
 const styles = StyleSheet.create({
-
   drawerContent: {
-    flexGrow: 1,
+    flex: 1,
     justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingTop: 20,
   },
 
   titulo: {
@@ -147,6 +117,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 10,
+  },
+
+  itemMenu: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 
   label: {
@@ -166,5 +141,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
 });
