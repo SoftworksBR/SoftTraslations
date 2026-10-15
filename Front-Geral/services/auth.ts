@@ -1,8 +1,7 @@
-import { apiRequest, clearAccessToken, setAccessToken } from './api';
+import { apiRequest, clearLegacyAccessToken } from './api';
 import type { Employee } from './employees';
 
 export type LoginResponse = {
-  access_token: string;
   token_type: string;
 };
 
@@ -19,7 +18,7 @@ export async function login(email: string, password: string) {
     body: form.toString(),
   });
 
-  await setAccessToken(result.access_token);
+  await clearLegacyAccessToken();
   return result;
 }
 
@@ -27,6 +26,7 @@ export function getCurrentEmployee() {
   return apiRequest<Employee>('/auth/me');
 }
 
-export function logout() {
-  return clearAccessToken();
+export async function logout() {
+  await apiRequest<void>('/auth/logout', { method: 'POST' });
+  await clearLegacyAccessToken();
 }

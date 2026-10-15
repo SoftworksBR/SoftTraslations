@@ -97,6 +97,17 @@ class RequestService:
         await self.repository.delete(request)
 
     @staticmethod
+    def _require_request_read_role(current_employee: Employee) -> None:
+        if current_employee.role not in {
+            Roles.ATENDIMENTO,
+            Roles.PROJETOS,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only atendimento and projetos can list requests',
+            )
+
+    @staticmethod
     def _require_atendimento_role(current_employee: Employee) -> None:
         if current_employee.role != Roles.ATENDIMENTO:
             raise HTTPException(

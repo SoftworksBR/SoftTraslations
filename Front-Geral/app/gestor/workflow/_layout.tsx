@@ -11,7 +11,6 @@ export default function WorkflowLayout() {
   <Stack.Screen name="quadros" />
   <Stack.Screen name="trilhas" />
   <Stack.Screen name="nova-trilha" />
-  <Stack.Screen name="novo-stage" />
 </Stack>
   );
 }
