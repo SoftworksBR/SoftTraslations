@@ -39,7 +39,7 @@ class RequestService:
         return request
 
     async def get_all(self, current_employee: Employee) -> list[Request]:
-        self._require_atendimento_role(current_employee)
+        self._require_request_read_role(current_employee)
 
         return await self.repository.get_all()
 
@@ -87,6 +87,17 @@ class RequestService:
         request = await self.get_by_id(request_id)
 
         await self.repository.delete(request)
+
+    @staticmethod
+    def _require_request_read_role(current_employee: Employee) -> None:
+        if current_employee.role not in {
+            Roles.ATENDIMENTO,
+            Roles.PROJETOS,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only atendimento and projetos can list requests',
+            )
 
     @staticmethod
     def _require_atendimento_role(current_employee: Employee) -> None:

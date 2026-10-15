@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 
-from fastapi import Depends, HTTPException
+from fastapi import Cookie, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, decode, encode
 from pwdlib import PasswordHash
@@ -38,11 +38,16 @@ def create_access_token(data: dict):
     return encode_jwt
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/', auto_error=False)
 
 
 async def get_current_employee(
-    token: str = Depends(oauth2_scheme),
+    request: Request,
+    token: str | None = Depends(oauth2_scheme),
+    access_token_cookie: str | None = Cookie(
+        default=None,
+        alias=settings.ACCESS_TOKEN_COOKIE_NAME,
+    ),
     session: AsyncSession = Depends(get_session),
 ):
     credentials_exception = HTTPException(
@@ -50,6 +55,26 @@ async def get_current_employee(
         detail='Invalid token',
         headers={'WWW-Authenticate': 'Bearer'},
     )
+    token = access_token_cookie or token
+    if not token:
+        raise credentials_exception
+
+    if access_token_cookie and request.method not in {
+        'GET',
+        'HEAD',
+        'OPTIONS',
+    }:
+        origin = request.headers.get('origin')
+        allowed_origins = {
+            origin.strip()
+            for origin in settings.CORS_ORIGINS.split(',')
+            if origin.strip()
+        }
+        if origin and origin not in allowed_origins:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Origin not allowed',
+            )
 
     try:
         payload = decode(
