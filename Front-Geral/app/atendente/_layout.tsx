@@ -2,65 +2,58 @@ import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
 
 import {
-  DrawerContentScrollView,
-  DrawerItem,
-} from '@react-navigation/drawer';
-
-import {
   View,
   Text,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 
-function CustomDrawerContent(props: any) {
 
+function CustomDrawerContent() {
   function deslogar() {
     router.replace('/');
   }
 
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={styles.drawerContent}
-    >
-
+    <View style={styles.drawerContent}>
       <View>
-
         <Text style={styles.titulo}>
           Menu Atendente
         </Text>
 
-        <DrawerItem
-          label="Requisições"
-          onPress={() =>
-            router.push('/atendente/requisicoes')
-          }
-          labelStyle={styles.label}
-        />
+        <Pressable
+          style={styles.itemMenu}
+          onPress={() => router.push('/atendente/requisicoes')}
+        >
+          <Text style={styles.label}>
+            Requisições
+          </Text>
+        </Pressable>
 
-        <DrawerItem
-          label="Orçamentos"
-          onPress={() =>
-            router.push('/atendente/orcamentos')
-          }
-          labelStyle={styles.label}
-        />
-
+        <Pressable
+          style={styles.itemMenu}
+          onPress={() => router.push('/atendente/orcamentos')}
+        >
+          <Text style={styles.label}>
+            Orçamentos
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.rodape}>
-
-        <DrawerItem
-          label="Deslogar"
+        <Pressable
+          style={styles.itemMenu}
           onPress={deslogar}
-          labelStyle={styles.deslogar}
-        />
-
+        >
+          <Text style={styles.deslogar}>
+            Deslogar
+          </Text>
+        </Pressable>
       </View>
-
-    </DrawerContentScrollView>
+    </View>
   );
 }
+
 
 export default function AtendenteLayout() {
 
@@ -120,9 +113,16 @@ export default function AtendenteLayout() {
 const styles = StyleSheet.create({
 
   drawerContent: {
-    flexGrow: 1,
-    justifyContent: 'space-between',
-  },
+	flex: 1,
+	  justifyContent: 'space-between',
+	  backgroundColor: '#000',
+	  paddingTop: 20,
+	},
+
+	itemMenu: {
+	  paddingHorizontal: 16,
+	  paddingVertical: 14,
+	},
 
   titulo: {
     color: '#fff',

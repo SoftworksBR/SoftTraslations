@@ -1,55 +1,37 @@
-import { useCallback, useState } from 'react';
-import { useFocusEffect, router } from 'expo-router';
+import { useState } from 'react';
 
 import {
-  ActivityIndicator,
   View,
   Text,
   TextInput,
   Pressable,
   StyleSheet,
   ScrollView,
-  Alert,
 } from 'react-native';
 
-import { createPath } from '@/services/paths';
-import { getStages } from '@/services/stages';
-import type { ProjectStage, ProjectStatus } from '@/services/projects';
+import { router } from 'expo-router';
 
-const statusLabels: Record<ProjectStatus, string> = {
-  ready: 'Pronto',
-  in_progress: 'Em andamento',
-  testing: 'Em teste',
-  done: 'Concluído',
-};
+const quadros = [
+  {
+    id: 1,
+    nome: 'Receber arquivos',
+  },
+  {
+    id: 2,
+    nome: 'Traduzir arquivos',
+  },
+  {
+    id: 3,
+    nome: 'Emitir fatura',
+  },
+];
 
 export default function NovaTrilha() {
+
   const [nome, setNome] = useState('');
-  const [stages, setStages] = useState<ProjectStage[]>([]);
-  const [selecionados, setSelecionados] = useState<number[]>([]);
-  const [loadingStages, setLoadingStages] = useState(true);
-  const [salvando, setSalvando] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
-  const loadStages = useCallback(async () => {
-    setLoadingStages(true);
-    try {
-      setStages(await getStages());
-      setErrorMessage('');
-    } catch (error) {
-      setErrorMessage(
-        error instanceof Error ? error.message : 'Falha ao carregar etapas.',
-      );
-    } finally {
-      setLoadingStages(false);
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadStages();
-    }, [loadStages]),
-  );
+  const [selecionados, setSelecionados] =
+    useState<number[]>([]);
 
   function selecionarQuadro(id: number) {
 
@@ -65,27 +47,20 @@ export default function NovaTrilha() {
     });
   }
 
-  async function salvar() {
-    if (!nome.trim() || selecionados.length === 0) {
-      Alert.alert('Nova Trilha', 'Informe um nome e selecione ao menos um Stage.');
-      return;
-    }
+  function salvar() {
 
-    setSalvando(true);
-    try {
-      await createPath({
-        name: nome.trim(),
-        stage_ids: selecionados,
-      });
-      router.back();
-    } catch (error) {
-      Alert.alert(
-        'Não foi possível criar a trilha',
-        error instanceof Error ? error.message : 'Tente novamente.',
-      );
-    } finally {
-      setSalvando(false);
-    }
+    const trilha = {
+      id: Date.now(),
+      nome,
+      quadros: selecionados,
+    };
+
+    console.log(
+      'Nova trilha:',
+      trilha
+    );
+
+    router.back();
   }
 
   return (
@@ -114,24 +89,16 @@ export default function NovaTrilha() {
             Quadros da trilha
           </Text>
 
-          {loadingStages ? (
-            <ActivityIndicator />
-          ) : stages.length === 0 ? (
-            <Text style={styles.info}>
-              {errorMessage || 'Nenhum Stage disponível para compor a trilha.'}
-            </Text>
-          ) : [...stages]
-            .sort((left, right) => left.id - right.id)
-            .map((stage) => {
+          {quadros.map((quadro) => {
 
             const selecionado =
               selecionados.includes(
-                stage.id
+                quadro.id
               );
 
             return (
               <Pressable
-                key={stage.id}
+                key={quadro.id}
                 style={[
                   styles.quadro,
                   selecionado &&
@@ -139,7 +106,7 @@ export default function NovaTrilha() {
                 ]}
                 onPress={() =>
                   selecionarQuadro(
-                    stage.id
+                    quadro.id
                   )
                 }
               >
@@ -151,23 +118,23 @@ export default function NovaTrilha() {
                   }
                 >
                   {selecionado ? '✓ ' : ''}
-                  {stage.name} · {statusLabels[stage.status]} · Freelancer #{stage.freelancer_id}
+                  {quadro.nome}
                 </Text>
               </Pressable>
             );
           })}
 
           <Text style={styles.info}>
-            Os Stages selecionados serão alocados nesta Trilha.
+            Os quadros serão utilizados na
+            ordem em que forem selecionados.
           </Text>
 
           <Pressable
             style={styles.botao}
             onPress={salvar}
-            disabled={salvando || loadingStages || stages.length === 0}
           >
             <Text style={styles.botaoText}>
-              {salvando ? 'SALVANDO...' : 'SALVAR TRILHA'}
+              SALVAR TRILHA
             </Text>
           </Pressable>
 

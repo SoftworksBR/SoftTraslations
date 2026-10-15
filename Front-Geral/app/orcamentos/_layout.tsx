@@ -1,92 +1,84 @@
+
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
 
 import {
-  DrawerContentScrollView,
-  DrawerItem,
-} from '@react-navigation/drawer';
-
-import {
   View,
   Text,
+  Pressable,
   StyleSheet,
 } from 'react-native';
 
-function CustomDrawerContent(props: any) {
-
+function CustomDrawerContent() {
   function deslogar() {
     router.replace('/');
   }
 
   return (
-    <DrawerContentScrollView
-      {...props}
-      contentContainerStyle={styles.drawerContent}
-    >
-
+    <View style={styles.drawerContent}>
       <View>
-
         <Text style={styles.titulo}>
           Menu Cliente
         </Text>
 
-        <DrawerItem
-          label="Minhas Solicitações"
+        <Pressable
+          style={styles.itemMenu}
           onPress={() =>
             router.push('/orcamentos/MinhasSolicitacoes')
           }
-          labelStyle={styles.label}
-        />
+        >
+          <Text style={styles.label}>
+            Minhas Solicitações
+          </Text>
+        </Pressable>
 
-        <DrawerItem
-          label="Fazer Solicitação"
+        <Pressable
+          style={styles.itemMenu}
           onPress={() =>
             router.push('/orcamentos/FazerSolicitacao')
           }
-          labelStyle={styles.label}
-        />
-
+        >
+          <Text style={styles.label}>
+            Fazer Solicitação
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.rodape}>
-
-        <DrawerItem
-          label="Deslogar"
+        <Pressable
+          style={styles.itemMenu}
           onPress={deslogar}
-          labelStyle={styles.deslogar}
-        />
-
+        >
+          <Text style={styles.deslogar}>
+            Deslogar
+          </Text>
+        </Pressable>
       </View>
-
-    </DrawerContentScrollView>
+    </View>
   );
 }
 
 export default function ClienteLayout() {
-
   return (
     <Drawer
-      drawerContent={(props) => (
-        <CustomDrawerContent {...props} />
-      )}
-
+      drawerContent={() => <CustomDrawerContent />}
       screenOptions={{
         drawerStyle: {
           backgroundColor: '#000',
           width: 280,
         },
-
         drawerActiveTintColor: '#fff',
         drawerInactiveTintColor: '#aaa',
-
+        drawerLabelStyle: {
+          color: '#fff',
+          fontSize: 16,
+        },
         headerStyle: {
           backgroundColor: '#000',
         },
-
         headerTintColor: '#fff',
       }}
     >
-
       <Drawer.Screen
         name="MinhasSolicitacoes"
         options={{
@@ -98,20 +90,20 @@ export default function ClienteLayout() {
       <Drawer.Screen
         name="FazerSolicitacao"
         options={{
-          drawerLabel: 'FazerSolicitacao',
+          drawerLabel: 'Fazer Solicitação',
           title: 'Fazer Solicitação',
         }}
       />
-
     </Drawer>
   );
 }
 
 const styles = StyleSheet.create({
-
   drawerContent: {
-    flexGrow: 1,
+    flex: 1,
     justifyContent: 'space-between',
+    backgroundColor: '#000',
+    paddingTop: 20,
   },
 
   titulo: {
@@ -121,6 +113,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 20,
     paddingBottom: 10,
+  },
+
+  itemMenu: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
 
   label: {
@@ -140,5 +137,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
 });

@@ -1,8 +1,11 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import {
+  router,
+  useLocalSearchParams,
+} from 'expo-router';
+
+import { useState } from 'react';
 
 import {
-  ActivityIndicator,
   View,
   Text,
   TextInput,
@@ -12,80 +15,96 @@ import {
   Alert,
 } from 'react-native';
 
-import { completeFreelancerProfile } from '@/services/employees';
-import { getCurrentEmployee } from '@/services/auth';
-import type { Employee } from '@/services/employees';
+import { tradutores } from '@/data/tradutores';
 
 export default function CompletarPerfil() {
-  const [employee, setEmployee] = useState<Employee | null>(null);
-  const [name, setName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [salvando, setSalvando] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const currentEmployee = await getCurrentEmployee();
-        if (currentEmployee.role !== 'freelancer') {
-          router.replace('/');
-          return;
-        }
-        if (currentEmployee.status !== 'pending') {
-          router.replace('/tradutor');
-          return;
-        }
+  const params = useLocalSearchParams<{
+    id?: string;
+  }>();
 
-        setEmployee(currentEmployee);
-        setName(
-          currentEmployee.username === currentEmployee.email
-            ? ''
-            : currentEmployee.username,
-        );
-      } catch (error) {
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : 'Não foi possível carregar seu cadastro.',
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
+  const id = Number(params.id ?? 1);
 
-    void loadProfile();
-  }, []);
+  const tradutor = tradutores.find(
+    (item) => item.id === id
+  );
 
-  async function enviarFormulario() {
-    if (!name.trim()) {
-      Alert.alert('Atenção', 'Informe seu nome.');
+  const [email, setEmail] = useState(
+    tradutor?.email ?? ''
+  );
+
+  const [telefone, setTelefone] = useState(
+    tradutor?.telefone ?? ''
+  );
+
+  const [cpf, setCpf] = useState(
+    tradutor?.cpf ?? ''
+  );
+
+  if (!tradutor) {
+    return (
+      <View style={styles.erro}>
+        <Text>
+          Tradutor não encontrado.
+        </Text>
+      </View>
+    );
+  }
+
+  function enviarFormulario() {
+
+    if (
+      !email.trim() ||
+      !telefone.trim() ||
+      !cpf.trim()
+    ) {
+      Alert.alert(
+        'Atenção',
+        'Preencha todos os campos.'
+      );
+
       return;
     }
 
-    setSalvando(true);
-    try {
-      await completeFreelancerProfile({
-        name: name.trim(),
-      });
-      router.replace('/tradutor');
-    } catch (error) {
-      Alert.alert(
-        'Não foi possível concluir o cadastro',
-        error instanceof Error ? error.message : 'Tente novamente.',
-      );
-    } finally {
-      setSalvando(false);
-    }
+    tradutor.email = email;
+    tradutor.telefone = telefone;
+    tradutor.cpf = cpf;
+
+    tradutor.status =
+      'aguardando_aprovacao';
+
+    Alert.alert(
+      'Formulário enviado',
+      'Seu cadastro foi enviado para aprovação.',
+      [
+        {
+          text: 'OK',
+          onPress: () =>
+            router.replace(
+              `/tradutor/completar-perfil?id=${id}`
+            ),
+        },
+      ]
+    );
   }
 
-  if (loading) {
-    return <ActivityIndicator style={styles.erro} />;
-  }
+  const aguardando =
+    tradutor.status ===
+    'aguardando_aprovacao';
 
-  if (!employee) {
+  if (aguardando) {
     return (
-      <View style={styles.erro}>
-        <Text>{errorMessage || 'Cadastro não encontrado.'}</Text>
+      <View style={styles.aguardando}>
+
+        <Text style={styles.aguardandoTitulo}>
+          Cadastro enviado
+        </Text>
+
+        <Text style={styles.aguardandoTexto}>
+          Seu perfil está aguardando aprovação
+          do gestor.
+        </Text>
+
       </View>
     );
   }
@@ -96,15 +115,16 @@ export default function CompletarPerfil() {
       <View style={styles.form}>
 
         <Text style={styles.title}>
-          Concluir cadastro
+          Completar Perfil
         </Text>
 
         <Text style={styles.subtitulo}>
-          Olá, complete seu perfil para continuar.
+          Olá, {tradutor.nome}
         </Text>
 
         <Text style={styles.informacao}>
-          Informe seus dados pessoais para ativar sua conta.
+          Complete seus dados para enviar seu
+          cadastro para aprovação.
         </Text>
 
         <ScrollView>
@@ -114,11 +134,12 @@ export default function CompletarPerfil() {
           </Text>
 
           <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Digite seu nome completo"
-            autoCapitalize="words"
-            style={styles.input}
+            value={tradutor.nome}
+            editable={false}
+            style={[
+              styles.input,
+              styles.disabled,
+            ]}
           />
 
           <Text style={styles.label}>
@@ -126,18 +147,44 @@ export default function CompletarPerfil() {
           </Text>
 
           <TextInput
-            value={employee.email}
-            editable={false}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="Digite seu e-mail"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>
+            Telefone
+          </Text>
+
+          <TextInput
+            value={telefone}
+            onChangeText={setTelefone}
+            placeholder="Digite seu telefone"
+            keyboardType="phone-pad"
+            style={styles.input}
+          />
+
+          <Text style={styles.label}>
+            CPF
+          </Text>
+
+          <TextInput
+            value={cpf}
+            onChangeText={setCpf}
+            placeholder="Digite seu CPF"
+            keyboardType="numeric"
             style={styles.input}
           />
 
           <Pressable
             style={styles.botao}
-            onPress={() => void enviarFormulario()}
-            disabled={salvando}
+            onPress={enviarFormulario}
           >
             <Text style={styles.botaoTexto}>
-              {salvando ? 'SALVANDO...' : 'CONCLUIR CADASTRO'}
+              ENVIAR PARA APROVAÇÃO
             </Text>
           </Pressable>
 
