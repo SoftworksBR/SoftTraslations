@@ -11,6 +11,7 @@ from src.models.stage_model import Stage
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
     StageCreate,
+    StageSearchFilters,
     StageUpdate,
 )
 
@@ -107,12 +108,21 @@ class StageService:
 
         return stage
 
-    async def get_all(self, current_employee: Employee) -> list[Stage]:
+    async def get_all(
+        self,
+        current_employee: Employee,
+        filters: StageSearchFilters,
+    ) -> list[Stage]:
         if current_employee.role == Roles.PROJETOS:
-            return await self.repository.get_all()
+            return await self.repository.get_all(
+                filters=filters,
+            )
 
         if current_employee.role == Roles.FREELANCER:
-            return await self.repository.get_all(current_employee.id)
+            return await self.repository.get_all(
+                freelancer_id=current_employee.id,
+                filters=filters,
+            )
 
         self._raise_stage_access_denied()
 
@@ -138,8 +148,7 @@ class StageService:
             if (
                 data.freelancer_id is not None
                 or data.name is not None
-                or data.status
-                not in {Status.IN_PROGRESS, Status.TESTING}
+                or data.status not in {Status.IN_PROGRESS, Status.TESTING}
             ):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

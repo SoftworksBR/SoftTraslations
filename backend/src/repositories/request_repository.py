@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.request_model import Request
+from src.schemas.request_schema import RequestSearchFilters
 
 
 class RequestRepository:
@@ -25,9 +26,45 @@ class RequestRepository:
 
         return result.scalar_one_or_none()
 
-    async def get_all(self) -> list[Request]:
+    async def get_all(
+        self,
+        filters: RequestSearchFilters | None = None,
+    ) -> list[Request]:
 
-        result = await self.session.execute(select(Request))
+        statement = select(Request)
+
+        if filters is not None:
+            if filters.username is not None:
+                statement = statement.where(
+                    Request.username.ilike(f'%{filters.username}%')
+                )
+
+            if filters.email is not None:
+                statement = statement.where(
+                    Request.email.ilike(f'%{filters.email}%')
+                )
+
+            if filters.phone is not None:
+                statement = statement.where(
+                    Request.phone.ilike(f'%{filters.phone}%')
+                )
+
+            if filters.company is not None:
+                statement = statement.where(
+                    Request.company.ilike(f'%{filters.company}%')
+                )
+
+            if filters.translate_from is not None:
+                statement = statement.where(
+                    Request.translate_from == filters.translate_from
+                )
+
+            if filters.translate_to is not None:
+                statement = statement.where(
+                    Request.translate_to == filters.translate_to
+                )
+
+        result = await self.session.execute(statement)
 
         return list(result.scalars().all())
 

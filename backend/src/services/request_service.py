@@ -5,7 +5,11 @@ from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.models.request_model import Request
 from src.repositories.request_repository import RequestRepository
-from src.schemas.request_schema import RequestCreate, RequestUpdate
+from src.schemas.request_schema import (
+    RequestCreate,
+    RequestSearchFilters,
+    RequestUpdate,
+)
 
 
 class RequestService:
@@ -38,10 +42,14 @@ class RequestService:
 
         return request
 
-    async def get_all(self, current_employee: Employee) -> list[Request]:
-        self._require_request_read_role(current_employee)
+    async def get_all(
+        self,
+        current_employee: Employee,
+        filters: RequestSearchFilters,
+    ) -> list[Request]:
+        self._require_atendimento_role(current_employee)
 
-        return await self.repository.get_all()
+        return await self.repository.get_all(filters)
 
     async def update(
         self,

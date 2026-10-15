@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
-from src.schemas.project_schema import ProjectCreate, ProjectUpdate
+from src.schemas.project_schema import (
+    ProjectCreate,
+    ProjectSearchFilters,
+    ProjectUpdate,
+)
 from src.services.project_service import ProjectService
 
 
@@ -17,10 +21,14 @@ class ProjectController:
         return await service.create(data, current_employee)
 
     @staticmethod
-    async def get_all(session: AsyncSession, current_employee: Employee):
+    async def get_all(
+        session: AsyncSession,
+        current_employee: Employee,
+        filters: ProjectSearchFilters,
+    ):
         service = ProjectService(session)
 
-        return await service.get_all(current_employee)
+        return await service.get_all(current_employee, filters)
 
     @staticmethod
     async def update(

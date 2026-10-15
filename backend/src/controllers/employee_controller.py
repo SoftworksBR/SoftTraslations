@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSearchFilters,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -50,12 +51,14 @@ async def get_employees(
     offset: int,
     session: AsyncSession,
     current_employee: Employee,
+    filters: EmployeeSearchFilters,
 ):
     employees = await service.get_employees(
         session,
         limit,
         offset,
         current_employee,
+        filters,
     )
 
     return {'employees': employees}

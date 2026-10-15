@@ -7,7 +7,11 @@ from src.models.employee_model import Employee
 from src.models.path_model import Path
 from src.models.project_model import Project
 from src.repositories.project_repository import ProjectRepository
-from src.schemas.project_schema import ProjectCreate, ProjectUpdate
+from src.schemas.project_schema import (
+    ProjectCreate,
+    ProjectSearchFilters,
+    ProjectUpdate,
+)
 
 
 class ProjectService:
@@ -56,10 +60,14 @@ class ProjectService:
 
         return project
 
-    async def get_all(self, current_employee: Employee) -> list[Project]:
+    async def get_all(
+        self,
+        current_employee: Employee,
+        filters: ProjectSearchFilters,
+    ) -> list[Project]:
         self._require_projects_role(current_employee)
 
-        return await self.repository.get_all()
+        return await self.repository.get_all(filters)
 
     async def update(
         self,
