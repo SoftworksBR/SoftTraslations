@@ -1,3 +1,4 @@
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,8 +19,8 @@ class RequestService:
             email=data.email,
             phone=data.phone,
             company=data.company,
-            translate_from=data.translate_from,
-            translate_to=data.translate_to,
+            idioma_origem_id=data.idioma_origem_id,
+            idioma_destino_id=data.idioma_destino_id,
             observations=data.observations,
             employee_id=data.employee_id,
         )
@@ -27,7 +28,6 @@ class RequestService:
         return await self.repository.create(request)
 
     async def get_by_id(self, request_id: int) -> Request:
-
         request = await self.repository.get_by_id(request_id)
 
         if request is None:
@@ -40,7 +40,6 @@ class RequestService:
 
     async def get_all(self, current_employee: Employee) -> list[Request]:
         self._require_atendimento_role(current_employee)
-
         return await self.repository.get_all()
 
     async def update(
@@ -50,7 +49,6 @@ class RequestService:
         current_employee: Employee,
     ) -> Request:
         self._require_atendimento_role(current_employee)
-
         request = await self.get_by_id(request_id)
 
         if data.username is not None:
@@ -65,11 +63,11 @@ class RequestService:
         if data.company is not None:
             request.company = data.company
 
-        if data.translate_from is not None:
-            request.translate_from = data.translate_from
+        if data.idioma_origem_id is not None:
+            request.idioma_origem_id = data.idioma_origem_id
 
-        if data.translate_to is not None:
-            request.translate_to = data.translate_to
+        if data.idioma_destino_id is not None:
+            request.idioma_destino_id = data.idioma_destino_id
 
         if data.observations is not None:
             request.observations = data.observations
@@ -80,12 +78,12 @@ class RequestService:
         return await self.repository.update(request)
 
     async def delete(
-        self, request_id: int, current_employee: Employee
+        self,
+        request_id: int,
+        current_employee: Employee,
     ) -> None:
         self._require_atendimento_role(current_employee)
-
         request = await self.get_by_id(request_id)
-
         await self.repository.delete(request)
 
     @staticmethod
