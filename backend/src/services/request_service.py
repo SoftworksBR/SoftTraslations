@@ -19,8 +19,8 @@ class RequestService:
             email=data.email,
             phone=data.phone,
             company=data.company,
-            idioma_origem_id=data.idioma_origem_id,
-            idioma_destino_id=data.idioma_destino_id,
+            source_language_id=data.source_language_id,
+            target_language_id=data.target_language_id,
             observations=data.observations,
             employee_id=data.employee_id,
         )
@@ -63,11 +63,11 @@ class RequestService:
         if data.company is not None:
             request.company = data.company
 
-        if data.idioma_origem_id is not None:
-            request.idioma_origem_id = data.idioma_origem_id
+        if data.source_language_id is not None:
+            request.source_language_id = data.source_language_id
 
-        if data.idioma_destino_id is not None:
-            request.idioma_destino_id = data.idioma_destino_id
+        if data.target_language_id is not None:
+            request.target_language_id = data.target_language_id
 
         if data.observations is not None:
             request.observations = data.observations

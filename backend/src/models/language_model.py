@@ -5,8 +5,8 @@ from .base import table_registry
 
 
 @table_registry.mapped_as_dataclass
-class Idioma:
-    __tablename__ = 'idiomas'
+class Language:
+    __tablename__ = 'languages'
 
     id: Mapped[int] = mapped_column(
         init=False,
@@ -14,17 +14,15 @@ class Idioma:
         autoincrement=True,
     )
 
-    nome: Mapped[str] = mapped_column(
-        nullable=False,
-    )
+    name: Mapped[str] = mapped_column(nullable=False)
 
-    codigo: Mapped[str | None] = mapped_column(
+    code: Mapped[str | None] = mapped_column(
         default=None,
         unique=True,
         nullable=True,
     )
 
-    ativo: Mapped[bool] = mapped_column(
+    is_active: Mapped[bool] = mapped_column(
         default=True,
         nullable=False,
     )
