@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 
 from sqlalchemy import ForeignKey, Numeric, UniqueConstraint
@@ -7,15 +8,15 @@ from .base import table_registry
 
 
 @table_registry.mapped_as_dataclass
-class PrecoTraducao:
-    __tablename__ = 'precos_traducao'
+class TranslationPrice:
+    __tablename__ = 'translation_prices'
 
     __table_args__ = (
         UniqueConstraint(
-            'servico_id',
-            'idioma_origem_id',
-            'idioma_destino_id',
-            name='uq_preco_servico_idiomas',
+            'service_id',
+            'source_language_id',
+            'target_language_id',
+            name='uq_translation_price_languages',
         ),
     )
 
@@ -25,27 +26,27 @@ class PrecoTraducao:
         autoincrement=True,
     )
 
-    servico_id: Mapped[int] = mapped_column(
-        ForeignKey('servicos.id'),
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey('services.id'),
         nullable=False,
     )
 
-    idioma_origem_id: Mapped[int] = mapped_column(
-        ForeignKey('idiomas.id'),
+    source_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
         nullable=False,
     )
 
-    idioma_destino_id: Mapped[int] = mapped_column(
-        ForeignKey('idiomas.id'),
+    target_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
         nullable=False,
     )
 
-    preco_por_palavra: Mapped[Decimal] = mapped_column(
+    price_per_word: Mapped[Decimal] = mapped_column(
         Numeric(10, 4),
         nullable=False,
     )
 
-    ativo: Mapped[bool] = mapped_column(
+    is_active: Mapped[bool] = mapped_column(
         default=True,
         nullable=False,
     )

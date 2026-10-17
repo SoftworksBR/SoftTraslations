@@ -8,8 +8,8 @@ from .base import table_registry
 
 
 @table_registry.mapped_as_dataclass
-class Servico:
-    __tablename__ = 'servicos'
+class Service:
+    __tablename__ = 'services'
 
     id: Mapped[int] = mapped_column(
         init=False,
@@ -17,22 +17,22 @@ class Servico:
         autoincrement=True,
     )
 
-    nome: Mapped[str] = mapped_column(
+    name: Mapped[str] = mapped_column(
         unique=True,
         nullable=False,
     )
 
-    descricao: Mapped[str | None] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         default=None,
         nullable=True,
     )
 
-    ativo: Mapped[bool] = mapped_column(
+    is_active: Mapped[bool] = mapped_column(
         default=True,
         nullable=False,
     )
 
-    criado_em: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         init=False,
         server_default=func.now(),
     )

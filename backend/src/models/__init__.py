@@ -8,6 +8,6 @@ from .path_model import Path as Path
 from .project_model import Project as Project
 from .request_model import Request as Request
 from .stage_model import Stage as Stage
-from .idioma_model import Idioma as Idioma
-from .servico_model import Servico as Servico
-from .preco_traducao_model import PrecoTraducao as PrecoTraducao
+from .language_model import Language as Language
+from .service_model import Service as Service
+from .translation_price_model import TranslationPrice as TranslationPrice

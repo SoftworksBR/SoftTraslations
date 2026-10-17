@@ -19,12 +19,13 @@ class Request:
     phone: Mapped[str] = mapped_column(nullable=False)
     company: Mapped[str | None] = mapped_column(nullable=True)
 
-    idioma_origem_id: Mapped[int] = mapped_column(
-        ForeignKey('idiomas.id'),
+    source_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
         nullable=False,
     )
-    idioma_destino_id: Mapped[int] = mapped_column(
-        ForeignKey('idiomas.id'),
+
+    target_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
         nullable=False,
     )
 

@@ -7,8 +7,8 @@ class RequestCreate(BaseModel):
     email: str
     phone: str
     company: str | None = None
-    idioma_origem_id: int
-    idioma_destino_id: int
+    source_language_id: int
+    target_language_id: int
     observations: str | None = None
     employee_id: int
 
@@ -18,8 +18,8 @@ class RequestUpdate(BaseModel):
     email: str | None = None
     phone: str | None = None
     company: str | None = None
-    idioma_origem_id: int | None = None
-    idioma_destino_id: int | None = None
+    source_language_id: int | None = None
+    target_language_id: int | None = None
     observations: str | None = None
     employee_id: int | None = None
 
@@ -32,7 +32,7 @@ class RequestResponse(BaseModel):
     email: str
     phone: str
     company: str | None
-    idioma_origem_id: int
-    idioma_destino_id: int
+    source_language_id: int
+    target_language_id: int
     observations: str | None
     employee_id: int
