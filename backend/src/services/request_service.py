@@ -6,7 +6,11 @@ from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.models.request_model import Request
 from src.repositories.request_repository import RequestRepository
-from src.schemas.request_schema import RequestCreate, RequestUpdate
+from src.schemas.request_schema import (
+    RequestCreate,
+    RequestSearchFilters,
+    RequestUpdate,
+)
 
 
 class RequestService:
@@ -38,9 +42,14 @@ class RequestService:
 
         return request
 
-    async def get_all(self, current_employee: Employee) -> list[Request]:
+    async def get_all(
+        self,
+        current_employee: Employee,
+        filters: RequestSearchFilters,
+    ) -> list[Request]:
         self._require_atendimento_role(current_employee)
-        return await self.repository.get_all()
+
+        return await self.repository.get_all(filters)
 
     async def update(
         self,
@@ -85,6 +94,17 @@ class RequestService:
         self._require_atendimento_role(current_employee)
         request = await self.get_by_id(request_id)
         await self.repository.delete(request)
+
+    @staticmethod
+    def _require_request_read_role(current_employee: Employee) -> None:
+        if current_employee.role not in {
+            Roles.ATENDIMENTO,
+            Roles.PROJETOS,
+        }:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only atendimento and projetos can list requests',
+            )
 
     @staticmethod
     def _require_atendimento_role(current_employee: Employee) -> None:

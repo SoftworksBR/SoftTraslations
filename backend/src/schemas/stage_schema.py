@@ -15,6 +15,13 @@ class StageUpdate(BaseModel):
     status: Status | None = None
 
 
+class StageSearchFilters(BaseModel):
+    name: str | None = None
+    status: Status | None = None
+    project_name: str | None = None
+    freelancer_name: str | None = None
+
+
 class StageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -57,7 +57,7 @@ PS C:\Users\...\SoftTraslations\backend> .venv\Scripts\Activate.ps1
 
 ## <span id='how-to-run'> Executando o projeto </span>
 
-Para rodar o projeto, crie um novo arquivo chamado ``.env`` a partir do arquivo ``.env.example`` e, na primeira linha, mude **postgres_username:postgres_password** para o nome do seu usuário e sua senha, por exemplo, **postgres:senha123**.
+Para rodar o projeto, crie um novo arquivo chamado ``.env`` a partir do arquivo ``.env.example`` e, na primeira linha, mude **postgres_username:postgres_password** para o nome do seu usuário e sua senha, por exemplo, **postgres:senha123**. O nome do cookie de autenticação pode ser alterado pela variável `ACCESS_TOKEN_COOKIE_NAME`.
 
 Na barra de pesquisa do seu navegador, pesquise por **pgadmin** para abrir o PostgreSQL. Lá, você deve criar um banco de dados vazio com o nome **soft_translations_db**. Para isso, basta clicar nas setas ao lado de Services > PostgreSQL x, depois clique com o botão direito em Databases > Create > Database...
 

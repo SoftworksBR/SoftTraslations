@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import Annotated
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from src.schemas.employee_schema import (
     EmployeeListSchema,
     EmployeePublicSchema,
     EmployeeSchema,
+    EmployeeSearchFilters,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -68,6 +70,7 @@ async def complete_freelancer_profile_route(
     response_model=EmployeeListSchema,
 )
 async def get_employees_route(
+    filters: Annotated[EmployeeSearchFilters, Depends()],
     limit: int = 10,
     offset: int = 0,
     session: AsyncSession = Depends(get_session),
@@ -78,6 +81,7 @@ async def get_employees_route(
         offset,
         session,
         current_employee,
+        filters,
     )
 
 

@@ -24,6 +24,15 @@ class RequestUpdate(BaseModel):
     employee_id: int | None = None
 
 
+class RequestSearchFilters(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    phone: str | None = None
+    company: str | None = None
+    translate_from: Translations | None = None
+    translate_to: Translations | None = None
+
+
 class RequestResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

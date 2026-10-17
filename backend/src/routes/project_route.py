@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.project_controller import ProjectController
@@ -9,6 +11,7 @@ from src.schemas.path_schema import PathResponse
 from src.schemas.project_schema import (
     ProjectCreate,
     ProjectResponse,
+    ProjectSearchFilters,
     ProjectUpdate,
 )
 from src.security import get_current_employee
@@ -52,10 +55,15 @@ async def assign_path_to_project(
 
 @router.get('/', response_model=list[ProjectResponse])
 async def get_projects(
+    filters: Annotated[ProjectSearchFilters, Query()],
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
-    return await ProjectController.get_all(session, current_employee)
+    return await ProjectController.get_all(
+        session,
+        current_employee,
+        filters,
+    )
 
 
 @router.put('/{project_id}', response_model=ProjectResponse)

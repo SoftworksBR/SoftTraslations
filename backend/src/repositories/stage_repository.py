@@ -1,7 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.models.employee_model import Employee
+from src.models.path_model import Path
+from src.models.project_model import Project
 from src.models.stage_model import Stage
+from src.schemas.stage_schema import StageSearchFilters
 
 
 class StageRepository:
@@ -25,10 +29,39 @@ class StageRepository:
 
         return result.scalar_one_or_none()
 
-    async def get_all(self, freelancer_id: int | None = None) -> list[Stage]:
+    async def get_all(
+        self,
+        freelancer_id: int | None = None,
+        filters: StageSearchFilters | None = None,
+    ) -> list[Stage]:
         query = select(Stage)
+
         if freelancer_id is not None:
             query = query.where(Stage.freelancer_id == freelancer_id)
+
+        if filters is not None:
+            if filters.name is not None:
+                query = query.where(Stage.name.ilike(f'%{filters.name}%'))
+
+            if filters.status is not None:
+                query = query.where(Stage.status == filters.status)
+
+            if filters.project_name is not None:
+                project_subquery = (
+                    select(Stage.id)
+                    .join(Stage.paths)
+                    .join(Path.projects)
+                    .where(Project.name.ilike(f'%{filters.project_name}%'))
+                )
+                query = query.where(Stage.id.in_(project_subquery))
+
+            if filters.freelancer_name is not None:
+                freelancer_subquery = select(Employee.id).where(
+                    Employee.username.ilike(f'%{filters.freelancer_name}%')
+                )
+                query = query.where(
+                    Stage.freelancer_id.in_(freelancer_subquery)
+                )
 
         result = await self.session.execute(query)
 
