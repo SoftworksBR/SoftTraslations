@@ -41,7 +41,8 @@ def test_employee_search_filters_build_case_insensitive_query():
             limit=10,
             offset=0,
             filters=EmployeeSearchFilters(
-                username='ana',
+                first_name='ana',
+                last_name='silva',
                 email='example.com',
                 role=Roles.FREELANCER,
             ),
@@ -49,7 +50,8 @@ def test_employee_search_filters_build_case_insensitive_query():
     )
 
     query = _sql(session.scalars.await_args.args[0])
-    assert 'employees.username ilike' in query
+    assert 'employees.first_name ilike' in query
+    assert 'employees.last_name ilike' in query
     assert 'employees.email ilike' in query
     assert 'employees.role =' in query
 
@@ -102,7 +104,8 @@ def test_project_search_filters_include_related_path_stages():
     assert 'projects.name ilike' in query
     assert 'projects.status =' in query
     assert 'stages.name ilike' in query
-    assert 'employees.username ilike' in query
+    assert 'employees.first_name ilike' in query
+    assert 'employees.last_name ilike' in query
     assert 'projects.creator_id in' in query
 
 
@@ -130,4 +133,5 @@ def test_stage_search_filters_include_related_projects():
     assert 'path_stages' in query
     assert 'path_projects' in query
     assert 'projects.name ilike' in query
-    assert 'employees.username ilike' in query
+    assert 'employees.first_name ilike' in query
+    assert 'employees.last_name ilike' in query

@@ -9,7 +9,8 @@ from pydantic import ValidationError
 from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
-    EmployeeSchema,
+    EmployeeCreate,
+    EmployeeUpdate,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -19,8 +20,9 @@ from src.services.employee_service import EmployeeService
 
 
 def test_pending_status_is_only_valid_for_freelancers():
-    employee = EmployeeSchema(
-        username='translator',
+    employee = EmployeeCreate(
+        first_name='Translator',
+        last_name='Example',
         email='translator@example.com',
         password='password',
         role=Roles.FREELANCER,
@@ -30,13 +32,37 @@ def test_pending_status_is_only_valid_for_freelancers():
     assert employee.status == EmployeeStatus.PENDING
 
     with pytest.raises(ValidationError):
-        EmployeeSchema(
-            username='staff',
+        EmployeeCreate(
+            first_name='Staff',
+            last_name='Example',
             email='staff@example.com',
             password='password',
             role=Roles.ATENDIMENTO,
             status=EmployeeStatus.PENDING,
         )
+
+
+def test_employee_create_requires_non_empty_last_name():
+    with pytest.raises(ValidationError):
+        EmployeeCreate(
+            first_name='Staff',
+            last_name='',
+            email='staff@example.com',
+            password='password',
+            role=Roles.ATENDIMENTO,
+        )
+
+
+def test_employee_update_allows_empty_last_name():
+    employee = EmployeeUpdate(
+        first_name='Staff',
+        last_name='',
+        email='staff@example.com',
+        password='password',
+        role=Roles.ATENDIMENTO,
+    )
+
+    assert not employee.last_name
 
 
 def test_path_and_project_require_at_least_one_related_record():
@@ -55,18 +81,14 @@ def test_path_and_project_require_at_least_one_related_record():
 def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
     created_employees = []
 
-    async def get_by_email_or_username(session, email=None, username=None):
+    async def get_by_email(session, email):
         return None
 
     async def create(session, employee):
         created_employees.append(employee)
         return employee
 
-    monkeypatch.setattr(
-        EmployeeRepository,
-        'get_by_email_or_username',
-        get_by_email_or_username,
-    )
+    monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
     monkeypatch.setattr(EmployeeRepository, 'create', create)
 
     employee = asyncio.run(
@@ -104,7 +126,7 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
         id=7,
         role=Roles.FREELANCER,
         status=EmployeeStatus.PENDING,
-        username='freelancer@example.com',
+        first_name='freelancer@example.com',
     )
 
     async def get_by_id(session, employee_id):
@@ -126,7 +148,7 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
         )
     )
 
-    assert updated_employee.username == 'Freelancer Name'
+    assert updated_employee.first_name == 'Freelancer Name'
     assert updated_employee.status == EmployeeStatus.AVAILABLE
 
 
@@ -174,8 +196,9 @@ def test_generic_employee_update_cannot_complete_pending_freelancer(
             EmployeeService.update_employee(
                 session=None,
                 employee_id=employee.id,
-                employee=EmployeeSchema(
-                    username='Freelancer Name',
+                employee=EmployeeUpdate(
+                    first_name='Freelancer',
+                    last_name='Name',
                     email='freelancer@example.com',
                     password='secret',
                     role=Roles.FREELANCER,
@@ -240,8 +263,9 @@ def test_admin_pode_excluir_funcionario_nao_admin(monkeypatch):
 
 
 def test_cria_admin_inicial_quando_nao_existem_funcionarios(monkeypatch):
-    employee = EmployeeSchema(
-        username='admin',
+    employee = EmployeeCreate(
+        first_name='Admin',
+        last_name='Admin',
         email='admin@admin.com',
         password='admin123',
         role=Roles.ADMIN,
@@ -251,7 +275,7 @@ def test_cria_admin_inicial_quando_nao_existem_funcionarios(monkeypatch):
     async def get_employees(session, limit, offset, role=None):
         return []
 
-    async def get_by_email_or_username(session, email, username):
+    async def get_by_email(session, email):
         return None
 
     async def create(session, db_employee):
@@ -259,11 +283,7 @@ def test_cria_admin_inicial_quando_nao_existem_funcionarios(monkeypatch):
         return db_employee
 
     monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
-    monkeypatch.setattr(
-        EmployeeRepository,
-        'get_by_email_or_username',
-        get_by_email_or_username,
-    )
+    monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
     monkeypatch.setattr(EmployeeRepository, 'create', create)
 
     created_employee = asyncio.run(
@@ -275,8 +295,9 @@ def test_cria_admin_inicial_quando_nao_existem_funcionarios(monkeypatch):
 
 
 def test_nao_cria_admin_inicial_se_ja_existir_funcionario(monkeypatch):
-    employee = EmployeeSchema(
-        username='admin',
+    employee = EmployeeCreate(
+        first_name='Admin',
+        last_name='Admin',
         email='admin@admin.com',
         password='admin123',
         role=Roles.ADMIN,
@@ -292,5 +313,29 @@ def test_nao_cria_admin_inicial_se_ja_existir_funcionario(monkeypatch):
             EmployeeService.create_initial_admin(
                 session=None,
                 employee=employee,
+            )
+        )
+
+
+def test_duplicate_check_on_create_uses_only_email(monkeypatch):
+    existing = SimpleNamespace(email='taken@example.com')
+
+    async def get_by_email(session, email):
+        return existing if email == 'taken@example.com' else None
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
+
+    with pytest.raises(ValueError, match='Email already registered'):
+        asyncio.run(
+            EmployeeService.create_employee(
+                session=None,
+                employee=EmployeeCreate(
+                    first_name='Someone',
+                    last_name='Else',
+                    email='taken@example.com',
+                    password='secret',
+                    role=Roles.ATENDIMENTO,
+                ),
+                current_employee=SimpleNamespace(role=Roles.ADMIN),
             )
         )
