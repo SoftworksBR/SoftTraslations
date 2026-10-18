@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import func
@@ -29,6 +29,11 @@ class Employee:
         default=EmployeeStatus.AVAILABLE,
     )
     last_name: Mapped[str] = mapped_column(nullable=False, default='')
+    birth_date: Mapped[date | None] = mapped_column(
+        nullable=True, default=None
+    )
+    phone: Mapped[str | None] = mapped_column(nullable=True, default=None)
+    photo_path: Mapped[str | None] = mapped_column(nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )
