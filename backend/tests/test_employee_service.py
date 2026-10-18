@@ -211,6 +211,55 @@ def test_generic_employee_update_cannot_complete_pending_freelancer(
     assert error.value.status_code == HTTPStatus.FORBIDDEN
 
 
+def test_update_employee_only_applies_provided_optional_profile_fields(
+    monkeypatch,
+):
+    target_employee = SimpleNamespace(
+        id=3,
+        role=Roles.ATENDIMENTO,
+        status=EmployeeStatus.AVAILABLE,
+        first_name='Old',
+        last_name='Name',
+        email='old@example.com',
+        password='old-hash',
+        birth_date=None,
+        phone='1111-1111',
+        photo_path=None,
+    )
+
+    async def get_by_id(session, employee_id):
+        return target_employee
+
+    async def update(session, updated_employee):
+        return updated_employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    updated_employee = asyncio.run(
+        EmployeeService.update_employee(
+            session=None,
+            employee_id=target_employee.id,
+            employee=EmployeeUpdate(
+                first_name='Old',
+                last_name='Name',
+                email='old@example.com',
+                password='old-hash',
+                role=Roles.ATENDIMENTO,
+                status=EmployeeStatus.AVAILABLE,
+                photo_path='/uploads/photo.png',
+            ),
+            current_employee=SimpleNamespace(
+                id=target_employee.id, role=Roles.ATENDIMENTO
+            ),
+        )
+    )
+
+    assert updated_employee.photo_path == '/uploads/photo.png'
+    assert updated_employee.phone == '1111-1111'
+    assert updated_employee.birth_date is None
+
+
 def test_admin_nao_pode_excluir_outro_admin(monkeypatch):
     target_employee = SimpleNamespace(id=2, role=Roles.ADMIN)
     current_employee = SimpleNamespace(id=1, role=Roles.ADMIN)
