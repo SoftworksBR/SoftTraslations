@@ -15,10 +15,11 @@ from src.controllers.employee_controller import (
 from src.database import get_session
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
+    EmployeeCreate,
     EmployeeListSchema,
     EmployeePublicSchema,
-    EmployeeSchema,
     EmployeeSearchFilters,
+    EmployeeUpdate,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -91,7 +92,7 @@ async def get_employees_route(
     response_model=EmployeePublicSchema,
 )
 async def create_employee_route(
-    employee: EmployeeSchema,
+    employee: EmployeeCreate,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
@@ -109,7 +110,7 @@ async def create_employee_route(
 )
 async def update_employee_route(
     employee_id: int,
-    employee: EmployeeSchema,
+    employee: EmployeeUpdate,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):

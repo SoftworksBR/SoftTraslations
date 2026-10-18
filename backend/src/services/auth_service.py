@@ -18,10 +18,9 @@ class AuthService:
         password: str,
     ) -> dict:
 
-        employee = await self.employee_repository.get_by_email_or_username(
+        employee = await self.employee_repository.get_by_email(
             session,
-            email=email,
-            username=email,
+            email,
         )
 
         if not employee or not verify_password(

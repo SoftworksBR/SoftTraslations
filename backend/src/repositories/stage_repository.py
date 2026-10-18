@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
@@ -57,7 +57,14 @@ class StageRepository:
 
             if filters.freelancer_name is not None:
                 freelancer_subquery = select(Employee.id).where(
-                    Employee.username.ilike(f'%{filters.freelancer_name}%')
+                    or_(
+                        Employee.first_name.ilike(
+                            f'%{filters.freelancer_name}%'
+                        ),
+                        Employee.last_name.ilike(
+                            f'%{filters.freelancer_name}%'
+                        ),
+                    )
                 )
                 query = query.where(
                     Stage.freelancer_id.in_(freelancer_subquery)

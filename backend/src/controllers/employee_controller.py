@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
-    EmployeeSchema,
+    EmployeeCreate,
     EmployeeSearchFilters,
+    EmployeeUpdate,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -65,7 +66,7 @@ async def get_employees(
 
 
 async def create_employee(
-    employee: EmployeeSchema,
+    employee: EmployeeCreate,
     session: AsyncSession,
     current_employee: Employee,
 ):
@@ -84,7 +85,7 @@ async def create_employee(
 
 
 async def create_initial_admin(
-    employee: EmployeeSchema,
+    employee: EmployeeCreate,
     session: AsyncSession,
 ):
     try:
@@ -99,7 +100,7 @@ async def create_initial_admin(
 
 async def update_employee(
     employee_id: int,
-    employee: EmployeeSchema,
+    employee: EmployeeUpdate,
     session: AsyncSession,
     current_employee: Employee,
 ):

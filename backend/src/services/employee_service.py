@@ -5,8 +5,9 @@ from src.enums.enums import EmployeeStatus, Roles
 from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
-    EmployeeSchema,
+    EmployeeCreate,
     EmployeeSearchFilters,
+    EmployeeUpdate,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -17,7 +18,7 @@ class EmployeeService:
     @staticmethod
     async def create_initial_admin(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
     ):
         if employee.role != Roles.ADMIN:
             raise ValueError('Initial employee must be an admin')
@@ -64,7 +65,7 @@ class EmployeeService:
     @staticmethod
     async def create_employee(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
         current_employee: Employee,
     ):
         if (
@@ -105,14 +106,14 @@ class EmployeeService:
                 detail='Only projetos can pre-register freelancers',
             )
 
-        existing_employee = await EmployeeRepository.get_by_email_or_username(
-            session, email=data.email
+        existing_employee = await EmployeeRepository.get_by_email(
+            session, data.email
         )
         if existing_employee is not None:
             raise ValueError('Email already registered')
 
         employee = Employee(
-            username=data.email,
+            first_name=data.email,
             email=data.email,
             password=get_password_hash(data.password),
             role=Roles.FREELANCER,
@@ -152,7 +153,7 @@ class EmployeeService:
                 detail='Freelancer profile is already complete',
             )
 
-        employee.username = data.name.strip()
+        employee.first_name = data.name.strip()
         employee.status = EmployeeStatus.AVAILABLE
 
         return await EmployeeRepository.update(session, employee)
@@ -160,23 +161,19 @@ class EmployeeService:
     @staticmethod
     async def _create_employee_record(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
     ):
-        db_employee = await EmployeeRepository.get_by_email_or_username(
+        db_employee = await EmployeeRepository.get_by_email(
             session,
             employee.email,
-            employee.username,
         )
 
         if db_employee:
-            if db_employee.email == employee.email:
-                raise ValueError('Email already registered')
-
-            if db_employee.username == employee.username:
-                raise ValueError('employeename already registered')
+            raise ValueError('Email already registered')
 
         db_employee = Employee(
-            username=employee.username,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
             email=employee.email,
             role=employee.role,
             status=(
@@ -196,7 +193,7 @@ class EmployeeService:
     async def update_employee(
         session: AsyncSession,
         employee_id: int,
-        employee: EmployeeSchema,
+        employee: EmployeeUpdate,
         current_employee: Employee,
     ):
         if (
@@ -228,7 +225,8 @@ class EmployeeService:
                 detail='Freelancers must complete their own profile',
             )
 
-        target_employee.username = employee.username
+        target_employee.first_name = employee.first_name
+        target_employee.last_name = employee.last_name
         target_employee.email = employee.email
         target_employee.password = get_password_hash(employee.password)
         target_employee.role = employee.role

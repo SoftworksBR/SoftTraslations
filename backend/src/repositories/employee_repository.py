@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
@@ -19,9 +19,14 @@ class EmployeeRepository:
             if filters.role is not None:
                 query = query.where(Employee.role == filters.role)
 
-            if filters.username is not None:
+            if filters.first_name is not None:
                 query = query.where(
-                    Employee.username.ilike(f'%{filters.username}%')
+                    Employee.first_name.ilike(f'%{filters.first_name}%')
+                )
+
+            if filters.last_name is not None:
+                query = query.where(
+                    Employee.last_name.ilike(f'%{filters.last_name}%')
                 )
 
             if filters.email is not None:
@@ -32,23 +37,13 @@ class EmployeeRepository:
         return result.all()
 
     @staticmethod
-    async def get_by_email_or_username(
+    async def get_by_email(
         session: AsyncSession,
-        email: str | None = None,
-        username: str | None = None,
+        email: str,
     ):
-        conditions = []
-
-        if email is not None:
-            conditions.append(Employee.email == email)
-
-        if username is not None:
-            conditions.append(Employee.username == username)
-
-        if not conditions:
-            return None
-
-        return await session.scalar(select(Employee).where(or_(*conditions)))
+        return await session.scalar(
+            select(Employee).where(Employee.email == email)
+        )
 
     @staticmethod
     async def get_by_id(
