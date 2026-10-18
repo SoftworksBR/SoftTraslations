@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date
 from http import HTTPStatus
 from types import SimpleNamespace
 
@@ -10,6 +11,7 @@ from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeCreate,
+    EmployeeSearchFilters,
     EmployeeUpdate,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
@@ -209,6 +211,101 @@ def test_generic_employee_update_cannot_complete_pending_freelancer(
         )
 
     assert error.value.status_code == HTTPStatus.FORBIDDEN
+
+
+def _freelancer_with_private_data():
+    return SimpleNamespace(
+        id=5,
+        first_name='Ana',
+        last_name='Silva',
+        email='ana@example.com',
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.AVAILABLE,
+        birth_date=date(1990, 1, 1),
+        phone='11999990000',
+        photo_path=None,
+    )
+
+
+def test_phone_and_birth_date_hidden_from_other_viewers_in_listing(
+    monkeypatch,
+):
+    target = _freelancer_with_private_data()
+
+    async def get_employees(session, limit, offset, filters=None):
+        return [target]
+
+    monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
+
+    result = asyncio.run(
+        EmployeeService.get_employees(
+            session=None,
+            limit=10,
+            offset=0,
+            current_employee=SimpleNamespace(id=1, role=Roles.PROJETOS),
+            filters=EmployeeSearchFilters(),
+        )
+    )
+
+    assert result[0].phone is None
+    assert result[0].birth_date is None
+    # Campos não privados continuam visíveis normalmente.
+    assert result[0].first_name == 'Ana'
+    assert result[0].email == 'ana@example.com'
+
+
+def test_phone_and_birth_date_visible_to_admin_in_listing(monkeypatch):
+    target = _freelancer_with_private_data()
+
+    async def get_employees(session, limit, offset, filters=None):
+        return [target]
+
+    monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
+
+    result = asyncio.run(
+        EmployeeService.get_employees(
+            session=None,
+            limit=10,
+            offset=0,
+            current_employee=SimpleNamespace(id=1, role=Roles.ADMIN),
+            filters=EmployeeSearchFilters(),
+        )
+    )
+
+    assert result[0].phone == '11999990000'
+    assert result[0].birth_date == date(1990, 1, 1)
+
+
+def test_phone_and_birth_date_visible_to_the_employee_themselves():
+    target = _freelancer_with_private_data()
+
+    public_schema = EmployeeService._to_public_schema(target, target)
+
+    assert public_schema.phone == '11999990000'
+    assert public_schema.birth_date == date(1990, 1, 1)
+
+
+def test_non_admin_cannot_update_another_employees_profile():
+    current_employee = SimpleNamespace(id=1, role=Roles.ATENDIMENTO)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.update_employee(
+                session=None,
+                employee_id=2,
+                employee=EmployeeUpdate(
+                    first_name='Someone',
+                    last_name='Else',
+                    email='someone@example.com',
+                    password='secret',
+                    role=Roles.ATENDIMENTO,
+                ),
+                current_employee=current_employee,
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
+    assert error.value.detail == 'You can only update your own employee'
 
 
 def test_update_employee_only_applies_provided_optional_profile_fields(
