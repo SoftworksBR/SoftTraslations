@@ -16,7 +16,7 @@ class Employee:
     id: Mapped[int] = mapped_column(
         init=False, primary_key=True, autoincrement=True
     )
-    username: Mapped[str] = mapped_column(nullable=False)
+    first_name: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
     password: Mapped[str] = mapped_column(nullable=False)
     role: Mapped[Roles] = mapped_column(SQLEnum(Roles), nullable=False)
@@ -28,6 +28,7 @@ class Employee:
         ),
         default=EmployeeStatus.AVAILABLE,
     )
+    last_name: Mapped[str] = mapped_column(nullable=False, default='')
     created_at: Mapped[datetime] = mapped_column(
         init=False, server_default=func.now()
     )
