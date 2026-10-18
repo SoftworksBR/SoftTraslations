@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -16,6 +18,9 @@ class EmployeePublicSchema(BaseModel):
     email: EmailStr
     role: Roles
     status: EmployeeStatus
+    birth_date: date | None
+    phone: str | None
+    photo_path: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +51,9 @@ class EmployeeUpdate(BaseModel):
     role: Roles
     status: EmployeeStatus = EmployeeStatus.AVAILABLE
     password: str
+    birth_date: date | None = None
+    phone: str | None = None
+    photo_path: str | None = None
 
     @model_validator(mode='after')
     def pending_requires_freelancer(self):

@@ -232,6 +232,15 @@ class EmployeeService:
         target_employee.role = employee.role
         target_employee.status = employee.status
 
+        if employee.birth_date is not None:
+            target_employee.birth_date = employee.birth_date
+
+        if employee.phone is not None:
+            target_employee.phone = employee.phone
+
+        if employee.photo_path is not None:
+            target_employee.photo_path = employee.photo_path
+
         return await EmployeeRepository.update(
             session,
             target_employee,
