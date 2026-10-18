@@ -6,6 +6,7 @@ from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeCreate,
+    EmployeePublicSchema,
     EmployeeSearchFilters,
     EmployeeUpdate,
     FreelancerPreRegistrationSchema,
@@ -55,11 +56,38 @@ class EmployeeService:
                 return []
             filters = filters.model_copy(update={'role': Roles.FREELANCER})
 
-        return await EmployeeRepository.get_employees(
+        employees = await EmployeeRepository.get_employees(
             session,
             limit,
             offset,
             filters=filters,
+        )
+
+        return [
+            EmployeeService._to_public_schema(employee, current_employee)
+            for employee in employees
+        ]
+
+    @staticmethod
+    def _to_public_schema(
+        employee: Employee, viewer: Employee
+    ) -> EmployeePublicSchema:
+        can_view_private_fields = (
+            viewer.role == Roles.ADMIN or viewer.id == employee.id
+        )
+
+        return EmployeePublicSchema(
+            id=employee.id,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+            email=employee.email,
+            role=employee.role,
+            status=employee.status,
+            birth_date=employee.birth_date
+            if can_view_private_fields
+            else None,
+            phone=employee.phone if can_view_private_fields else None,
+            photo_path=employee.photo_path,
         )
 
     @staticmethod
