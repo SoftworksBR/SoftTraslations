@@ -51,6 +51,18 @@ function CustomDrawerContent() {
             Gerenciar Gestores
           </Text>
         </Pressable>
+
+        <Pressable
+          style={styles.itemMenu}
+          onPress={() =>
+            router.push('/drawer/Configuracoes')
+          }
+        >
+          <Text style={styles.label}>
+            Configurações
+          </Text>
+        </Pressable>
+
       </View>
 
       <View style={styles.rodape}>
@@ -111,7 +123,17 @@ export default function DrawerLayout() {
           title: 'Gerenciar Gestores',
         }}
       />
+
+      <Drawer.Screen
+      name="configuracoes"
+      options={{
+        title: 'Configurações',
+        drawerLabel: 'Configurações',
+      }}
+      />
+
     </Drawer>
+
   );
 }
 
