@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -13,6 +14,7 @@ from src.schemas.employee_schema import (
     EmployeeSearchFilters,
     EmployeeUpdate,
     FreelancerInviteAcceptSchema,
+    FreelancerInviteResponse,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -25,6 +27,14 @@ def _utc_now_naive() -> datetime:
     # O banco guarda horários sem timezone (igual created_at), então o
     # valor em memória também precisa ficar "naive" para dar pra comparar.
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _hash_invite_token(raw_token: str) -> str:
+    # SHA-256 simples: o token já tem entropia alta (secrets.token_urlsafe),
+    # então não precisa de um hash lento/salgado como o de senha — e
+    # precisa ser determinístico para dar para buscar por igualdade no
+    # banco (um hash de senha gera um valor diferente a cada chamada).
+    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 class EmployeeService:
@@ -139,7 +149,7 @@ class EmployeeService:
         session: AsyncSession,
         data: FreelancerPreRegistrationSchema,
         current_employee: Employee,
-    ) -> Employee:
+    ) -> FreelancerInviteResponse:
         if current_employee.role != Roles.PROJETOS:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -156,6 +166,7 @@ class EmployeeService:
         # convite. Esse hash aleatório nunca é informado a ninguém e não
         # permite login até ser substituído em accept_freelancer_invite.
         unusable_password = get_password_hash(secrets.token_urlsafe(32))
+        raw_invite_token = secrets.token_urlsafe(32)
 
         employee = Employee(
             first_name=data.first_name,
@@ -164,21 +175,29 @@ class EmployeeService:
             password=unusable_password,
             role=Roles.FREELANCER,
             status=EmployeeStatus.PENDING,
-            invite_token=secrets.token_urlsafe(32),
+            invite_token_hash=_hash_invite_token(raw_invite_token),
             invite_token_expires_at=(
                 _utc_now_naive() + FREELANCER_INVITE_TOKEN_TTL
             ),
         )
 
-        return await EmployeeRepository.create(session, employee)
+        created_employee = await EmployeeRepository.create(session, employee)
+
+        return FreelancerInviteResponse(
+            id=created_employee.id,
+            first_name=created_employee.first_name,
+            last_name=created_employee.last_name,
+            email=created_employee.email,
+            invite_token=raw_invite_token,
+        )
 
     @staticmethod
     async def accept_freelancer_invite(
         session: AsyncSession,
         data: FreelancerInviteAcceptSchema,
     ) -> Employee:
-        employee = await EmployeeRepository.get_by_invite_token(
-            session, data.token
+        employee = await EmployeeRepository.get_by_invite_token_hash(
+            session, _hash_invite_token(data.token)
         )
         if employee is None:
             raise HTTPException(
@@ -196,7 +215,7 @@ class EmployeeService:
             )
 
         employee.password = get_password_hash(data.password)
-        employee.invite_token = None
+        employee.invite_token_hash = None
         employee.invite_token_expires_at = None
 
         return await EmployeeRepository.update(session, employee)

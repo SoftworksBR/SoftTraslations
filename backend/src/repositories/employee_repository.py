@@ -46,12 +46,14 @@ class EmployeeRepository:
         )
 
     @staticmethod
-    async def get_by_invite_token(
+    async def get_by_invite_token_hash(
         session: AsyncSession,
-        invite_token: str,
+        invite_token_hash: str,
     ):
         return await session.scalar(
-            select(Employee).where(Employee.invite_token == invite_token)
+            select(Employee).where(
+                Employee.invite_token_hash == invite_token_hash
+            )
         )
 
     @staticmethod

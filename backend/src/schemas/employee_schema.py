@@ -90,8 +90,6 @@ class FreelancerInviteResponse(BaseModel):
     email: EmailStr
     invite_token: str
 
-    model_config = ConfigDict(from_attributes=True)
-
 
 class FreelancerInviteAcceptSchema(BaseModel):
     token: str
