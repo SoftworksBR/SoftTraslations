@@ -34,7 +34,7 @@ class Employee:
     )
     phone: Mapped[str | None] = mapped_column(nullable=True, default=None)
     photo_path: Mapped[str | None] = mapped_column(nullable=True, default=None)
-    invite_token: Mapped[str | None] = mapped_column(
+    invite_token_hash: Mapped[str | None] = mapped_column(
         unique=True, nullable=True, default=None
     )
     invite_token_expires_at: Mapped[datetime | None] = mapped_column(
