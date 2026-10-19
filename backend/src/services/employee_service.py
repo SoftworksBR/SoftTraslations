@@ -6,6 +6,7 @@ from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSearchFilters,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -40,6 +41,7 @@ class EmployeeService:
         limit: int,
         offset: int,
         current_employee: Employee,
+        filters: EmployeeSearchFilters,
     ):
         if current_employee.role not in {Roles.ADMIN, Roles.PROJETOS}:
             raise HTTPException(
@@ -47,15 +49,16 @@ class EmployeeService:
                 detail='You do not have permission to view employees',
             )
 
+        if current_employee.role == Roles.PROJETOS:
+            if filters.role is not None and filters.role != Roles.FREELANCER:
+                return []
+            filters = filters.model_copy(update={'role': Roles.FREELANCER})
+
         return await EmployeeRepository.get_employees(
             session,
             limit,
             offset,
-            (
-                Roles.FREELANCER
-                if current_employee.role == Roles.PROJETOS
-                else None
-            ),
+            filters=filters,
         )
 
     @staticmethod

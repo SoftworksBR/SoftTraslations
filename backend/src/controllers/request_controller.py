@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
-from src.schemas.request_schema import RequestCreate, RequestUpdate
+from src.schemas.request_schema import (
+    RequestCreate,
+    RequestSearchFilters,
+    RequestUpdate,
+)
 from src.services.request_service import RequestService
 
 
@@ -17,11 +21,15 @@ class RequestController:
         return await service.create(data)
 
     @staticmethod
-    async def get_all(session: AsyncSession, current_employee: Employee):
+    async def get_all(
+        session: AsyncSession,
+        current_employee: Employee,
+        filters: RequestSearchFilters,
+    ):
 
         service = RequestService(session)
 
-        return await service.get_all(current_employee)
+        return await service.get_all(current_employee, filters)
 
     @staticmethod
     async def update(

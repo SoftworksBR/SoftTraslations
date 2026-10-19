@@ -41,6 +41,12 @@ class EmployeeListSchema(BaseModel):
     employees: list[EmployeePublicSchema]
 
 
+class EmployeeSearchFilters(BaseModel):
+    username: str | None = None
+    email: str | None = None
+    role: Roles | None = None
+
+
 class FreelancerPreRegistrationSchema(BaseModel):
     email: EmailStr
     password: str
