@@ -1,5 +1,5 @@
 import asyncio
-from datetime import date
+from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from types import SimpleNamespace
 
@@ -13,6 +13,7 @@ from src.schemas.employee_schema import (
     EmployeeCreate,
     EmployeeSearchFilters,
     EmployeeUpdate,
+    FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -97,7 +98,9 @@ def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
         EmployeeService.pre_register_freelancer(
             session=None,
             data=FreelancerPreRegistrationSchema(
-                email='new-freelancer@example.com', password='secret'
+                first_name='New',
+                last_name='Freelancer',
+                email='new-freelancer@example.com',
             ),
             current_employee=SimpleNamespace(role=Roles.PROJETOS),
         )
@@ -114,13 +117,127 @@ def test_only_projects_role_can_pre_register_freelancers():
             EmployeeService.pre_register_freelancer(
                 session=None,
                 data=FreelancerPreRegistrationSchema(
-                    email='new-freelancer@example.com', password='secret'
+                    first_name='New',
+                    last_name='Freelancer',
+                    email='new-freelancer@example.com',
                 ),
                 current_employee=SimpleNamespace(role=Roles.ADMIN),
             )
         )
 
     assert error.value.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_pre_registration_generates_single_use_invite_token(monkeypatch):
+    async def get_by_email(session, email):
+        return None
+
+    async def create(session, employee):
+        return employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
+    monkeypatch.setattr(EmployeeRepository, 'create', create)
+
+    employee = asyncio.run(
+        EmployeeService.pre_register_freelancer(
+            session=None,
+            data=FreelancerPreRegistrationSchema(
+                first_name='New',
+                last_name='Freelancer',
+                email='new-freelancer@example.com',
+            ),
+            current_employee=SimpleNamespace(role=Roles.PROJETOS),
+        )
+    )
+
+    assert employee.invite_token
+    assert employee.invite_token_expires_at > datetime.now()
+    # A senha nunca foi informada pelo gestor; vira um hash inutilizavel
+    # ate o freelancer aceitar o convite e definir a propria senha.
+    assert employee.password
+
+
+def test_accept_invite_sets_password_and_clears_token(monkeypatch):
+    employee = SimpleNamespace(
+        id=9,
+        password='old-hash',
+        invite_token='valid-token',
+        invite_token_expires_at=datetime.now() + timedelta(days=1),
+    )
+
+    async def get_by_invite_token(session, invite_token):
+        return employee if invite_token == 'valid-token' else None
+
+    async def update(session, updated_employee):
+        return updated_employee
+
+    monkeypatch.setattr(
+        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+    )
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    updated_employee = asyncio.run(
+        EmployeeService.accept_freelancer_invite(
+            session=None,
+            data=FreelancerInviteAcceptSchema(
+                token='valid-token', password='novaSenha123'
+            ),
+        )
+    )
+
+    assert updated_employee.password != 'old-hash'
+    assert updated_employee.invite_token is None
+    assert updated_employee.invite_token_expires_at is None
+
+
+def test_accept_invite_rejects_unknown_token(monkeypatch):
+    async def get_by_invite_token(session, invite_token):
+        return None
+
+    monkeypatch.setattr(
+        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.accept_freelancer_invite(
+                session=None,
+                data=FreelancerInviteAcceptSchema(
+                    token='unknown', password='novaSenha123'
+                ),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_accept_invite_rejects_expired_token(monkeypatch):
+    employee = SimpleNamespace(
+        id=9,
+        password='old-hash',
+        invite_token='expired-token',
+        invite_token_expires_at=datetime.now() - timedelta(days=1),
+    )
+
+    async def get_by_invite_token(session, invite_token):
+        return employee
+
+    monkeypatch.setattr(
+        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.accept_freelancer_invite(
+                session=None,
+                data=FreelancerInviteAcceptSchema(
+                    token='expired-token', password='novaSenha123'
+                ),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.GONE
+    assert employee.password == 'old-hash'
 
 
 def test_completing_profile_changes_pending_to_available(monkeypatch):
