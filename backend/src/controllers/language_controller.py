@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.language_schema import LanguageCreate, LanguageUpdate
-from src.services.idioma_service import LanguageService
+from src.services.language_service import LanguageService
 
 
 class LanguageController:

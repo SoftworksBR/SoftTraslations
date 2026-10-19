@@ -1,21 +1,18 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
-from src.schemas.translation_price_schema import (
-    TranslationPriceCreate,
-    TranslationPriceUpdate,
-)
-from src.services.preco_traducao_service import TranslationPriceService
+from src.schemas.service_schema import ServiceCreate, ServiceUpdate
+from src.services.service_service import ServiceService
 
 
-class TranslationPriceController:
+class ServiceController:
     @staticmethod
     async def create(
-        data: TranslationPriceCreate,
+        data: ServiceCreate,
         session: AsyncSession,
         current_employee: Employee,
     ):
-        service = TranslationPriceService(session)
+        service = ServiceService(session)
         return await service.create(data, current_employee)
 
     @staticmethod
@@ -23,17 +20,17 @@ class TranslationPriceController:
         session: AsyncSession,
         current_employee: Employee,
     ):
-        service = TranslationPriceService(session)
+        service = ServiceService(session)
         return await service.get_all()
 
     @staticmethod
     async def update(
-        price_id: int,
-        data: TranslationPriceUpdate,
+        service_id: int,
+        data: ServiceUpdate,
         session: AsyncSession,
         current_employee: Employee,
     ):
-        service = TranslationPriceService(session)
+        service = ServiceService(session)
         return await service.update(
-            price_id, data, current_employee
+            service_id, data, current_employee
         )

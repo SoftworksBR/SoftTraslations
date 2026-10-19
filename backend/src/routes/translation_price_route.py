@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.controllers.preco_traducao_controller import (
+from src.controllers.translation_price_controller import (
     TranslationPriceController,
 )
 from src.database import get_session
