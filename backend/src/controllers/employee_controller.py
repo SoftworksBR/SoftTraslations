@@ -9,6 +9,7 @@ from src.schemas.employee_schema import (
     EmployeeCreate,
     EmployeeSearchFilters,
     EmployeeUpdate,
+    FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -33,6 +34,13 @@ async def pre_register_freelancer(
             status_code=HTTPStatus.CONFLICT,
             detail=str(error),
         ) from None
+
+
+async def accept_freelancer_invite(
+    data: FreelancerInviteAcceptSchema,
+    session: AsyncSession,
+):
+    return await service.accept_freelancer_invite(session, data)
 
 
 async def complete_freelancer_profile(

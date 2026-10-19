@@ -1,3 +1,6 @@
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +12,19 @@ from src.schemas.employee_schema import (
     EmployeePublicSchema,
     EmployeeSearchFilters,
     EmployeeUpdate,
+    FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
 from src.security import get_password_hash
+
+FREELANCER_INVITE_TOKEN_TTL = timedelta(days=7)
+
+
+def _utc_now_naive() -> datetime:
+    # O banco guarda horários sem timezone (igual created_at), então o
+    # valor em memória também precisa ficar "naive" para dar pra comparar.
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class EmployeeService:
@@ -140,15 +152,54 @@ class EmployeeService:
         if existing_employee is not None:
             raise ValueError('Email already registered')
 
+        # Sem senha própria ainda: o freelancer só define uma ao aceitar o
+        # convite. Esse hash aleatório nunca é informado a ninguém e não
+        # permite login até ser substituído em accept_freelancer_invite.
+        unusable_password = get_password_hash(secrets.token_urlsafe(32))
+
         employee = Employee(
-            first_name=data.email,
+            first_name=data.first_name,
+            last_name=data.last_name,
             email=data.email,
-            password=get_password_hash(data.password),
+            password=unusable_password,
             role=Roles.FREELANCER,
             status=EmployeeStatus.PENDING,
+            invite_token=secrets.token_urlsafe(32),
+            invite_token_expires_at=(
+                _utc_now_naive() + FREELANCER_INVITE_TOKEN_TTL
+            ),
         )
 
         return await EmployeeRepository.create(session, employee)
+
+    @staticmethod
+    async def accept_freelancer_invite(
+        session: AsyncSession,
+        data: FreelancerInviteAcceptSchema,
+    ) -> Employee:
+        employee = await EmployeeRepository.get_by_invite_token(
+            session, data.token
+        )
+        if employee is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Invalid invite token',
+            )
+
+        if (
+            employee.invite_token_expires_at is None
+            or employee.invite_token_expires_at < _utc_now_naive()
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE,
+                detail='Invite token has expired',
+            )
+
+        employee.password = get_password_hash(data.password)
+        employee.invite_token = None
+        employee.invite_token_expires_at = None
+
+        return await EmployeeRepository.update(session, employee)
 
     @staticmethod
     async def complete_freelancer_profile(

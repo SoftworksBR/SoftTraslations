@@ -78,7 +78,23 @@ class EmployeeSearchFilters(BaseModel):
 
 
 class FreelancerPreRegistrationSchema(BaseModel):
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
     email: EmailStr
+
+
+class FreelancerInviteResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    invite_token: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FreelancerInviteAcceptSchema(BaseModel):
+    token: str
     password: str
 
 

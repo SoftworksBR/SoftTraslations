@@ -46,6 +46,15 @@ class EmployeeRepository:
         )
 
     @staticmethod
+    async def get_by_invite_token(
+        session: AsyncSession,
+        invite_token: str,
+    ):
+        return await session.scalar(
+            select(Employee).where(Employee.invite_token == invite_token)
+        )
+
+    @staticmethod
     async def get_by_id(
         session: AsyncSession,
         employee_id: int,
