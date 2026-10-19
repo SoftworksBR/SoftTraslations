@@ -1,6 +1,5 @@
-from pydantic import BaseModel, ConfigDict
 
-from src.enums.enums import Translations
+from pydantic import BaseModel, ConfigDict
 
 
 class RequestCreate(BaseModel):
@@ -8,8 +7,8 @@ class RequestCreate(BaseModel):
     email: str
     phone: str
     company: str | None = None
-    translate_from: Translations
-    translate_to: Translations
+    source_language_id: int
+    target_language_id: int
     observations: str | None = None
     employee_id: int
 
@@ -19,8 +18,8 @@ class RequestUpdate(BaseModel):
     email: str | None = None
     phone: str | None = None
     company: str | None = None
-    translate_from: Translations | None = None
-    translate_to: Translations | None = None
+    source_language_id: int | None = None
+    target_language_id: int | None = None
     observations: str | None = None
     employee_id: int | None = None
 
@@ -42,7 +41,7 @@ class RequestResponse(BaseModel):
     email: str
     phone: str
     company: str | None
-    translate_from: Translations
-    translate_to: Translations
+    source_language_id: int
+    target_language_id: int
     observations: str | None
     employee_id: int

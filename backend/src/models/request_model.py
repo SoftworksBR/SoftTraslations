@@ -1,8 +1,6 @@
-from sqlalchemy import Enum as SQLEnum
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
-
-from src.enums.enums import Translations
 
 from .base import table_registry
 
@@ -20,14 +18,20 @@ class Request:
     email: Mapped[str] = mapped_column(nullable=False)
     phone: Mapped[str] = mapped_column(nullable=False)
     company: Mapped[str | None] = mapped_column(nullable=True)
-    translate_from: Mapped[Translations] = mapped_column(
-        SQLEnum(Translations), nullable=False
+
+    source_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
+        nullable=False,
     )
-    translate_to: Mapped[Translations] = mapped_column(
-        SQLEnum(Translations), nullable=False
+
+    target_language_id: Mapped[int] = mapped_column(
+        ForeignKey('languages.id'),
+        nullable=False,
     )
+
     observations: Mapped[str | None] = mapped_column(nullable=True)
 
     employee_id: Mapped[int] = mapped_column(
-        ForeignKey('employees.id'), nullable=False
+        ForeignKey('employees.id'),
+        nullable=False,
     )
