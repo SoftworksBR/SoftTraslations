@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from types import SimpleNamespace
@@ -11,6 +12,7 @@ from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeCreate,
+    EmployeePublicSchema,
     EmployeeSearchFilters,
     EmployeeUpdate,
     FreelancerInviteAcceptSchema,
@@ -88,13 +90,14 @@ def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
         return None
 
     async def create(session, employee):
+        employee.id = 1
         created_employees.append(employee)
         return employee
 
     monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
     monkeypatch.setattr(EmployeeRepository, 'create', create)
 
-    employee = asyncio.run(
+    response = asyncio.run(
         EmployeeService.pre_register_freelancer(
             session=None,
             data=FreelancerPreRegistrationSchema(
@@ -106,9 +109,12 @@ def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
         )
     )
 
-    assert created_employees == [employee]
-    assert employee.role == Roles.FREELANCER
-    assert employee.status == EmployeeStatus.PENDING
+    assert len(created_employees) == 1
+    created_employee = created_employees[0]
+    assert created_employee.role == Roles.FREELANCER
+    assert created_employee.status == EmployeeStatus.PENDING
+    assert response.id == created_employee.id
+    assert response.email == created_employee.email
 
 
 def test_only_projects_role_can_pre_register_freelancers():
@@ -129,16 +135,20 @@ def test_only_projects_role_can_pre_register_freelancers():
 
 
 def test_pre_registration_generates_single_use_invite_token(monkeypatch):
+    created_employees = []
+
     async def get_by_email(session, email):
         return None
 
     async def create(session, employee):
+        employee.id = 1
+        created_employees.append(employee)
         return employee
 
     monkeypatch.setattr(EmployeeRepository, 'get_by_email', get_by_email)
     monkeypatch.setattr(EmployeeRepository, 'create', create)
 
-    employee = asyncio.run(
+    response = asyncio.run(
         EmployeeService.pre_register_freelancer(
             session=None,
             data=FreelancerPreRegistrationSchema(
@@ -150,29 +160,42 @@ def test_pre_registration_generates_single_use_invite_token(monkeypatch):
         )
     )
 
-    assert employee.invite_token
-    assert employee.invite_token_expires_at > datetime.now()
+    created_employee = created_employees[0]
+
+    # A resposta traz o token puro (para o gestor repassar); o banco só
+    # guarda o hash dele, nunca o valor puro.
+    assert response.invite_token
+    assert created_employee.invite_token_hash
+    assert created_employee.invite_token_hash != response.invite_token
+    assert (
+        created_employee.invite_token_hash
+        == hashlib.sha256(response.invite_token.encode()).hexdigest()
+    )
+    assert created_employee.invite_token_expires_at > datetime.now()
     # A senha nunca foi informada pelo gestor; vira um hash inutilizavel
     # ate o freelancer aceitar o convite e definir a propria senha.
-    assert employee.password
+    assert created_employee.password
 
 
 def test_accept_invite_sets_password_and_clears_token(monkeypatch):
+    valid_token_hash = hashlib.sha256(b'valid-token').hexdigest()
     employee = SimpleNamespace(
         id=9,
         password='old-hash',
-        invite_token='valid-token',
+        invite_token_hash=valid_token_hash,
         invite_token_expires_at=datetime.now() + timedelta(days=1),
     )
 
-    async def get_by_invite_token(session, invite_token):
-        return employee if invite_token == 'valid-token' else None
+    async def get_by_invite_token_hash(session, invite_token_hash):
+        return employee if invite_token_hash == valid_token_hash else None
 
     async def update(session, updated_employee):
         return updated_employee
 
     monkeypatch.setattr(
-        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+        EmployeeRepository,
+        'get_by_invite_token_hash',
+        get_by_invite_token_hash,
     )
     monkeypatch.setattr(EmployeeRepository, 'update', update)
 
@@ -186,16 +209,18 @@ def test_accept_invite_sets_password_and_clears_token(monkeypatch):
     )
 
     assert updated_employee.password != 'old-hash'
-    assert updated_employee.invite_token is None
+    assert updated_employee.invite_token_hash is None
     assert updated_employee.invite_token_expires_at is None
 
 
 def test_accept_invite_rejects_unknown_token(monkeypatch):
-    async def get_by_invite_token(session, invite_token):
+    async def get_by_invite_token_hash(session, invite_token_hash):
         return None
 
     monkeypatch.setattr(
-        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+        EmployeeRepository,
+        'get_by_invite_token_hash',
+        get_by_invite_token_hash,
     )
 
     with pytest.raises(HTTPException) as error:
@@ -215,15 +240,17 @@ def test_accept_invite_rejects_expired_token(monkeypatch):
     employee = SimpleNamespace(
         id=9,
         password='old-hash',
-        invite_token='expired-token',
+        invite_token_hash=hashlib.sha256(b'expired-token').hexdigest(),
         invite_token_expires_at=datetime.now() - timedelta(days=1),
     )
 
-    async def get_by_invite_token(session, invite_token):
+    async def get_by_invite_token_hash(session, invite_token_hash):
         return employee
 
     monkeypatch.setattr(
-        EmployeeRepository, 'get_by_invite_token', get_by_invite_token
+        EmployeeRepository,
+        'get_by_invite_token_hash',
+        get_by_invite_token_hash,
     )
 
     with pytest.raises(HTTPException) as error:
@@ -238,6 +265,46 @@ def test_accept_invite_rejects_expired_token(monkeypatch):
 
     assert error.value.status_code == HTTPStatus.GONE
     assert employee.password == 'old-hash'
+
+
+def test_invite_token_hash_is_never_part_of_the_public_schema():
+    assert 'invite_token' not in EmployeePublicSchema.model_fields
+    assert 'invite_token_hash' not in EmployeePublicSchema.model_fields
+
+
+def test_listing_response_never_leaks_the_invite_token_hash(monkeypatch):
+    employee_with_pending_invite = SimpleNamespace(
+        id=1,
+        first_name='Ana',
+        last_name='Silva',
+        email='ana@example.com',
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.PENDING,
+        birth_date=None,
+        phone=None,
+        photo_path=None,
+        invite_token_hash='super-secret-hash',
+    )
+
+    async def get_employees(session, limit, offset, filters=None):
+        return [employee_with_pending_invite]
+
+    monkeypatch.setattr(EmployeeRepository, 'get_employees', get_employees)
+
+    result = asyncio.run(
+        EmployeeService.get_employees(
+            session=None,
+            limit=10,
+            offset=0,
+            current_employee=SimpleNamespace(id=99, role=Roles.ADMIN),
+            filters=EmployeeSearchFilters(),
+        )
+    )
+
+    serialized = result[0].model_dump()
+    assert 'invite_token' not in serialized
+    assert 'invite_token_hash' not in serialized
+    assert 'super-secret-hash' not in str(serialized)
 
 
 def test_completing_profile_changes_pending_to_available(monkeypatch):
