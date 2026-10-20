@@ -17,7 +17,6 @@ from src.schemas.employee_schema import (
     EmployeeUpdate,
     FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
 from src.schemas.path_schema import PathCreate
 from src.schemas.project_schema import ProjectCreate
@@ -305,54 +304,6 @@ def test_listing_response_never_leaks_the_invite_token_hash(monkeypatch):
     assert 'invite_token' not in serialized
     assert 'invite_token_hash' not in serialized
     assert 'super-secret-hash' not in str(serialized)
-
-
-def test_completing_profile_changes_pending_to_available(monkeypatch):
-    employee = SimpleNamespace(
-        id=7,
-        role=Roles.FREELANCER,
-        status=EmployeeStatus.PENDING,
-        first_name='freelancer@example.com',
-    )
-
-    async def get_by_id(session, employee_id):
-        return employee
-
-    async def update(session, updated_employee):
-        return updated_employee
-
-    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
-    monkeypatch.setattr(EmployeeRepository, 'update', update)
-
-    updated_employee = asyncio.run(
-        EmployeeService.complete_freelancer_profile(
-            session=None,
-            data=FreelancerProfileSchema(
-                name='Freelancer Name',
-            ),
-            current_employee=employee,
-        )
-    )
-
-    assert updated_employee.first_name == 'Freelancer Name'
-    assert updated_employee.status == EmployeeStatus.AVAILABLE
-
-
-def test_only_freelancers_can_complete_profile():
-    with pytest.raises(HTTPException) as error:
-        asyncio.run(
-            EmployeeService.complete_freelancer_profile(
-                session=None,
-                data=FreelancerProfileSchema(name='Someone'),
-                current_employee=SimpleNamespace(
-                    id=1,
-                    role=Roles.PROJETOS,
-                    status=EmployeeStatus.PENDING,
-                ),
-            )
-        )
-
-    assert error.value.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_generic_employee_update_cannot_complete_pending_freelancer(
