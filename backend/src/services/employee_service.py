@@ -16,7 +16,6 @@ from src.schemas.employee_schema import (
     FreelancerInviteAcceptSchema,
     FreelancerInviteResponse,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
 from src.security import get_password_hash
 
@@ -217,42 +216,6 @@ class EmployeeService:
         employee.password = get_password_hash(data.password)
         employee.invite_token_hash = None
         employee.invite_token_expires_at = None
-
-        return await EmployeeRepository.update(session, employee)
-
-    @staticmethod
-    async def complete_freelancer_profile(
-        session: AsyncSession,
-        data: FreelancerProfileSchema,
-        current_employee: Employee,
-    ) -> Employee:
-        if current_employee.role != Roles.FREELANCER:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Only freelancers can complete this profile',
-            )
-        if current_employee.status != EmployeeStatus.PENDING:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail='Freelancer profile is already complete',
-            )
-
-        employee = await EmployeeRepository.get_by_id(
-            session, current_employee.id
-        )
-        if employee is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Employee not found',
-            )
-        if employee.status != EmployeeStatus.PENDING:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail='Freelancer profile is already complete',
-            )
-
-        employee.first_name = data.name.strip()
-        employee.status = EmployeeStatus.AVAILABLE
 
         return await EmployeeRepository.update(session, employee)
 

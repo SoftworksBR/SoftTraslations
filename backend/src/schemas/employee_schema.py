@@ -34,12 +34,15 @@ class EmployeeCreate(BaseModel):
     password: str
 
     @model_validator(mode='after')
-    def pending_requires_freelancer(self):
+    def freelancer_only_statuses_require_freelancer_role(self):
         if (
-            self.status == EmployeeStatus.PENDING
+            self.status
+            in {EmployeeStatus.PENDING, EmployeeStatus.UNDER_REVIEW}
             and self.role != Roles.FREELANCER
         ):
-            raise ValueError('Only freelancers can have pending status')
+            raise ValueError(
+                'Only freelancers can have pending or under_review status'
+            )
 
         return self
 
@@ -56,12 +59,15 @@ class EmployeeUpdate(BaseModel):
     photo_path: str | None = None
 
     @model_validator(mode='after')
-    def pending_requires_freelancer(self):
+    def freelancer_only_statuses_require_freelancer_role(self):
         if (
-            self.status == EmployeeStatus.PENDING
+            self.status
+            in {EmployeeStatus.PENDING, EmployeeStatus.UNDER_REVIEW}
             and self.role != Roles.FREELANCER
         ):
-            raise ValueError('Only freelancers can have pending status')
+            raise ValueError(
+                'Only freelancers can have pending or under_review status'
+            )
 
         return self
 
@@ -94,7 +100,3 @@ class FreelancerInviteResponse(BaseModel):
 class FreelancerInviteAcceptSchema(BaseModel):
     token: str
     password: str
-
-
-class FreelancerProfileSchema(BaseModel):
-    name: str = Field(min_length=1)

@@ -11,9 +11,10 @@ from src.schemas.employee_schema import (
     EmployeeUpdate,
     FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
+from src.schemas.freelancer_profile_schema import FreelancerProfileSchema
 from src.services.employee_service import EmployeeService
+from src.services.freelancer_profile_service import FreelancerProfileService
 
 service = EmployeeService()
 
@@ -48,11 +49,9 @@ async def complete_freelancer_profile(
     session: AsyncSession,
     current_employee: Employee,
 ):
-    return await service.complete_freelancer_profile(
-        session,
-        data,
-        current_employee,
-    )
+    profile_service = FreelancerProfileService(session)
+
+    return await profile_service.complete_profile(data, current_employee)
 
 
 async def get_employees(

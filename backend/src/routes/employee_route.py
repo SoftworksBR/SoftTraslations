@@ -24,8 +24,8 @@ from src.schemas.employee_schema import (
     FreelancerInviteAcceptSchema,
     FreelancerInviteResponse,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
+from src.schemas.freelancer_profile_schema import FreelancerProfileSchema
 from src.security import get_current_employee
 
 public_router = APIRouter(
