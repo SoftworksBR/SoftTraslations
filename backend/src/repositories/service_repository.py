@@ -1,4 +1,3 @@
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +22,12 @@ class ServiceRepository:
     async def get_all(self) -> list[Service]:
         result = await self.session.scalars(
             select(Service).order_by(Service.name)
+        )
+        return list(result.all())
+
+    async def get_by_ids(self, service_ids: list[int]) -> list[Service]:
+        result = await self.session.scalars(
+            select(Service).where(Service.id.in_(service_ids))
         )
         return list(result.all())
 
