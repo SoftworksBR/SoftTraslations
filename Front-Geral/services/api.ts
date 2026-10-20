@@ -1,14 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000'
 ).replace(/\/$/, '');
 
-const ACCESS_TOKEN_KEY = 'softtranslations.accessToken';
-
-export async function clearLegacyAccessToken() {
-  await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-}
+// O token agora vive em cookie HttpOnly; nada a limpar no dispositivo.
+// Mantida para não quebrar quem ainda chama essa função.
+export async function clearLegacyAccessToken() {}
 
 export class ApiError extends Error {
   status: number;

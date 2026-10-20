@@ -1,192 +1,172 @@
-import {
-  useCallback,
-  useState,
-} from 'react';
-
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 
+import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
-  useFocusEffect,
-} from 'expo-router';
-
-import {
-  orcamentos,
-} from '@/data/orcamentos';
+  approveQuote,
+  formatDate,
+  formatMoney,
+  listQuotes,
+  quoteStatusLabel,
+  rejectQuote,
+  type Quote,
+} from '@/services/quotes';
 
 export default function Orcamentos() {
-
-  const [
-    listaOrcamentos,
-    setListaOrcamentos,
-  ] = useState([...orcamentos]);
-
+  const [listaOrcamentos, setListaOrcamentos] = useState<Quote[]>([]);
+  const [carregando, setCarregando] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
+      let ativo = true;
 
-      setListaOrcamentos(
-        [...orcamentos]
-      );
+      setCarregando(true);
+      listQuotes()
+        .then((lista) => {
+          if (ativo) {
+            setListaOrcamentos(lista);
+          }
+        })
+        .catch((error) => notify('Erro', errorMessage(error)))
+        .finally(() => {
+          if (ativo) {
+            setCarregando(false);
+          }
+        });
 
-    }, [])
+      return () => {
+        ativo = false;
+      };
+    }, []),
   );
 
-
-  function aprovar(id: number) {
-
-    const orcamento =
-      orcamentos.find(
-        (item) => item.id === id
-      );
-
-    if (!orcamento) {
-      return;
-    }
-
-    orcamento.status = 'aprovado';
-
-    setListaOrcamentos(
-      [...orcamentos]
+  function substituir(atualizado: Quote) {
+    setListaOrcamentos((lista) =>
+      lista.map((item) => (item.id === atualizado.id ? atualizado : item)),
     );
   }
 
+  async function aprovar(id: number) {
+    try {
+      substituir(await approveQuote(id));
+    } catch (error) {
+      notify('Erro', errorMessage(error));
+    }
+  }
+
+  function recusar(id: number) {
+    confirmAction(
+      'Recusar orçamento',
+      'O cliente não aceitou o orçamento? A solicitação será marcada como recusada.',
+      'Recusar',
+      async () => {
+        try {
+          substituir(await rejectQuote(id));
+        } catch (error) {
+          notify('Erro', errorMessage(error));
+        }
+      },
+    );
+  }
 
   return (
     <View style={styles.container}>
+      <Text style={styles.titulo}>Orçamentos</Text>
 
-      <Text style={styles.titulo}>
-        Orçamentos
-      </Text>
-
-
-      {listaOrcamentos.length === 0 ? (
-
+      {carregando ? (
+        <ActivityIndicator style={{ marginTop: 30 }} />
+      ) : listaOrcamentos.length === 0 ? (
         <View style={styles.vazioContainer}>
-
-          <Text style={styles.vazio}>
-            Nenhum orçamento criado.
-          </Text>
-
+          <Text style={styles.vazio}>Nenhum orçamento criado.</Text>
         </View>
-
       ) : (
-
         <FlatList
           data={listaOrcamentos}
-
-          keyExtractor={(item) =>
-            item.id.toString()
-          }
-
-          contentContainerStyle={
-            styles.lista
-          }
-
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.lista}
           renderItem={({ item }) => (
-
             <View style={styles.card}>
-
               <View style={styles.topo}>
-
                 <View style={styles.info}>
+                  <Text style={styles.cliente}>{item.client_name}</Text>
 
-                  <Text style={styles.cliente}>
-                    {item.cliente}
-                  </Text>
-
-                  <Text style={styles.servico}>
-                    {item.servico}
-                  </Text>
+                  <Text style={styles.servico}>{item.service_name}</Text>
 
                   <Text style={styles.idiomas}>
-                    {item.traducaoDe}
+                    {item.source_language_name}
                     {' → '}
-                    {item.traducaoPara}
+                    {item.target_language_name}
                   </Text>
-
                 </View>
-
 
                 <View
                   style={[
                     styles.status,
-                    item.status === 'aprovado'
+                    item.status === 'approved'
                       ? styles.statusAprovado
-                      : styles.statusAnalise,
+                      : item.status === 'rejected'
+                        ? extra.statusRecusado
+                        : styles.statusAnalise,
                   ]}
                 >
-
                   <Text
                     style={[
                       styles.statusTexto,
-                      item.status === 'aprovado'
+                      item.status === 'approved'
                         ? styles.textoAprovado
-                        : styles.textoAnalise,
+                        : item.status === 'rejected'
+                          ? extra.textoRecusado
+                          : styles.textoAnalise,
                     ]}
                   >
-                    {item.status}
+                    {quoteStatusLabel[item.status]}
                   </Text>
-
                 </View>
-
               </View>
-
 
               <View style={styles.detalhes}>
+                <Text>Valor: {formatMoney(item.value)}</Text>
+                <Text>Prazo: {formatDate(item.deadline)}</Text>
+                <Text>Data: {formatDate(item.created_at)}</Text>
 
-                <Text>
-                  Valor: {item.valor}
-                </Text>
-
-                <Text>
-                  Prazo: {item.prazo}
-                </Text>
-
-                <Text>
-                  Data: {item.data}
-                </Text>
-
-                {item.observacoes ? (
-                  <Text>
-                    Observações: {item.observacoes}
-                  </Text>
+                {item.observations ? (
+                  <Text>Observações: {item.observations}</Text>
                 ) : null}
-
               </View>
 
-
-              {item.status === 'em análise' && (
-
-                <Pressable
-                  style={styles.botaoAprovar}
-                  onPress={() =>
-                    aprovar(item.id)
-                  }
-                >
-
-                  <Text
-                    style={styles.botaoAprovarTexto}
+              {item.status === 'in_review' && (
+                <>
+                  <Pressable
+                    style={styles.botaoAprovar}
+                    onPress={() => aprovar(item.id)}
                   >
-                    MARCAR COMO APROVADO
-                  </Text>
+                    <Text style={styles.botaoAprovarTexto}>
+                      MARCAR COMO APROVADO
+                    </Text>
+                  </Pressable>
 
-                </Pressable>
-
+                  <Pressable
+                    style={extra.botaoRecusar}
+                    onPress={() => recusar(item.id)}
+                  >
+                    <Text style={extra.botaoRecusarTexto}>
+                      MARCAR COMO RECUSADO
+                    </Text>
+                  </Pressable>
+                </>
               )}
-
             </View>
-
           )}
         />
-
       )}
-
     </View>
   );
 }
@@ -303,4 +283,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
+});
+
+const extra = StyleSheet.create({
+  statusRecusado: {
+    backgroundColor: '#fdeaea',
+  },
+  textoRecusado: {
+    color: '#b00020',
+  },
+  botaoRecusar: {
+    borderWidth: 1,
+    borderColor: '#b00020',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  botaoRecusarTexto: {
+    color: '#b00020',
+    fontWeight: 'bold',
+  },
 });

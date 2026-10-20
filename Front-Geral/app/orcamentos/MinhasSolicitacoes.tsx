@@ -1,284 +1,217 @@
-import {
-  useCallback,
-  useState,
-} from 'react';
-
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect, router } from 'expo-router';
 
+import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
-  useFocusEffect,
-} from 'expo-router';
+  deletePublicRequest,
+  loadMyRequests,
+  type PublicRequest,
+  type RequestStatus,
+} from '@/services/requests';
+import { formatDate, formatMoney, quoteStatusLabel } from '@/services/quotes';
 
-import { router } from 'expo-router';
-
-import {
-  requisicoes,
-} from '@/data/requisicoes';
+const statusLabel: Record<RequestStatus, string> = {
+  pending: 'aguardando análise',
+  quoted: 'orçamento enviado',
+  rejected: 'recusada',
+};
 
 export default function MinhasSolicitacoes() {
-
-  const [
-    listaSolicitacoes,
-    setListaSolicitacoes,
-  ] = useState([...requisicoes]);
-
-  const [aberto, setAberto] =
-    useState<number | null>(null);
+  const [listaSolicitacoes, setListaSolicitacoes] = useState<
+    PublicRequest[]
+  >([]);
+  const [carregando, setCarregando] = useState(true);
+  const [aberto, setAberto] = useState<number | null>(null);
 
   useFocusEffect(
     useCallback(() => {
+      let ativo = true;
 
-      setListaSolicitacoes(
-        [...requisicoes]
-      );
+      setCarregando(true);
+      loadMyRequests()
+        .then((lista) => {
+          if (ativo) {
+            setListaSolicitacoes(lista);
+          }
+        })
+        .catch((error) => notify('Erro', errorMessage(error)))
+        .finally(() => {
+          if (ativo) {
+            setCarregando(false);
+          }
+        });
 
-    }, [])
+      return () => {
+        ativo = false;
+      };
+    }, []),
   );
 
   function alternar(id: number) {
-
-    if (aberto === id) {
-      setAberto(null);
-    } else {
-      setAberto(id);
-    }
-
+    setAberto(aberto === id ? null : id);
   }
 
-  function deletarSolicitacao(id: number) {
-    Alert.alert(
+  function deletarSolicitacao(item: PublicRequest) {
+    confirmAction(
       'Deletar solicitação',
       'Tem certeza que deseja deletar esta solicitação?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Deletar',
-          style: 'destructive',
-          onPress: () => {
-            const index = requisicoes.findIndex(
-              (item) => item.id === id
-            );
-
-            if (index > -1) {
-              requisicoes.splice(index, 1);
-            }
-
-            setListaSolicitacoes(
-              [...requisicoes]
-            );
-
-            if (aberto === id) {
-              setAberto(null);
-            }
-          },
-        },
-      ]
+      'Deletar',
+      async () => {
+        try {
+          await deletePublicRequest(item.public_token);
+          setListaSolicitacoes((lista) =>
+            lista.filter((outra) => outra.id !== item.id),
+          );
+          if (aberto === item.id) {
+            setAberto(null);
+          }
+        } catch (error) {
+          notify('Erro', errorMessage(error));
+        }
+      },
     );
   }
 
   return (
     <View style={styles.container}>
+      <Text style={styles.titulo}>Solicitações de Orçamento</Text>
 
-      <Text style={styles.titulo}>
-        Solicitações de Orçamento
-      </Text>
-
-      {listaSolicitacoes.length === 0 ? (
-
+      {carregando ? (
+        <ActivityIndicator style={{ marginTop: 30 }} />
+      ) : listaSolicitacoes.length === 0 ? (
         <View style={styles.vazioContainer}>
-
-          <Text style={styles.vazio}>
-            Nenhuma solicitação enviada.
-          </Text>
+          <Text style={styles.vazio}>Nenhuma solicitação enviada.</Text>
 
           <Pressable
             style={styles.botaoNovo}
-            onPress={() =>
-              router.push('/orcamentos/FazerSolicitacao')
-            }
+            onPress={() => router.push('/orcamentos/FazerSolicitacao')}
           >
-
-            <Text style={styles.botaoNovoTexto}>
-              + FAZER SOLICITAÇÃO
-            </Text>
-
+            <Text style={styles.botaoNovoTexto}>+ FAZER SOLICITAÇÃO</Text>
           </Pressable>
-
         </View>
-
       ) : (
-
         <FlatList
           data={listaSolicitacoes}
-
-          keyExtractor={(item) =>
-            item.id.toString()
-          }
-
-          contentContainerStyle={
-            styles.lista
-          }
-
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.lista}
           renderItem={({ item }) => {
-
             const expandido = aberto === item.id;
+            const pendente = item.status === 'pending';
 
             return (
               <View style={styles.card}>
-
                 <Pressable
                   style={styles.cabecalho}
-                  onPress={() =>
-                    alternar(item.id)
-                  }
+                  onPress={() => alternar(item.id)}
                 >
-
                   <View style={styles.resumo}>
-
                     <Text style={styles.servico}>
-                      {item.servico}
+                      {item.service_name ?? 'Serviço não informado'}
                     </Text>
 
                     <Text style={styles.idiomas}>
-                      {item.traducaoDe}
+                      {item.source_language_name}
                       {' → '}
-                      {item.traducaoPara}
+                      {item.target_language_name}
                     </Text>
 
                     <Text style={styles.data}>
-                      {item.data}
+                      {formatDate(item.created_at)} · {statusLabel[item.status]}
                     </Text>
-
                   </View>
 
-                  <Text style={styles.seta}>
-                    {expandido ? '▲' : '▼'}
-                  </Text>
-
+                  <Text style={styles.seta}>{expandido ? '▲' : '▼'}</Text>
                 </Pressable>
 
                 {expandido && (
-
                   <View style={styles.detalhes}>
-
-                    <Text style={styles.label}>
-                      Nome
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.nome}
-                    </Text>
-
-                    <Text style={styles.label}>
-                      E-mail
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.email}
-                    </Text>
-
-                    <Text style={styles.label}>
-                      Telefone
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.telefone}
-                    </Text>
-
-                    <Text style={styles.label}>
-                      Empresa
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.empresa}
-                    </Text>
-
-                    <Text style={styles.label}>
-                      Serviço
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.servico}
-                    </Text>
-
-                    <Text style={styles.label}>
-                      Tradução
-                    </Text>
-
-                    <Text style={styles.valor}>
-                      {item.traducaoDe}
-                      {' → '}
-                      {item.traducaoPara}
-                    </Text>
-
-                    {item.observacoes && (
-
-                      <>
-
-                        <Text style={styles.label}>
-                          Observações
+                    {item.quote && (
+                      <View style={extra.orcamento}>
+                        <Text style={extra.orcamentoTitulo}>
+                          Orçamento ({quoteStatusLabel[item.quote.status]})
                         </Text>
-
-                        <Text style={styles.valor}>
-                          {item.observacoes}
-                        </Text>
-
-                      </>
-
+                        <Text>Valor: {formatMoney(item.quote.value)}</Text>
+                        <Text>Prazo: {formatDate(item.quote.deadline)}</Text>
+                        {item.quote.observations ? (
+                          <Text>Observações: {item.quote.observations}</Text>
+                        ) : null}
+                      </View>
                     )}
 
-                    <Pressable
-                      style={styles.botaoEditar}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/orcamentos/FazerSolicitacao',
-                          params: {
-                            requisicaoId: item.id.toString(),
-                          },
-                        })
-                      }
-                    >
+                    <Text style={styles.label}>Nome</Text>
+                    <Text style={styles.valor}>{item.username}</Text>
 
-                      <Text style={styles.botaoEditarTexto}>
-                        EDITAR
+                    <Text style={styles.label}>E-mail</Text>
+                    <Text style={styles.valor}>{item.email}</Text>
+
+                    <Text style={styles.label}>Telefone</Text>
+                    <Text style={styles.valor}>{item.phone}</Text>
+
+                    <Text style={styles.label}>Empresa</Text>
+                    <Text style={styles.valor}>
+                      {item.company || 'Não informado'}
+                    </Text>
+
+                    {item.observations ? (
+                      <>
+                        <Text style={styles.label}>Observações</Text>
+                        <Text style={styles.valor}>{item.observations}</Text>
+                      </>
+                    ) : null}
+
+                    {item.files.length > 0 && (
+                      <>
+                        <Text style={styles.label}>Anexos</Text>
+                        {item.files.map((arquivo) => (
+                          <Text key={arquivo.id} style={styles.valor}>
+                            📎 {arquivo.original_name}
+                          </Text>
+                        ))}
+                      </>
+                    )}
+
+                    {pendente ? (
+                      <>
+                        <Pressable
+                          style={styles.botaoEditar}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/orcamentos/FazerSolicitacao',
+                              params: { token: item.public_token },
+                            })
+                          }
+                        >
+                          <Text style={styles.botaoEditarTexto}>EDITAR</Text>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.botaoDeletar}
+                          onPress={() => deletarSolicitacao(item)}
+                        >
+                          <Text style={styles.botaoDeletarTexto}>DELETAR</Text>
+                        </Pressable>
+                      </>
+                    ) : (
+                      <Text style={extra.aviso}>
+                        Esta solicitação já foi analisada e não pode mais ser
+                        alterada.
                       </Text>
-
-                    </Pressable>
-
-                    <Pressable
-                      style={styles.botaoDeletar}
-                      onPress={() =>
-                        deletarSolicitacao(item.id)
-                      }
-                    >
-
-                      <Text style={styles.botaoDeletarTexto}>
-                        DELETAR
-                      </Text>
-
-                    </Pressable>
-
+                    )}
                   </View>
-
                 )}
-
               </View>
             );
           }}
         />
-
       )}
-
     </View>
   );
 }
@@ -412,4 +345,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
+});
+
+const extra = StyleSheet.create({
+  orcamento: {
+    backgroundColor: '#eef6ee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  orcamentoTitulo: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  aviso: {
+    color: '#666',
+    marginTop: 12,
+  },
 });

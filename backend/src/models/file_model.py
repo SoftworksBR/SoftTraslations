@@ -8,9 +8,13 @@ from .base import table_registry
 class RequestFile:
     __tablename__ = 'request_files'
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    id: Mapped[int] = mapped_column(
+        init=False, primary_key=True, autoincrement=True
+    )
 
     file_path: Mapped[str] = mapped_column(nullable=False)
+
+    original_name: Mapped[str] = mapped_column(nullable=False)
 
     request_id: Mapped[int] = mapped_column(
         ForeignKey('requests.id'), nullable=False

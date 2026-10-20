@@ -187,7 +187,7 @@ export default function Configuracoes() {
         id: Date.now(),
         servico: servicoSelecionado,
         origem: origemSelecionada,
-        destino: destinoSelecionada,
+        destino: destinoSelecionado,
         valor,
       },
     ]);

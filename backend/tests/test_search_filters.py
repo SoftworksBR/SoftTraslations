@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 from sqlalchemy.dialects import postgresql
 
-from src.enums.enums import Roles, Status, Translations
+from src.enums.enums import RequestStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.request_repository import RequestRepository
@@ -23,6 +23,10 @@ class _Result:
     @staticmethod
     def all():
         return []
+
+    @staticmethod
+    def unique():
+        return _Result()
 
 
 def _sql(statement):
@@ -66,8 +70,10 @@ def test_request_search_filters_build_case_insensitive_query():
                 email='example.com',
                 phone='123',
                 company='example',
-                translate_from=Translations.PORTUGUESE,
-                translate_to=Translations.ENGLISH,
+                source_language_id=1,
+                target_language_id=2,
+                service_id=3,
+                status=RequestStatus.PENDING,
             )
         )
     )
@@ -77,8 +83,10 @@ def test_request_search_filters_build_case_insensitive_query():
     assert 'requests.email ilike' in query
     assert 'requests.phone ilike' in query
     assert 'requests.company ilike' in query
-    assert 'requests.translate_from =' in query
-    assert 'requests.translate_to =' in query
+    assert 'requests.source_language_id =' in query
+    assert 'requests.target_language_id =' in query
+    assert 'requests.service_id =' in query
+    assert 'requests.status =' in query
 
 
 def test_project_search_filters_include_related_path_stages():

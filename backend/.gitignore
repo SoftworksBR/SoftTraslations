@@ -5,3 +5,5 @@
 .env
 .coverage
 .htmlcov/
+# Anexos enviados pelos clientes
+uploads/
