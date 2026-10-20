@@ -1,5 +1,6 @@
-
 from pydantic import BaseModel, ConfigDict
+
+from src.enums.enums import Translations
 
 
 class RequestCreate(BaseModel):
