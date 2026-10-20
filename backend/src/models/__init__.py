@@ -11,3 +11,4 @@ from .stage_model import Stage as Stage
 from .language_model import Language as Language
 from .service_model import Service as Service
 from .translation_price_model import TranslationPrice as TranslationPrice
+from .quote_model import Quote as Quote

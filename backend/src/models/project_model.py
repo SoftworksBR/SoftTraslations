@@ -36,6 +36,14 @@ class Project:
         ForeignKey('employees.id'), nullable=False
     )
 
+    # Orçamento aprovado que originou o projeto.
+    quote_id: Mapped[int | None] = mapped_column(
+        ForeignKey('quotes.id'),
+        unique=True,
+        nullable=True,
+        default=None,
+    )
+
     paths: Mapped[list['Path']] = relationship(
         secondary=path_projects,
         back_populates='projects',

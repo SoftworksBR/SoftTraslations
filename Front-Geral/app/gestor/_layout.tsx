@@ -2,6 +2,8 @@
 import { Drawer } from 'expo-router/drawer';
 import { router } from 'expo-router';
 
+import { logout } from '@/services/auth';
+
 import {
   View,
   Text,
@@ -10,8 +12,12 @@ import {
 } from 'react-native';
 
 function CustomDrawerContent() {
-  function deslogar() {
-    router.replace('/');
+  async function deslogar() {
+    try {
+      await logout();
+    } finally {
+      router.replace('/');
+    }
   }
 
   return (

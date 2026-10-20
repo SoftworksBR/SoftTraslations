@@ -29,3 +29,15 @@ class Roles(Enum):
     PROJETOS = 'projetos'
     ATENDIMENTO = 'atendimento'
     FREELANCER = 'freelancer'
+
+
+class RequestStatus(Enum):
+    PENDING = 'pending'
+    QUOTED = 'quoted'
+    REJECTED = 'rejected'
+
+
+class QuoteStatus(Enum):
+    IN_REVIEW = 'in_review'
+    APPROVED = 'approved'
+    REJECTED = 'rejected'
