@@ -3,6 +3,7 @@ from http import HTTPStatus
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.enums.enums import AccountStatus
 from src.repositories.employee_repository import EmployeeRepository
 from src.security import create_access_token, verify_password
 
@@ -26,8 +27,14 @@ class AuthService:
 
         if not employee or not verify_password(
             password,
-            employee.password,
+            employee.password_hash,
         ):
+            raise HTTPException(
+                status_code=HTTPStatus.UNAUTHORIZED,
+                detail='Incorrect username or password',
+            )
+
+        if employee.account_status != AccountStatus.ACTIVE:
             raise HTTPException(
                 status_code=HTTPStatus.UNAUTHORIZED,
                 detail='Incorrect username or password',

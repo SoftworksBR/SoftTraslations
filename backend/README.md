@@ -11,6 +11,8 @@
 - Python 3.13
 - uv
 - PostgreSQL
+- MongoDB (para auditoria e logs; a API continua operando sem ele, mas a outbox
+  permanece pendente e os logs não são persistidos)
 
 **Instalação dos requisitos**
 
@@ -59,6 +61,15 @@ PS C:\Users\...\SoftTraslations\backend> .venv\Scripts\Activate.ps1
 
 Para rodar o projeto, crie um novo arquivo chamado ``.env`` a partir do arquivo ``.env.example`` e, na primeira linha, mude **postgres_username:postgres_password** para o nome do seu usuário e sua senha, por exemplo, **postgres:senha123**. O nome do cookie de autenticação pode ser alterado pela variável `ACCESS_TOKEN_COOKIE_NAME`.
 
+Configure também `MONGODB_URI` e `MONGODB_DATABASE` para o serviço MongoDB
+usado nos logs e na entrega dos eventos de auditoria. Substitua
+`SECRET_KEY` por um valor aleatório forte antes de expor a aplicação.
+Defina `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_EMAIL` e
+`INITIAL_ADMIN_PASSWORD` no `.env` para criar o administrador inicial. Essa
+conta é criada automaticamente na inicialização da API quando o banco ainda
+não possui funcionários; contas existentes não são alteradas. Guarde o `.env`
+em segurança e não use credenciais de exemplo em produção.
+
 Na barra de pesquisa do seu navegador, pesquise por **pgadmin** para abrir o PostgreSQL. Lá, você deve criar um banco de dados vazio com o nome **soft_translations_db**. Para isso, basta clicar nas setas ao lado de Services > PostgreSQL x, depois clique com o botão direito em Databases > Create > Database...
 
 Agora no seu terminal é possível popular o seu banco de dados com o comando
@@ -66,7 +77,13 @@ Agora no seu terminal é possível popular o seu banco de dados com o comando
 alembic upgrade head
 ```
 
-Por fim, utilize o seguinte comando para executar o projeto:
+Antes de atualizar um ambiente com dados existentes, faça backup e valide a
+migração em uma cópia isolada. A revisão `f3a91b7c2d60` é incremental sobre o
+head do repositório; ela não foi aplicada automaticamente ao banco configurado
+neste workspace.
+
+Depois de aplicar as migrações e configurar o administrador inicial, utilize o
+seguinte comando para executar o projeto:
 ```
 task run
 ```

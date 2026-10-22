@@ -9,7 +9,9 @@ import pytest
 from fastapi import HTTPException
 
 from src.enums.enums import QuoteStatus, RequestStatus, Roles, Status
+from src.models.outbox_model import OutboxEvent
 from src.models.path_model import Path
+from src.models.project_model import Project
 from src.schemas.project_schema import ProjectCreate
 from src.schemas.quote_schema import QuoteCreate, QuoteUpdate
 from src.services.project_service import ProjectService
@@ -24,6 +26,7 @@ class FakeQuoteRepository:
         self.quote = quote
         self.created = None
         self.deleted = None
+        self.session = FakeAuditSession()
 
     async def get_by_request_id(self, request_id):
         return self.quote
@@ -40,6 +43,17 @@ class FakeQuoteRepository:
 
     async def delete(self, quote):
         self.deleted = quote
+
+
+class FakeAuditSession:
+    def add(self, instance):
+        if isinstance(instance, OutboxEvent):
+            return
+        if getattr(instance, 'id', None) is None:
+            instance.id = 3
+
+    async def flush(self):
+        return None
 
 
 class FakeRequestRepository:
@@ -249,10 +263,22 @@ class FakeSession:
         self.existing_project_id = existing_project_id
 
     async def scalars(self, statement):
-        return SimpleNamespace(all=lambda: [Path(name='trilha')])
+        path = Path(name='trilha')
+        path.id = 1
+        return SimpleNamespace(all=lambda: [path])
 
     async def scalar(self, statement):
         return self.existing_project_id
+
+    def add(self, instance):
+        if isinstance(instance, Project):
+            instance.id = 1
+
+    def add_all(self, instances):
+        return None
+
+    async def flush(self):
+        return None
 
 
 def make_project_service(quote, existing_project_id=None):

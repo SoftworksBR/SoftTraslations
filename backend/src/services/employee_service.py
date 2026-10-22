@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import EmployeeStatus, Roles
-from src.models.employee_model import Employee
+from src.models.employee_model import Employee, FreelancerProfile
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
@@ -113,11 +113,14 @@ class EmployeeService:
 
         employee = Employee(
             username=data.email,
+            first_name=data.first_name.strip(),
+            last_name=data.last_name.strip(),
             email=data.email,
-            password=get_password_hash(data.password),
+            password_hash=get_password_hash(data.password),
             role=Roles.FREELANCER,
             status=EmployeeStatus.PENDING,
         )
+        employee.freelancer_profile = FreelancerProfile()
 
         return await EmployeeRepository.create(session, employee)
 
@@ -132,12 +135,6 @@ class EmployeeService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only freelancers can complete this profile',
             )
-        if current_employee.status != EmployeeStatus.PENDING:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail='Freelancer profile is already complete',
-            )
-
         employee = await EmployeeRepository.get_by_id(
             session, current_employee.id
         )
@@ -146,14 +143,24 @@ class EmployeeService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='Employee not found',
             )
-        if employee.status != EmployeeStatus.PENDING:
+        profile = getattr(employee, 'freelancer_profile', None)
+        if profile is None:
+            profile = FreelancerProfile()
+            employee.freelancer_profile = profile
+        if profile.profile_completed:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail='Freelancer profile is already complete',
             )
 
-        employee.username = data.name.strip()
+        employee.birth_date = data.birth_date
+        employee.phone = data.phone
+        employee.photo_url = data.photo_url
         employee.status = EmployeeStatus.AVAILABLE
+        profile.specialization = data.specialization
+        profile.bio = data.bio
+        profile.hourly_rate = data.hourly_rate
+        profile.profile_completed = True
 
         return await EmployeeRepository.update(session, employee)
 
@@ -165,27 +172,34 @@ class EmployeeService:
         db_employee = await EmployeeRepository.get_by_email_or_username(
             session,
             employee.email,
-            employee.username,
+            employee.username or employee.email,
         )
 
         if db_employee:
             if db_employee.email == employee.email:
                 raise ValueError('Email already registered')
 
-            if db_employee.username == employee.username:
+            if db_employee.username == (employee.username or employee.email):
                 raise ValueError('employeename already registered')
 
         db_employee = Employee(
-            username=employee.username,
+            username=employee.username or employee.email,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
             email=employee.email,
+            birth_date=employee.birth_date,
+            photo_url=employee.photo_url,
+            phone=employee.phone,
             role=employee.role,
             status=(
                 EmployeeStatus.PENDING
                 if employee.role == Roles.FREELANCER
                 else employee.status
             ),
-            password=get_password_hash(employee.password),
+            password_hash=get_password_hash(employee.password),
         )
+        if employee.role == Roles.FREELANCER:
+            db_employee.freelancer_profile = FreelancerProfile()
 
         return await EmployeeRepository.create(
             session,
@@ -228,9 +242,14 @@ class EmployeeService:
                 detail='Freelancers must complete their own profile',
             )
 
-        target_employee.username = employee.username
+        target_employee.username = employee.username or employee.email
+        target_employee.first_name = employee.first_name
+        target_employee.last_name = employee.last_name
         target_employee.email = employee.email
-        target_employee.password = get_password_hash(employee.password)
+        target_employee.birth_date = employee.birth_date
+        target_employee.photo_url = employee.photo_url
+        target_employee.phone = employee.phone
+        target_employee.password_hash = get_password_hash(employee.password)
         target_employee.role = employee.role
         target_employee.status = employee.status
 

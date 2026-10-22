@@ -1,5 +1,6 @@
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import EmployeeSearchFilters
@@ -13,7 +14,9 @@ class EmployeeRepository:
         offset: int,
         filters: EmployeeSearchFilters | None = None,
     ):
-        query = select(Employee)
+        query = select(Employee).options(
+            selectinload(Employee.freelancer_profile)
+        )
 
         if filters is not None:
             if filters.role is not None:
@@ -56,7 +59,9 @@ class EmployeeRepository:
         employee_id: int,
     ) -> Employee | None:
         return await session.scalar(
-            select(Employee).where(Employee.id == employee_id)
+            select(Employee)
+            .options(selectinload(Employee.freelancer_profile))
+            .where(Employee.id == employee_id)
         )
 
     @staticmethod
