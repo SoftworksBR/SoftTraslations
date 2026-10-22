@@ -18,6 +18,7 @@ from src.schemas.quote_schema import (
     QuoteSuggestionResponse,
     QuoteUpdate,
 )
+from src.services.outbox import enqueue_event
 
 
 class QuoteService:
@@ -57,12 +58,35 @@ class QuoteService:
             observations=data.observations,
             created_by_id=current_employee.id,
         )
-        quote = await self.repository.create(quote)
-
-        # O atendente que orça passa a ser o responsável pela solicitação.
         request.status = RequestStatus.QUOTED
         request.employee_id = current_employee.id
-        await self.request_repository.update(request)
+        self.repository.session.add(quote)
+        await self.repository.session.flush()
+        enqueue_event(
+            self.repository.session,
+            event_type='quote.created',
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': quote.status.value},
+                'source': 'api',
+                'request_id': request.id,
+            },
+        )
+        enqueue_event(
+            self.repository.session,
+            event_type='request.quoted',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': request.status.value},
+                'source': 'api',
+                'request_id': request.id,
+            },
+        )
+        quote = await self.repository.create(quote)
 
         return quote
 
@@ -146,6 +170,18 @@ class QuoteService:
         if data.observations is not None:
             quote.observations = data.observations
 
+        enqueue_event(
+            self.repository.session,
+            event_type='quote.updated',
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': quote.status.value},
+                'source': 'api',
+                'request_id': quote.request_id,
+            },
+        )
         return await self.repository.update(quote)
 
     async def approve(
@@ -159,6 +195,18 @@ class QuoteService:
         quote.approved_by_id = current_employee.id
         quote.approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
+        enqueue_event(
+            self.repository.session,
+            event_type='quote.approved',
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': quote.status.value},
+                'source': 'api',
+                'request_id': quote.request_id,
+            },
+        )
         return await self.repository.update(quote)
 
     async def reject(self, quote_id: int, current_employee: Employee) -> Quote:
@@ -169,12 +217,34 @@ class QuoteService:
         quote.status = QuoteStatus.REJECTED
         quote.approved_by_id = current_employee.id
         quote.approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        quote = await self.repository.update(quote)
-
         request = await self.request_repository.get_by_id(quote.request_id)
         if request is not None:
             request.status = RequestStatus.REJECTED
-            await self.request_repository.update(request)
+            enqueue_event(
+                self.repository.session,
+                event_type='request.rejected',
+                aggregate_type='request',
+                aggregate_id=request.id,
+                payload={
+                    'actor': {'employee_id': current_employee.id},
+                    'details': {'status': request.status.value},
+                    'source': 'api',
+                    'request_id': request.id,
+                },
+            )
+        enqueue_event(
+            self.repository.session,
+            event_type='quote.rejected',
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': quote.status.value},
+                'source': 'api',
+                'request_id': quote.request_id,
+            },
+        )
+        quote = await self.repository.update(quote)
 
         return quote
 
@@ -184,12 +254,33 @@ class QuoteService:
         self._require_in_review(quote)
 
         request = await self.request_repository.get_by_id(quote.request_id)
-        await self.repository.delete(quote)
-
-        # A solicitação volta para a fila do atendimento.
         if request is not None:
             request.status = RequestStatus.PENDING
-            await self.request_repository.update(request)
+            enqueue_event(
+                self.repository.session,
+                event_type='request.reopened',
+                aggregate_type='request',
+                aggregate_id=request.id,
+                payload={
+                    'actor': {'employee_id': current_employee.id},
+                    'details': {'status': request.status.value},
+                    'source': 'api',
+                    'request_id': request.id,
+                },
+            )
+        enqueue_event(
+            self.repository.session,
+            event_type='quote.deleted',
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {},
+                'source': 'api',
+                'request_id': quote.request_id,
+            },
+        )
+        await self.repository.delete(quote)
 
     async def _get(self, quote_id: int) -> Quote:
         quote = await self.repository.get_by_id(quote_id)
