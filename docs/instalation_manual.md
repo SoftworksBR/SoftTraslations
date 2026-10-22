@@ -167,7 +167,13 @@ npm run web
 
 Quando o Expo iniciar, acesse no navegador o endereço informado no terminal; normalmente é `http://localhost:8081`.
 
-O frontend usa `http://127.0.0.1:8000` como endereço padrão do backend. Para apontá-lo a outro endereço, crie `Front-Geral/.env` com `EXPO_PUBLIC_API_URL=http://<endereco-do-backend>:8000` e reinicie o Expo.
+Para testar em um celular com o **Expo Go**, conecte o celular e o computador à mesma rede Wi-Fi e inicie o Expo no modo LAN:
+
+```text
+npx expo start --lan
+```
+
+O app usa o endereço de rede anunciado pelo Expo para acessar o backend na porta `8000`. O backend precisa estar rodando com `task run` (que o disponibiliza na rede local). Se a descoberta automática não funcionar, crie `Front-Geral/.env` com `EXPO_PUBLIC_API_URL=http://<IP-do-computador>:8000`, usando o IPv4 do computador em vez de `localhost`, e reinicie o Expo. No Windows, consulte o IPv4 com `ipconfig`. Se necessário, permita conexões de entrada na porta `8000` no firewall.
 
 ## Executar o sistema em outros dias
 
@@ -206,4 +212,5 @@ Abra `http://localhost:8081` no navegador.
 - **Erro ao aplicar migrações:** verifique se o ambiente virtual está ativado e se você está dentro da pasta `backend`.
 - **O PowerShell não permite ativar o ambiente virtual:** execute a instrução `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` indicada acima na mesma janela.
 - **A tela não consegue acessar a API:** mantenha o backend em execução e confirme se o frontend está apontando para o endereço correto do backend.
+- **O Expo Go não consegue acessar o login:** confirme que o celular e o computador estão na mesma rede Wi-Fi, que o Expo foi iniciado com `npx expo start --lan`, e que o endereço configurado para a API usa o IPv4 do computador, não `localhost`. Verifique também se o firewall permite conexões na porta `8000`.
 - **A porta já está em uso:** encerre a aplicação que está usando a porta ou siga as instruções exibidas pelo Expo para selecionar outra porta.
