@@ -5,13 +5,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.auth_controller import AuthController
-from src.controllers.employee_controller import create_initial_admin
 from src.database import get_session
-from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.auth_schema import TokenSchema
-from src.schemas.employee_schema import EmployeePublicSchema, EmployeeSchema
+from src.schemas.employee_schema import EmployeePublicSchema
 from src.security import get_current_employee, settings
 
 router = APIRouter(
@@ -64,22 +62,3 @@ async def logout():
         path='/',
     )
     return response
-
-
-@router.post(
-    '/register-admin',
-    response_model=EmployeePublicSchema,
-    status_code=HTTPStatus.CREATED,
-)
-async def register_temporary_admin(
-    session: AsyncSession = Depends(get_session),
-):
-    return await create_initial_admin(
-        EmployeeSchema(
-            username='admin',
-            email='admin@admin.com',
-            role=Roles.ADMIN,
-            password='admin123',
-        ),
-        session,
-    )
