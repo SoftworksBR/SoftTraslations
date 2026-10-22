@@ -24,6 +24,7 @@ from src.schemas.request_schema import (
     RequestSearchFilters,
     RequestUpdate,
 )
+from src.services.outbox import enqueue_event
 from src.settings import Settings
 
 ALLOWED_EXTENSIONS = {
@@ -71,13 +72,27 @@ class RequestService:
             username=data.username,
             email=data.email,
             phone=data.phone,
-            company=data.company,
+            company_name=data.company,
             source_language_id=data.source_language_id,
             target_language_id=data.target_language_id,
             public_token=secrets.token_urlsafe(24),
             service_id=data.service_id,
             observations=data.observations,
             word_count=data.word_count,
+        )
+        self.repository.session.add(request)
+        await self.repository.session.flush()
+        enqueue_event(
+            self.repository.session,
+            event_type='request.created',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': None,
+                'details': {'status': request.status.value},
+                'source': 'public_api',
+                'request_id': request.id,
+            },
         )
 
         return await self.repository.create(request)
@@ -94,6 +109,18 @@ class RequestService:
         self._require_pending(request)
 
         await self._apply_changes(request, data)
+        enqueue_event(
+            self.repository.session,
+            event_type='request.updated',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': None,
+                'details': {'source': 'public_request_portal'},
+                'source': 'public_api',
+                'request_id': request.id,
+            },
+        )
         request = await self.repository.update(request)
 
         return await self._build_public_response(request)
@@ -103,6 +130,18 @@ class RequestService:
         self._require_pending(request)
 
         files = await self.repository.list_files(request.id)
+        enqueue_event(
+            self.repository.session,
+            event_type='request.deleted',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': None,
+                'details': {'source': 'public_request_portal'},
+                'source': 'public_api',
+                'request_id': request.id,
+            },
+        )
         await self.repository.delete(request)
 
         for file in files:
@@ -152,13 +191,32 @@ class RequestService:
         stored_path = directory / f'{secrets.token_hex(16)}{extension}'
         stored_path.write_bytes(content)
 
-        return await self.repository.add_file(
-            RequestFile(
-                file_path=str(stored_path),
-                original_name=original_name,
-                request_id=request.id,
-            )
+        uploaded_file = RequestFile(
+            file_path=str(stored_path),
+            original_name=original_name,
+            request_id=request.id,
+            mime_type=upload.content_type,
+            size_bytes=len(content),
         )
+        self.repository.session.add(uploaded_file)
+        await self.repository.session.flush()
+        enqueue_event(
+            self.repository.session,
+            event_type='request.file_added',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': None,
+                'details': {
+                    'file_id': uploaded_file.id,
+                    'original_name': original_name,
+                    'size_bytes': len(content),
+                },
+                'source': 'public_api',
+                'request_id': request.id,
+            },
+        )
+        return await self.repository.add_file(uploaded_file)
 
     # ------------------------------------------------------------------
     # Fluxo interno (funcionários)
@@ -200,6 +258,18 @@ class RequestService:
         if data.status is not None:
             request.status = data.status
 
+        enqueue_event(
+            self.repository.session,
+            event_type='request.updated',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': request.status.value},
+                'source': 'api',
+                'request_id': request.id,
+            },
+        )
         return await self.repository.update(request)
 
     async def delete(
@@ -219,6 +289,18 @@ class RequestService:
             )
 
         files = await self.repository.list_files(request.id)
+        enqueue_event(
+            self.repository.session,
+            event_type='request.deleted',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {},
+                'source': 'api',
+                'request_id': request.id,
+            },
+        )
         await self.repository.delete(request)
 
         for file in files:
@@ -289,13 +371,16 @@ class RequestService:
             or data.source_language_id is not None
             or data.target_language_id is not None
         ):
-            await self._validate_references(service_id, source_id, target_id)
+            await self._validate_references(
+                service_id,
+                source_id,
+                target_id,
+            )
 
         for field in (
             'username',
             'email',
             'phone',
-            'company',
             'source_language_id',
             'target_language_id',
             'service_id',
@@ -305,6 +390,8 @@ class RequestService:
             value = getattr(data, field)
             if value is not None:
                 setattr(request, field, value)
+        if data.company is not None:
+            request.company_name = data.company
 
     async def _validate_references(
         self,
@@ -331,7 +418,9 @@ class RequestService:
             if service_id is not None
             else None
         )
-        if service is None or not service.is_active:
+        if service_id is not None and (
+            service is None or not service.is_active
+        ):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail='Serviço inexistente ou inativo',
