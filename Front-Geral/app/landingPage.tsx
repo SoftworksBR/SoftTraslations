@@ -1,541 +1,792 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
-    View,
-    Text,
-    Pressable,
-    StyleSheet,
-    ScrollView,
-    Image,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
+import { Brand } from '@/components/Brand';
+import { PublicNavbar } from '@/components/PublicNavbar';
+import { useHydrated } from '@/hooks/use-hydrated';
+
+const colors = {
+  navy: '#0B2239',
+  navyLight: '#102D49',
+  teal: '#087F8C',
+  tealDark: '#066773',
+  tealSoft: '#E8F6F7',
+  ink: '#172B3A',
+  muted: '#627485',
+  line: '#DFE7EC',
+  canvas: '#F5F8FA',
+  white: '#FFFFFF',
+  green: '#20845A',
+};
+
+const benefits = [
+  {
+    number: '01',
+    title: 'Solicitações organizadas',
+    description:
+      'Envie os detalhes do seu trabalho e mantenha o contexto centralizado desde o primeiro contato.',
+    icon: 'document-text-outline' as const,
+  },
+  {
+    number: '02',
+    title: 'Equipe conectada',
+    description:
+      'Atendimento, gestores e tradutores colaboram com responsabilidades bem definidas.',
+    icon: 'people-outline' as const,
+  },
+  {
+    number: '03',
+    title: 'Etapas acompanhadas',
+    description:
+      'Tenha mais clareza sobre as etapas, responsáveis e prazos de cada projeto.',
+    icon: 'git-branch-outline' as const,
+  },
+] as const;
+
+function ActionButton({
+  label,
+  onPress,
+  secondary = false,
+  icon,
+}: {
+  label: string;
+  onPress: () => void;
+  secondary?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionButton,
+        secondary && styles.secondaryButton,
+        pressed && styles.buttonPressed,
+      ]}
+    >
+      {icon && (
+        <Ionicons name={icon} size={18} color={secondary ? colors.ink : colors.white} />
+      )}
+      <Text style={[styles.actionButtonText, secondary && styles.secondaryButtonText]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
 
 export default function LandingPage() {
-    return (
-        <ScrollView style={styles.container}>
+  const { width } = useWindowDimensions();
+  const isHydrated = useHydrated();
+  const wide = isHydrated && width >= 900;
+  const medium = isHydrated && width >= 640;
 
-            {/* HERO */}
-            <View style={styles.hero}>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.page}>
+        <PublicNavbar />
 
-                {/* TOPO */}
-                <View style={styles.heroTop}>
-
-                    <View style={styles.logoContainer}>
-                        <Text style={styles.logo}>
-                            SoftTranslations
-                        </Text>
-                    </View>
-
-                    <View style={styles.navLinks}>
-
-                        <Pressable onPress={() => router.push('/login')}>
-                            <Text style={styles.navLink}>
-                                Login
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/atendente')}>
-                            <Text style={styles.navLink}>
-                                Atendente
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/gestor')}>
-                            <Text style={styles.navLink}>
-                                Gestor
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/tradutor/completar-perfil')}>
-                            <Text style={styles.navLink}>
-                                Tradutor
-                            </Text>
-                        </Pressable>
-
-                        <Pressable onPress={() => router.push('/drawer/GerenciarAdministracao')}>
-                            <Text style={styles.navLink}>
-                                Administrador
-                            </Text>
-                        </Pressable>
-
-                    </View>
-
-                </View>
-
-                {/* CONTEÚDO DO HERO */}
-                <View style={styles.heroContent}>
-
-                    {/* INFORMAÇÕES */}
-                    <View style={styles.heroInfo}>
-
-                        <Text style={styles.heroLabel}>
-                            GESTÃO DE TRADUÇÕES
-                        </Text>
-
-                        <Text style={styles.heroTitle}>
-                            Traduções organizadas.{'\n'}
-                            Projetos sob controle.
-                        </Text>
-
-                        <Text style={styles.heroSubtitle}>
-                            Centralize clientes, equipes, orçamentos e projetos
-                            em um único ambiente, facilitando o acompanhamento
-                            de cada tradução do início à entrega.
-                        </Text>
-
-                        <View style={styles.botoesHero}>
-
-                            <Pressable
-                                style={styles.ctaButton}
-                                onPress={() => router.push('/login')}
-                            >
-                                <Text style={styles.ctaText}>
-                                    Fazer Login
-                                </Text>
-                            </Pressable>
-                        </View>
-
-                    </View>
-
-                    {/* LOGO */}
-                    <View style={styles.heroLogoContainer}>
-
-                        <Image
-                            source={require('../assets/images/logo.png')}
-                            style={styles.heroLogo}
-                            resizeMode="contain"
-                        />
-
-                    </View>
-
-                </View>
-
+        <View style={[styles.hero, wide && styles.heroWide]}>
+          <View style={[styles.heroCopy, wide && styles.heroCopyWide]}>
+            <View style={styles.eyebrowPill}>
+              <Ionicons name="sparkles-outline" size={15} color={colors.teal} />
+              <Text style={styles.eyebrow}>GESTÃO DE TRADUÇÕES</Text>
             </View>
-
-            {/* RECURSOS */}
-            <View style={styles.resourcesSection}>
-
-                {/* CARDS */}
-                <View style={styles.resourcesGrid}>
-
-                    {/* CARD 01 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            01
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Projetos organizados
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Crie novos projetos, organize as informações e acompanhe
-                            o andamento de cada tradução em um único lugar.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 02 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            02
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Gestão de equipe
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Organize gestores, atendentes e tradutores, definindo
-                            responsabilidades de acordo com cada projeto.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 03 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            03
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Etapas e prazos
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Acompanhe as etapas do trabalho, os responsáveis e os
-                            prazos para manter cada projeto dentro do cronograma.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 04 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            04
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Clientes centralizados
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Mantenha empresas, contatos, solicitações e histórico
-                            dos clientes reunidos em um único ambiente.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 05 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            05
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Orçamentos e serviços
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Crie e consulte orçamentos, registre os serviços
-                            solicitados e acompanhe cada negociação.
-                        </Text>
-                    </Pressable>
-
-                    {/* CARD 06 */}
-                    <Pressable
-                        style={({ hovered }) => [
-                            styles.resourceCard,
-                            hovered && styles.resourceCardHover,
-                        ]}
-                    >
-                        <Text style={styles.resourceNumber}>
-                            06
-                        </Text>
-
-                        <Text style={styles.resourceTitle}>
-                            Acompanhamento do projeto
-                        </Text>
-
-                        <Text style={styles.resourceDescription}>
-                            Consulte o status, as entregas e o andamento de cada
-                            projeto para saber exatamente o que está acontecendo.
-                        </Text>
-                    </Pressable>
-
-                </View>
-
+            <Text style={[styles.heroTitle, wide && styles.heroTitleWide]}>
+              Traduções fluem melhor quando tudo está no mesmo lugar.
+            </Text>
+            <Text style={styles.heroDescription}>
+              Conte à nossa equipe o que você precisa traduzir e receba um retorno
+              sobre o seu orçamento.
+            </Text>
+            <View style={styles.heroActions}>
+              <ActionButton
+                label="Fazer uma solicitação"
+                icon="arrow-forward"
+                onPress={() => router.push('/orcamentos/FazerSolicitacao')}
+              />
+              <ActionButton
+                label="Acessar plataforma"
+                secondary
+                onPress={() => router.push('/login')}
+              />
             </View>
+            <View style={styles.trustRow}>
+              {['Processo transparente', 'Equipe coordenada', 'Dados organizados'].map((item) => (
+                <View key={item} style={styles.trustItem}>
+                  <Ionicons name="checkmark-circle" size={17} color={colors.green} />
+                  <Text style={styles.trustText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
 
-        </ScrollView>
-    );
+          <View style={[styles.heroArt, wide && styles.heroArtWide]}>
+            <View style={styles.artGlow} />
+            <View style={styles.translationCard}>
+              <View style={styles.translationCardHeader}>
+                <View style={styles.documentIcon}>
+                  <Ionicons name="document-text-outline" size={22} color={colors.teal} />
+                </View>
+                <View style={styles.projectTitleWrap}>
+                  <Text style={styles.projectCaption}>COMO FUNCIONA</Text>
+                  <Text style={styles.projectTitle}>Da solicitação à tradução</Text>
+                </View>
+              </View>
+
+              <View style={styles.languagePath}>
+                <View style={styles.languageBox}>
+                  <Text style={styles.languageCode}>01</Text>
+                  <Text style={styles.languageName}>Solicitação</Text>
+                </View>
+                <View style={styles.languageArrow}>
+                  <Ionicons name="arrow-forward" size={18} color={colors.teal} />
+                </View>
+                <View style={styles.languageBox}>
+                  <Text style={styles.languageCode}>02</Text>
+                  <Text style={styles.languageName}>Orçamento</Text>
+                </View>
+              </View>
+
+              <View style={styles.progressHeading}>
+                <Text style={styles.progressLabel}>
+                  Nossa equipe analisa os detalhes enviados.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.floatingNote}>
+              <View style={styles.noteIcon}>
+                <Ionicons name="checkmark" size={17} color={colors.green} />
+              </View>
+              <View>
+                <Text style={styles.noteTitle}>Atendimento especializado</Text>
+                <Text style={styles.noteCaption}>Retorno sobre o orçamento</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.howSection}>
+          <View style={styles.sectionHeading}>
+            <Text style={styles.eyebrow}>UM FLUXO MAIS SIMPLES</Text>
+            <Text style={styles.sectionTitle}>Da necessidade ao trabalho concluído</Text>
+            <Text style={styles.sectionDescription}>
+              Compartilhe as informações necessárias para avaliarmos sua solicitação.
+            </Text>
+          </View>
+          <View style={[styles.benefitsGrid, medium && styles.benefitsGridMedium]}>
+            {benefits.map((benefit) => (
+              <View key={benefit.number} style={styles.benefitCard}>
+                <View style={styles.benefitTop}>
+                  <View style={styles.benefitIcon}>
+                    <Ionicons name={benefit.icon} size={21} color={colors.teal} />
+                  </View>
+                  <Text style={styles.benefitNumber}>{benefit.number}</Text>
+                </View>
+                <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                <Text style={styles.benefitDescription}>{benefit.description}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={[styles.rolesSection, wide && styles.rolesSectionWide]}>
+          <View style={styles.rolesCopy}>
+            <Text style={styles.eyebrowLight}>ACESSO DA EQUIPE</Text>
+            <Text style={styles.rolesTitle}>Acesso à plataforma interna</Text>
+            <Text style={styles.rolesDescription}>
+              A equipe da SoftTranslations pode entrar com suas credenciais de funcionário.
+            </Text>
+            <ActionButton
+              label="Entrar"
+              secondary
+              onPress={() => router.push('/login')}
+            />
+          </View>
+        </View>
+
+        <View style={[styles.finalCta, medium && styles.finalCtaMedium]}>
+          <View style={styles.finalCtaCopy}>
+            <Text style={styles.finalCtaTitle}>Pronto para organizar sua próxima tradução?</Text>
+            <Text style={styles.finalCtaDescription}>
+              Envie os detalhes da sua necessidade. É rápido e direto.
+            </Text>
+          </View>
+          <ActionButton
+            label="Fazer uma solicitação"
+            icon="arrow-forward"
+            onPress={() => router.push('/orcamentos/FazerSolicitacao')}
+          />
+        </View>
+
+        <View style={styles.footer}>
+          <Brand light />
+          <Text style={styles.footerDescription}>
+            Plataforma para gestão de solicitações e projetos de tradução.
+          </Text>
+          <Text style={styles.footerCopyright}>© 2025 SoftTranslations</Text>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-
-    /* CONTAINER */
-    container: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-
-    /* HERO */
-    hero: {
-        backgroundColor: '#000000',
-    },
-
-    /* TOPO */
-    heroTop: {
-        paddingHorizontal: 24,
-        paddingTop: 20,
-        paddingBottom: 10,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-
-    logoContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    logo: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '800',
-    },
-
-    /* LINKS */
-    navLinks: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 20,
-    },
-
-    navLink: {
-        color: '#AAAAAA',
-        fontSize: 13,
-        fontWeight: '600',
-    },
-
-    /* CONTEÚDO DO HERO */
-    heroContent: {
-        paddingHorizontal: 40,
-        paddingTop: 45,
-        paddingBottom: 55,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-
-    heroInfo: {
-        width: '50%',
-        paddingRight: 30,
-        marginLeft: 25,
-    },
-
-    heroLabel: {
-        color: '#888888',
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2,
-        marginBottom: 14,
-    },
-
-    heroTitle: {
-        color: '#FFFFFF',
-        fontSize: 32,
-        fontWeight: '800',
-        lineHeight: 39,
-        marginBottom: 16,
-    },
-
-    heroSubtitle: {
-        color: '#999999',
-        fontSize: 14,
-        lineHeight: 21,
-        marginBottom: 26,
-        maxWidth: 500,
-    },
-
-    /* BOTÕES PRINCIPAIS */
-    botoesHero: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-
-    ctaButton: {
-        alignSelf: 'flex-start',
-
-        paddingHorizontal: 26,
-        paddingVertical: 11,
-
-        backgroundColor: '#FFFFFF',
-        borderRadius: 6,
-    },
-
-    ctaText: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#000000',
-    },
-
-    ctaButtonSecundario: {
-        alignSelf: 'flex-start',
-
-        paddingHorizontal: 26,
-        paddingVertical: 11,
-
-        backgroundColor: '#000000',
-        borderWidth: 1,
-        borderColor: '#FFFFFF',
-        borderRadius: 6,
-    },
-
-    ctaTextSecundario: {
-        fontSize: 13,
-        fontWeight: '800',
-        color: '#FFFFFF',
-    },
-
-    /* LOGO */
-    heroLogoContainer: {
-        width: '50%',
-        height: 350,
-
-        alignItems: 'center',
-        justifyContent: 'center',
-
-        marginLeft: -150,
-    },
-
-    heroLogo: {
-        width: '100%',
-        height: '100%',
-    },
-
-    /* SEÇÃO DE RECURSOS */
-    resourcesSection: {
-        backgroundColor: '#FFFFFF',
-    },
-
-    /* CABEÇALHO DOS RECURSOS */
-    resourcesHeader: {
-        backgroundColor: '#000000',
-
-        paddingHorizontal: 24,
-        paddingTop: 55,
-        paddingBottom: 45,
-    },
-
-    resourcesLabel: {
-        color: '#888888',
-        fontSize: 11,
-        fontWeight: '700',
-        letterSpacing: 2,
-        marginBottom: 12,
-    },
-
-    resourcesTitle: {
-        color: '#FFFFFF',
-        fontSize: 29,
-        fontWeight: '800',
-        lineHeight: 36,
-        maxWidth: 800,
-    },
-
-    /* GRID */
-    resourcesGrid: {
-        paddingHorizontal: 20,
-        paddingTop: 28,
-        paddingBottom: 40,
-
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-
-        rowGap: 16,
-    },
-
-    /* CARD */
-    resourceCard: {
-        width: '31.5%',
-        height: 160,
-
-        backgroundColor: '#FFFFFF',
-
-        borderWidth: 1,
-        borderColor: '#E5E5E5',
-        borderRadius: 14,
-
-        padding: 16,
-
-        shadowColor: '#000000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.07,
-        shadowRadius: 6,
-
-        elevation: 2,
-
-        transitionDuration: '200ms',
-    },
-
-    /* CARD AO PASSAR O MOUSE */
-    resourceCardHover: {
-        backgroundColor: '#F5F5F5',
-
-        borderColor: '#000000',
-
-        shadowColor: '#000000',
-        shadowOffset: {
-            width: 0,
-            height: 5,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-
-        elevation: 6,
-
-        transform: [
-            {
-                translateY: -4,
-            },
-        ],
-    },
-
-    /* NÚMERO */
-    resourceNumber: {
-        color: '#999999',
-        fontSize: 10,
-        fontWeight: '700',
-        marginBottom: 12,
-    },
-
-    /* TÍTULO DOS CARDS */
-    resourceTitle: {
-        color: '#000000',
-        fontSize: 14,
-        fontWeight: '700',
-        lineHeight: 18,
-        marginBottom: 7,
-    },
-
-    /* DESCRIÇÃO DOS CARDS */
-    resourceDescription: {
-        color: '#777777',
-        fontSize: 11,
-        lineHeight: 16,
-    },
-
-    /* RODAPÉ */
-    footer: {
-        paddingHorizontal: 20,
-        paddingVertical: 40,
-
-        backgroundColor: '#F5F5F5',
-
-        alignItems: 'center',
-    },
-
-    loginButton: {
-        width: '100%',
-        height: 50,
-
-        justifyContent: 'center',
-        alignItems: 'center',
-
-        backgroundColor: '#000000',
-        borderRadius: 6,
-    },
-
-    loginText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-
-});
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  page: {
+    flexGrow: 1,
+    backgroundColor: colors.white,
+  },
+  header: {
+    width: '100%',
+    maxWidth: 1248,
+    alignSelf: 'center',
+    minHeight: 78,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14,
+    flexWrap: 'wrap',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  headerLink: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  headerLinkText: {
+    color: colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  actionButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 17,
+    borderRadius: 9,
+    backgroundColor: colors.teal,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
+  buttonPressed: {
+    opacity: 0.82,
+  },
+  actionButtonText: {
+    color: colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  secondaryButtonText: {
+    color: colors.ink,
+  },
+  hero: {
+    width: '100%',
+    paddingHorizontal: 24,
+    paddingVertical: 58,
+    backgroundColor: '#F1F9FA',
+    gap: 35,
+    overflow: 'hidden',
+  },
+  heroWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: '7%',
+    paddingVertical: 68,
+  },
+  heroCopy: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
+  heroCopyWide: {
+    width: '52%',
+    alignSelf: 'auto',
+  },
+  eyebrowPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#DFF1F3',
+  },
+  eyebrow: {
+    color: colors.teal,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  heroTitle: {
+    marginTop: 19,
+    color: colors.navy,
+    fontSize: 39,
+    lineHeight: 47,
+    fontWeight: '800',
+    letterSpacing: -1.5,
+  },
+  heroTitleWide: {
+    fontSize: 51,
+    lineHeight: 57,
+  },
+  heroDescription: {
+    maxWidth: 570,
+    marginTop: 13,
+    color: colors.muted,
+    fontSize: 16,
+    lineHeight: 25,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 24,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 15,
+    marginTop: 24,
+  },
+  trustItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  trustText: {
+    color: colors.muted,
+    fontSize: 11,
+  },
+  heroArt: {
+    width: '100%',
+    maxWidth: 490,
+    minHeight: 350,
+    alignSelf: 'center',
+    justifyContent: 'center',
+  },
+  heroArtWide: {
+    width: '44%',
+    flexShrink: 1,
+  },
+  artGlow: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 250,
+    backgroundColor: '#DDF1F2',
+    opacity: 0.75,
+    transform: [{ scale: 0.9 }],
+  },
+  translationCard: {
+    zIndex: 1,
+    padding: 22,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.13,
+    shadowRadius: 28,
+    elevation: 6,
+  },
+  translationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  documentIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: colors.tealSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectTitleWrap: {
+    flex: 1,
+  },
+  projectCaption: {
+    color: colors.muted,
+    fontSize: 9,
+    letterSpacing: 0.7,
+    fontWeight: '700',
+  },
+  projectTitle: {
+    marginTop: 4,
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  statusPill: {
+    borderRadius: 20,
+    backgroundColor: '#E4F4F6',
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+  statusText: {
+    color: colors.tealDark,
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  languagePath: {
+    marginTop: 23,
+    marginBottom: 20,
+    padding: 13,
+    borderRadius: 12,
+    backgroundColor: colors.canvas,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    gap: 10,
+  },
+  languageBox: {
+    minWidth: 94,
+    minHeight: 66,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+  },
+  languageCode: {
+    color: colors.navy,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  languageName: {
+    marginTop: 3,
+    color: colors.muted,
+    fontSize: 9,
+  },
+  languageArrow: {
+    width: 33,
+    height: 33,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: colors.tealSoft,
+  },
+  progressHeading: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressLabel: {
+    color: colors.muted,
+    fontSize: 10,
+  },
+  progressValue: {
+    color: colors.ink,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  progressTrack: {
+    height: 7,
+    overflow: 'hidden',
+    borderRadius: 9,
+    backgroundColor: '#E8EEF1',
+  },
+  progressFill: {
+    width: '66%',
+    height: '100%',
+    borderRadius: 9,
+    backgroundColor: colors.teal,
+  },
+  teamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+  },
+  avatar: {
+    width: 29,
+    height: 29,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+    borderRadius: 18,
+  },
+  avatarOne: {
+    backgroundColor: '#D7EAF0',
+  },
+  avatarTwo: {
+    marginLeft: -7,
+    backgroundColor: '#E7DDF3',
+  },
+  avatarThree: {
+    marginLeft: -7,
+    backgroundColor: '#F4E4D4',
+  },
+  avatarText: {
+    color: colors.navy,
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  teamCaption: {
+    marginLeft: 9,
+    color: colors.muted,
+    fontSize: 10,
+  },
+  floatingNote: {
+    position: 'absolute',
+    zIndex: 2,
+    right: -5,
+    bottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 11,
+    borderRadius: 11,
+    backgroundColor: colors.white,
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  noteIcon: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: '#E9F7F0',
+  },
+  noteTitle: {
+    color: colors.ink,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  noteCaption: {
+    marginTop: 2,
+    color: colors.muted,
+    fontSize: 9,
+  },
+  howSection: {
+    width: '100%',
+    maxWidth: 1248,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 64,
+  },
+  sectionHeading: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    maxWidth: 650,
+    marginTop: 9,
+    color: colors.navy,
+    fontSize: 30,
+    lineHeight: 38,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    textAlign: 'center',
+  },
+  sectionDescription: {
+    marginTop: 4,
+    color: colors.muted,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  benefitsGrid: {
+    gap: 13,
+  },
+  benefitsGridMedium: {
+    flexDirection: 'row',
+  },
+  benefitCard: {
+    flex: 1,
+    minHeight: 190,
+    padding: 21,
+    borderWidth: 1,
+    borderColor: '#EDF2F5',
+    borderRadius: 13,
+    backgroundColor: colors.canvas,
+  },
+  benefitTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 17,
+  },
+  benefitIcon: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 11,
+    backgroundColor: colors.tealSoft,
+  },
+  benefitNumber: {
+    color: colors.teal,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  benefitTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  benefitDescription: {
+    marginTop: 8,
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 19,
+  },
+  rolesSection: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    padding: 25,
+    gap: 25,
+    borderRadius: 18,
+    backgroundColor: colors.navy,
+  },
+  rolesSectionWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 50,
+    gap: 50,
+  },
+  rolesCopy: {
+    flex: 1,
+  },
+  eyebrowLight: {
+    color: '#56D2DD',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
+  rolesTitle: {
+    marginTop: 11,
+    color: colors.white,
+    fontSize: 30,
+    lineHeight: 37,
+    fontWeight: '800',
+    letterSpacing: -0.7,
+  },
+  rolesDescription: {
+    marginTop: 10,
+    marginBottom: 20,
+    color: '#AABCCB',
+    fontSize: 13,
+    lineHeight: 21,
+  },
+  staffGrid: {
+    flex: 1,
+    gap: 9,
+  },
+  staffGridMedium: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  staffCard: {
+    minHeight: 78,
+    flexBasis: '48%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 13,
+    borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  staffCardPressed: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  staffIcon: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: 'rgba(86,210,221,0.12)',
+  },
+  staffText: {
+    flex: 1,
+  },
+  staffTitle: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  staffDescription: {
+    marginTop: 4,
+    color: '#AABCCB',
+    fontSize: 10,
+  },
+  finalCta: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    marginTop: 42,
+    marginBottom: 42,
+    padding: 23,
+    gap: 18,
+    borderRadius: 15,
+    backgroundColor: colors.tealSoft,
+  },
+  finalCtaMedium: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 35,
+  },
+  finalCtaCopy: {
+    flex: 1,
+  },
+  finalCtaTitle: {
+    color: colors.navy,
+    fontSize: 21,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  finalCtaDescription: {
+    marginTop: 5,
+    color: colors.muted,
+    fontSize: 12,
+  },
+  footer: {
+    paddingHorizontal: 24,
+    paddingVertical: 27,
+    gap: 12,
+    backgroundColor: colors.navy,
+  },
+  footerDescription: {
+    color: '#AABCCB',
+    fontSize: 11,
+  },
+  footerCopyright: {
+    color: '#718A9C',
+    fontSize: 10,
+  },
+} as const);

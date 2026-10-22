@@ -2,13 +2,26 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
-import { TradutorProvider } from '@/context/TradutorContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout() {
   return (
-    <TradutorProvider>
+    <AuthProvider>
 
-      <Stack>
+      <Stack
+        screenOptions={{
+          contentStyle: {
+            backgroundColor: '#F5F8FA',
+          },
+          headerStyle: {
+            backgroundColor: '#FFFFFF',
+          },
+          headerTintColor: '#0B2239',
+          headerTitleStyle: {
+            fontWeight: '700',
+          },
+        }}
+      >
 
         <Stack.Screen
           name="landingPage"
@@ -63,7 +76,6 @@ export default function RootLayout() {
 
       <StatusBar style="auto" />
 
-    </TradutorProvider>
+    </AuthProvider>
   );
 }
-
