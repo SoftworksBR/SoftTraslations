@@ -32,6 +32,8 @@ function EmployeeForm() {
   const employeeId = params.id ? Number(params.id) : null;
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [username, setUsername] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(!!employeeId);
@@ -52,6 +54,8 @@ function EmployeeForm() {
         if (active) {
           setEmployee(found);
           setUsername(found.username);
+          setFirstName(found.first_name ?? '');
+          setLastName(found.last_name ?? '');
           setEmail(found.email);
         }
       })
@@ -79,12 +83,18 @@ function EmployeeForm() {
       Alert.alert('Campos obrigatórios', 'Preencha nome, e-mail e senha.');
       return;
     }
+    if (role !== 'admin' && (!firstName.trim() || !lastName.trim())) {
+      Alert.alert('Campos obrigatórios', 'Preencha nome e sobrenome.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
     try {
       const payload = {
         username: username.trim(),
+        first_name: firstName.trim() || null,
+        last_name: lastName.trim() || null,
         email: email.trim(),
         role,
         status: employee?.status ?? 'available' as const,
@@ -134,6 +144,10 @@ function EmployeeForm() {
           <ScrollView contentContainerStyle={styles.form}>
             <Text style={styles.label}>Nome de usuário</Text>
             <TextInput value={username} onChangeText={setUsername} style={styles.input} />
+            <Text style={styles.label}>Nome</Text>
+            <TextInput value={firstName} onChangeText={setFirstName} style={styles.input} />
+            <Text style={styles.label}>Sobrenome</Text>
+            <TextInput value={lastName} onChangeText={setLastName} style={styles.input} />
             <Text style={styles.label}>E-mail</Text>
             <TextInput
               value={email}

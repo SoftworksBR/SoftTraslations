@@ -18,7 +18,6 @@ class EmployeePublicSchema(BaseModel):
     last_name: str | None = None
     email: EmailStr
     birth_date: date | None = None
-    photo_url: str | None = None
     phone: str | None = None
     role: Roles
     status: EmployeeStatus
@@ -34,7 +33,6 @@ class EmployeeSchema(BaseModel):
     last_name: str | None = None
     email: EmailStr
     birth_date: date | None = None
-    photo_url: str | None = None
     phone: str | None = None
     role: Roles
     status: EmployeeStatus = EmployeeStatus.AVAILABLE
@@ -77,7 +75,6 @@ class FreelancerPreRegistrationSchema(BaseModel):
 class FreelancerProfileSchema(BaseModel):
     birth_date: date
     phone: str = Field(min_length=1, max_length=30)
-    photo_url: str | None = None
     specialization: str | None = None
     bio: str | None = None
     hourly_rate: float | None = Field(default=None, ge=0)

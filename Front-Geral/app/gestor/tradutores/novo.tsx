@@ -13,21 +13,28 @@ import {
 import { preRegisterFreelancer } from '@/services/employees';
 
 export default function NovoTradutor() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
-    if (!email.trim() || !password) {
-      Alert.alert('Campos obrigatórios', 'Informe e-mail e senha.');
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+      Alert.alert('Campos obrigatórios', 'Informe nome, sobrenome, e-mail e senha.');
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      await preRegisterFreelancer(email.trim(), password);
+      await preRegisterFreelancer({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        password,
+      });
       router.back();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível pré-cadastrar o tradutor.');
@@ -44,6 +51,10 @@ export default function NovoTradutor() {
           <Text style={styles.description}>
             As credenciais serão cadastradas no sistema. Nenhum usuário local de demonstração será criado.
           </Text>
+          <Text style={styles.label}>Nome</Text>
+          <TextInput value={firstName} onChangeText={setFirstName} autoCapitalize="words" style={styles.input} />
+          <Text style={styles.label}>Sobrenome</Text>
+          <TextInput value={lastName} onChangeText={setLastName} autoCapitalize="words" style={styles.input} />
           <Text style={styles.label}>E-mail</Text>
           <TextInput
             value={email}

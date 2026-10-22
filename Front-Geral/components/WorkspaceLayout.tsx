@@ -69,6 +69,7 @@ const titles: Record<string, string> = {
   '/gestor': 'Visão geral',
   '/gestor/orcamentos': 'Orçamentos',
   '/gestor/projetos': 'Projetos',
+  '/gestor/novo-projeto': 'Novo projeto',
   '/gestor/tradutores': 'Tradutores',
   '/gestor/tradutores/novo': 'Pré-cadastrar tradutor',
   '/gestor/workflow': 'Workflow',

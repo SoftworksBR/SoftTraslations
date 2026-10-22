@@ -13,14 +13,20 @@ import {
 
 import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
-import { createStage, deleteStage, getStages } from '@/services/stages';
-import type { TranslationStage } from '@/services/stages';
+import {
+  createStageTemplate,
+  deleteStage,
+  getStages,
+  getStageTemplates,
+  updateStage,
+} from '@/services/stages';
+import type { StageTemplate, TranslationStage } from '@/services/stages';
 
 export default function Quadros() {
   const [stages, setStages] = useState<TranslationStage[]>([]);
+  const [templates, setTemplates] = useState<StageTemplate[]>([]);
   const [freelancers, setFreelancers] = useState<Employee[]>([]);
   const [name, setName] = useState('');
-  const [freelancerId, setFreelancerId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +35,13 @@ export default function Quadros() {
     setLoading(true);
     setError(null);
     try {
-      const [loadedStages, loadedFreelancers] = await Promise.all([
+      const [loadedStages, loadedTemplates, loadedFreelancers] = await Promise.all([
         getStages(),
+        getStageTemplates(),
         getEmployees('freelancer'),
       ]);
       setStages(loadedStages);
+      setTemplates(loadedTemplates);
       setFreelancers(loadedFreelancers.employees);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao carregar etapas.');
@@ -46,15 +54,15 @@ export default function Quadros() {
     void loadData();
   }, [loadData]));
 
-  async function saveStage() {
-    if (!name.trim() || freelancerId === null) {
-      Alert.alert('Campos obrigatórios', 'Informe o nome e selecione um tradutor.');
+  async function saveTemplate() {
+    if (!name.trim()) {
+      Alert.alert('Campo obrigatório', 'Informe o nome da etapa.');
       return;
     }
     setSaving(true);
     setError(null);
     try {
-      await createStage(name.trim(), freelancerId);
+      await createStageTemplate(name.trim());
       setName('');
       await loadData();
     } catch (cause) {
@@ -64,8 +72,18 @@ export default function Quadros() {
     }
   }
 
+  async function assign(stage: TranslationStage, freelancerId: number) {
+    setError(null);
+    try {
+      await updateStage(stage.id, { freelancer_id: freelancerId });
+      await loadData();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível atribuir o tradutor.');
+    }
+  }
+
   function confirmDelete(stage: TranslationStage) {
-    Alert.alert('Excluir etapa', `Deseja excluir "${stage.name}"?`, [
+    Alert.alert('Excluir etapa', `Deseja excluir "${stage.name}" do projeto?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir',
@@ -92,44 +110,25 @@ export default function Quadros() {
       </Pressable>
       <Text style={styles.title}>Etapas de trabalho</Text>
       <Text style={styles.description}>
-        Etapas cadastradas e vinculadas a tradutores no backend.
+        Cadastre etapas reutilizáveis e atribua tradutores às etapas dos projetos.
       </Text>
 
       <View style={styles.form}>
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="Nome da etapa"
+          placeholder="Nome da nova etapa"
           style={styles.input}
         />
-        <Text style={styles.label}>Atribuir a um tradutor</Text>
-        {freelancers.length === 0 ? (
-          <Text style={styles.hint}>Cadastre um tradutor antes de criar uma etapa.</Text>
-        ) : (
-          <View style={styles.employeePicker}>
-            {freelancers.map((freelancer) => (
-              <Pressable
-                key={freelancer.id}
-                onPress={() => setFreelancerId(freelancer.id)}
-                style={[
-                  styles.employeeOption,
-                  freelancerId === freelancer.id && styles.employeeOptionSelected,
-                ]}
-              >
-                <Text style={[
-                  styles.employeeText,
-                  freelancerId === freelancer.id && styles.employeeTextSelected,
-                ]}>
-                  {freelancer.username}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
+        <Text style={styles.hint}>
+          {templates.length
+            ? `Etapas cadastradas: ${templates.map((template) => template.name).join(', ')}`
+            : 'Nenhuma etapa reutilizável cadastrada.'}
+        </Text>
         <Pressable
-          style={[styles.button, (saving || freelancers.length === 0) && styles.disabled]}
-          onPress={() => void saveStage()}
-          disabled={saving || freelancers.length === 0}
+          style={[styles.button, saving && styles.disabled]}
+          onPress={() => void saveTemplate()}
+          disabled={saving}
         >
           <Text style={styles.buttonText}>{saving ? 'SALVANDO...' : 'ADICIONAR ETAPA'}</Text>
         </Pressable>
@@ -143,14 +142,41 @@ export default function Quadros() {
           data={stages}
           keyExtractor={(stage) => String(stage.id)}
           contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.hint}>Nenhuma etapa cadastrada.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.hint}>
+              As etapas aparecem aqui quando um projeto é criado a partir de uma trilha.
+            </Text>
+          }
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.stageInfo}>
                 <Text style={styles.stageName}>{item.name}</Text>
                 <Text style={styles.hint}>
-                  ID do tradutor: {item.freelancer_id} · {item.status}
+                  Situação: {item.status} · Tradutor:{' '}
+                  {freelancers.find((freelancer) => freelancer.id === item.freelancer_id)?.username
+                    ?? 'não atribuído'}
                 </Text>
+                {freelancers.length ? (
+                  <View style={styles.employeePicker}>
+                    {freelancers.map((freelancer) => (
+                      <Pressable
+                        key={freelancer.id}
+                        onPress={() => void assign(item, freelancer.id)}
+                        style={[
+                          styles.employeeOption,
+                          item.freelancer_id === freelancer.id && styles.employeeOptionSelected,
+                        ]}
+                      >
+                        <Text style={[
+                          styles.employeeText,
+                          item.freelancer_id === freelancer.id && styles.employeeTextSelected,
+                        ]}>
+                          {freelancer.username}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
               </View>
               <Pressable onPress={() => confirmDelete(item)} style={styles.delete}>
                 <Text style={styles.deleteText}>×</Text>

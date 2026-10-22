@@ -31,12 +31,14 @@ export function CompanyManagement() {
   const [saving, setSaving] = useState(false);
   const [legalName, setLegalName] = useState('');
   const [cnpj, setCnpj] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const isAtendimento = employee?.role === 'atendimento';
 
   const filteredCompanies = useMemo(() => {
     const search = query.trim().toLocaleLowerCase();
     return companies.filter((company) =>
-      `${company.razao_social} ${company.cnpj}`.toLocaleLowerCase().includes(search),
+      `${company.name} ${company.tax_id ?? ''}`.toLocaleLowerCase().includes(search),
     );
   }, [companies, query]);
 
@@ -64,8 +66,8 @@ export function CompanyManagement() {
   );
 
   async function saveCompany() {
-    if (!legalName.trim() || !cnpj.trim()) {
-      Alert.alert('Campos obrigatórios', 'Informe a razão social e o CNPJ.');
+    if (!legalName.trim() || !email.trim() || !phone.trim()) {
+      Alert.alert('Campos obrigatórios', 'Informe a razão social, o e-mail e o telefone.');
       return;
     }
 
@@ -73,14 +75,17 @@ export function CompanyManagement() {
     setError(null);
     try {
       const created = await createCompany({
-        razao_social: legalName.trim(),
-        cnpj: cnpj.trim(),
-        departamentos: [],
+        name: legalName.trim(),
+        primary_email: email.trim(),
+        primary_phone: phone.trim(),
+        tax_id: cnpj.trim() || null,
       });
       setCompanies((current) => [...current, created]);
       setSelectedCompany(created);
       setLegalName('');
       setCnpj('');
+      setEmail('');
+      setPhone('');
       setCreateOpen(false);
     } catch (cause) {
       Alert.alert(
@@ -109,19 +114,16 @@ export function CompanyManagement() {
     );
   }
 
-  const departments = selectedCompany?.departamentos ?? [];
-  const contacts = departments.flatMap((department) =>
-    department.contatos.map((contact) => ({ ...contact, departmentName: department.nome })),
-  );
+  const contacts = selectedCompany?.employees ?? [];
 
   return (
     <View style={styles.screen}>
       <PageHeading
         eyebrow="ADMINISTRAÇÃO"
-        title={selectedCompany ? selectedCompany.razao_social : 'Empresas'}
+        title={selectedCompany ? selectedCompany.name : 'Empresas'}
         description={
           selectedCompany
-            ? `CNPJ ${selectedCompany.cnpj}`
+            ? [selectedCompany.tax_id ? `CNPJ ${selectedCompany.tax_id}` : null, selectedCompany.primary_email, selectedCompany.primary_phone].filter(Boolean).join(' · ') || 'Dados de contato não informados.'
             : 'Consulte as empresas e suas estruturas cadastradas.'
         }
         action={selectedCompany ? undefined : (
@@ -144,41 +146,19 @@ export function CompanyManagement() {
           </Pressable>
           <View style={styles.detailCard}>
             <SectionTitle
-              title="Departamentos"
-              description="Departamentos vinculados a esta empresa."
-            />
-            {departments.length ? departments.map((department) => (
-              <View key={department.id} style={styles.departmentCard}>
-                <View style={styles.entityIcon}>
-                  <Ionicons name="business-outline" size={18} color="#087F8C" />
-                </View>
-                <View style={styles.entityCopy}>
-                  <Text style={styles.entityName}>{department.nome}</Text>
-                  <Text style={styles.entityCaption}>
-                    {department.contatos.length} {department.contatos.length === 1 ? 'contato' : 'contatos'}
-                  </Text>
-                </View>
-              </View>
-            )) : <Text style={styles.subtleEmpty}>Nenhum departamento cadastrado.</Text>}
-          </View>
-          <View style={styles.detailCard}>
-            <SectionTitle
               title="Contatos"
-              description="Contatos associados aos departamentos."
+              description="Pessoas de contato vinculadas a esta empresa."
             />
             {contacts.length ? contacts.map((contact) => (
               <View key={contact.id} style={styles.contactCard}>
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>
-                    {contact.nome.trim().slice(0, 1).toLocaleUpperCase()}
+                    {contact.first_name.trim().slice(0, 1).toLocaleUpperCase()}
                   </Text>
                 </View>
                 <View style={styles.entityCopy}>
-                  <Text style={styles.entityName}>{contact.nome}</Text>
-                  <Text style={styles.entityCaption}>{contact.email} · {contact.telefone}</Text>
-                  <Text style={styles.entityCaption}>
-                    {[contact.cargo, contact.departmentName].filter(Boolean).join(' · ')}
-                  </Text>
+                  <Text style={styles.entityName}>{contact.first_name} {contact.last_name}</Text>
+                  <Text style={styles.entityCaption}>{[contact.email, contact.phone].filter(Boolean).join(' · ')}</Text>
                 </View>
               </View>
             )) : <Text style={styles.subtleEmpty}>Nenhum contato cadastrado.</Text>}
@@ -218,7 +198,7 @@ export function CompanyManagement() {
                 <View style={styles.tableHeader}>
                   <Text style={[styles.tableHeading, styles.companyColumn]}>Razão social</Text>
                   <Text style={styles.tableHeading}>CNPJ</Text>
-                  <Text style={styles.tableHeading}>Departamentos</Text>
+                  <Text style={styles.tableHeading}>Contatos</Text>
                   <View style={styles.actionColumn} />
                 </View>
                 ) : null}
@@ -240,7 +220,7 @@ export function CompanyManagement() {
               renderItem={({ item }) => (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Abrir empresa ${item.razao_social}`}
+                  accessibilityLabel={`Abrir empresa ${item.name}`}
                   onPress={() => setSelectedCompany(item)}
                   style={[styles.companyRow, compact && styles.companyRowCompact]}
                 >
@@ -248,11 +228,11 @@ export function CompanyManagement() {
                     <View style={styles.entityIcon}>
                       <Ionicons name="business-outline" size={18} color="#087F8C" />
                     </View>
-                    <Text style={styles.entityName}>{item.razao_social}</Text>
+                    <Text style={styles.entityName}>{item.name}</Text>
                   </View>
-                  <Text style={[styles.companyValue, compact && styles.companyValueCompact]}>{item.cnpj}</Text>
+                  <Text style={[styles.companyValue, compact && styles.companyValueCompact]}>{item.tax_id ?? '—'}</Text>
                   <Text style={[styles.companyValue, compact && styles.companyValueCompact]}>
-                    {item.departamentos.length} {item.departamentos.length === 1 ? 'departamento' : 'departamentos'}
+                    {item.employees.length} {item.employees.length === 1 ? 'contato' : 'contatos'}
                   </Text>
                   <View style={[styles.actionColumn, compact && styles.actionColumnCompact]}>
                     <Ionicons name="chevron-forward" size={17} color="#8293A0" />
@@ -285,10 +265,12 @@ export function CompanyManagement() {
             </View>
             <Text style={styles.modalTitle}>Cadastrar empresa</Text>
             <Text style={styles.modalDescription}>
-              A empresa será salva na plataforma. Departamentos e contatos podem ser consultados quando já estiverem cadastrados.
+              A empresa será salva na plataforma.
             </Text>
             <Field label="Razão social" value={legalName} onChangeText={setLegalName} placeholder="Razão social da empresa" />
-            <Field label="CNPJ" value={cnpj} onChangeText={setCnpj} placeholder="00.000.000/0000-00" />
+            <Field label="CNPJ" value={cnpj} onChangeText={setCnpj} placeholder="00.000.000/0000-00 (opcional)" />
+            <Field label="E-mail" value={email} onChangeText={setEmail} placeholder="contato@empresa.com.br" />
+            <Field label="Telefone" value={phone} onChangeText={setPhone} placeholder="(00) 00000-0000" />
             <View style={styles.modalActions}>
               <Pressable onPress={() => setCreateOpen(false)} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>

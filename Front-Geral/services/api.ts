@@ -21,7 +21,7 @@ if (expoLanHost && ['localhost', '127.0.0.1'].includes(apiUrl.hostname)) {
   apiUrl.hostname = expoLanHost;
 }
 
-const API_URL = apiUrl.toString().replace(/\/$/, '');
+export const API_URL = apiUrl.toString().replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;

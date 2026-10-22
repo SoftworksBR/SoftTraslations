@@ -155,7 +155,6 @@ class EmployeeService:
 
         employee.birth_date = data.birth_date
         employee.phone = data.phone
-        employee.photo_url = data.photo_url
         employee.status = EmployeeStatus.AVAILABLE
         profile.specialization = data.specialization
         profile.bio = data.bio
@@ -188,7 +187,6 @@ class EmployeeService:
             last_name=employee.last_name,
             email=employee.email,
             birth_date=employee.birth_date,
-            photo_url=employee.photo_url,
             phone=employee.phone,
             role=employee.role,
             status=(
@@ -247,7 +245,6 @@ class EmployeeService:
         target_employee.last_name = employee.last_name
         target_employee.email = employee.email
         target_employee.birth_date = employee.birth_date
-        target_employee.photo_url = employee.photo_url
         target_employee.phone = employee.phone
         target_employee.password_hash = get_password_hash(employee.password)
         target_employee.role = employee.role

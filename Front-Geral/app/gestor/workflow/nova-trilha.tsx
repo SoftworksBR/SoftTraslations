@@ -11,12 +11,12 @@ import {
 } from 'react-native';
 
 import { createPath } from '@/services/paths';
-import { getStages } from '@/services/stages';
-import type { TranslationStage } from '@/services/stages';
+import { getStageTemplates } from '@/services/stages';
+import type { StageTemplate } from '@/services/stages';
 
 export default function NovaTrilha() {
   const [name, setName] = useState('');
-  const [stages, setStages] = useState<TranslationStage[]>([]);
+  const [stages, setStages] = useState<StageTemplate[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,7 +26,7 @@ export default function NovaTrilha() {
     setLoading(true);
     setError(null);
     try {
-      setStages(await getStages());
+      setStages(await getStageTemplates());
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao carregar etapas.');
     } finally {
@@ -90,7 +90,7 @@ export default function NovaTrilha() {
                   onPress={() => toggleStage(stage.id)}
                 >
                   <Text style={[styles.stageText, selected && styles.stageTextSelected]}>
-                    {selected ? '✓ ' : ''}{stage.name} · {stage.status}
+                    {selected ? '✓ ' : ''}{stage.name}
                   </Text>
                 </Pressable>
               );

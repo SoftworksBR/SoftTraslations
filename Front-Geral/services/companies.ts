@@ -2,51 +2,48 @@ import { apiRequest } from './api';
 
 export type CompanyContact = {
   id: number;
-  nome: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  telefone: string;
-  cargo: string | null;
-};
-
-export type CompanyDepartment = {
-  id: number;
-  nome: string;
-  contatos: CompanyContact[];
+  phone: string | null;
+  general_info: string | null;
 };
 
 export type Company = {
   id: number;
-  razao_social: string;
-  cnpj: string;
-  departamentos: CompanyDepartment[];
+  name: string;
+  primary_email: string | null;
+  website: string | null;
+  primary_phone: string | null;
+  general_info: string | null;
+  is_legal_entity: boolean;
+  tax_id: string | null;
+  employees: CompanyContact[];
 };
 
 export type CompanyInput = {
-  razao_social: string;
-  cnpj: string;
-  departamentos: {
-    nome: string;
-    contatos: {
-      nome: string;
-      email: string;
-      telefone: string;
-      cargo?: string | null;
-    }[];
+  name: string;
+  primary_email: string;
+  primary_phone: string;
+  tax_id?: string | null;
+  website?: string | null;
+  general_info?: string | null;
+  is_legal_entity?: boolean;
+  employees?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    general_info?: string | null;
   }[];
 };
 
-export function getCompanies(filters: {
-  razaoSocial?: string;
-  cnpj?: string;
-} = {}) {
-  const params = new URLSearchParams({ limit: '100', offset: '0' });
-  if (filters.razaoSocial) params.set('razao_social', filters.razaoSocial);
-  if (filters.cnpj) params.set('cnpj', filters.cnpj);
-  return apiRequest<Company[]>(`/empresas/?${params.toString()}`);
+export function getCompanies() {
+  return apiRequest<Company[]>('/companies/');
 }
 
 export function createCompany(company: CompanyInput) {
-  return apiRequest<Company>('/empresas/', {
+  return apiRequest<Company>('/companies/', {
     method: 'POST',
     body: JSON.stringify(company),
   });

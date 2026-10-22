@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -12,18 +13,36 @@ import {
   View,
 } from 'react-native';
 
-import { deleteRequest, getRequests } from '@/services/requests';
-import type { TranslationRequest } from '@/services/requests';
+import { API_URL } from '@/services/api';
+import { deleteRequest, getRequestFiles, getRequests } from '@/services/requests';
+import type { RequestFile, TranslationRequest } from '@/services/requests';
 
-const languageNames: Record<string, string> = {
-  portuguese: 'Português',
-  english: 'Inglês',
-  spanish: 'Espanhol',
-  german: 'Alemão',
-  italian: 'Italiano',
-  french: 'Francês',
-  other: 'Outro',
-};
+function RequestFiles({ requestId }: { requestId: number }) {
+  const [files, setFiles] = useState<RequestFile[]>([]);
+
+  useEffect(() => {
+    getRequestFiles(requestId).then(setFiles).catch(() => setFiles([]));
+  }, [requestId]);
+
+  return (
+    <>
+      {files.map((file) => (
+        <Pressable
+          key={file.id}
+          onPress={() =>
+            void Linking.openURL(
+              `${API_URL}/requests/${requestId}/files/${file.id}`,
+            )
+          }
+        >
+          <Text style={{ color: '#087F8C', marginTop: 4 }}>
+            📎 {file.original_name}
+          </Text>
+        </Pressable>
+      ))}
+    </>
+  );
+}
 
 export default function Requisicoes() {
   const [requests, setRequests] = useState<TranslationRequest[]>([]);
@@ -35,8 +54,8 @@ export default function Requisicoes() {
       request.username,
       request.email,
       request.company ?? '',
-      languageNames[request.translate_from] ?? request.translate_from,
-      languageNames[request.translate_to] ?? request.translate_to,
+      request.source_language_name,
+      request.target_language_name,
     ].join(' ').toLocaleLowerCase();
     return searchable.includes(query.trim().toLocaleLowerCase());
   });
@@ -137,12 +156,13 @@ export default function Requisicoes() {
                 <Text style={styles.name}>{item.username}</Text>
                 <Text style={styles.service}>{item.email} · {item.phone}</Text>
                 <Text style={styles.service}>
-                  {languageNames[item.translate_from]} → {languageNames[item.translate_to]}
+                  {item.source_language_name} → {item.target_language_name}
                 </Text>
                 {item.company ? <Text style={styles.service}>{item.company}</Text> : null}
                 {item.observations ? (
                   <Text style={styles.observations}>{item.observations}</Text>
                 ) : null}
+                <RequestFiles requestId={item.id} />
                 <Text style={styles.id}>ID: {item.id}</Text>
                 <Pressable
                   style={styles.quoteButton}

@@ -19,8 +19,8 @@ import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
 import { createPath, getPaths } from '@/services/paths';
 import type { TranslationPath } from '@/services/paths';
-import { createStage, getStages } from '@/services/stages';
-import type { TranslationStage } from '@/services/stages';
+import { createStageTemplate, getStages, getStageTemplates } from '@/services/stages';
+import type { StageTemplate, TranslationStage } from '@/services/stages';
 
 type WorkflowTab = 'boards' | 'tracks';
 type StageStatus = TranslationStage['status'] | 'all';
@@ -42,6 +42,7 @@ type AssigneeFilter = string;
 export default function Workflow() {
   const [tab, setTab] = useState<WorkflowTab>('boards');
   const [stages, setStages] = useState<TranslationStage[]>([]);
+  const [templates, setTemplates] = useState<StageTemplate[]>([]);
   const [paths, setPaths] = useState<TranslationPath[]>([]);
   const [freelancers, setFreelancers] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,12 +56,10 @@ export default function Workflow() {
   const [stageModalOpen, setStageModalOpen] = useState(false);
   const [pathModalOpen, setPathModalOpen] = useState(false);
   const [newStageName, setNewStageName] = useState('');
-  const [selectedFreelancerId, setSelectedFreelancerId] = useState<string>('all');
   const [newPathName, setNewPathName] = useState('');
   const [selectedStageIds, setSelectedStageIds] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [freelancerPickerOpen, setFreelancerPickerOpen] = useState(false);
   const { width } = useWindowDimensions();
   const narrow = width < 760;
   const freelancerById = new Map(freelancers.map((freelancer) => [freelancer.id, freelancer]));
@@ -72,47 +71,32 @@ export default function Workflow() {
       value: String(freelancer.id),
     })),
   ];
-  const stageFreelancerOptions: FilterOption<string>[] = [
-    { label: 'Selecione um tradutor', value: 'all' },
-    ...freelancers.map((freelancer) => ({
-      label: freelancer.username,
-      value: String(freelancer.id),
-    })),
-  ];
   const visibleStages = stages.filter((stage) => {
     const matchesQuery = stage.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
     const matchesStatus = statusFilter === 'all' || stage.status === statusFilter;
     const matchesAssignee = assigneeFilter === 'all' ||
       (assigneeFilter === 'unassigned'
-        ? !freelancerById.has(stage.freelancer_id)
+        ? stage.freelancer_id === null || !freelancerById.has(stage.freelancer_id)
         : stage.freelancer_id === Number(assigneeFilter));
     return matchesQuery && matchesStatus && matchesAssignee;
   });
   const visiblePaths = paths.filter((path) => {
     const matchesQuery = path.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
-    const matchesFilters = (stage: TranslationStage) => {
-      const matchesStatus = statusFilter === 'all' || stage.status === statusFilter;
-      const matchesAssignee = assigneeFilter === 'all' ||
-        (assigneeFilter === 'unassigned'
-          ? !freelancerById.has(stage.freelancer_id)
-          : stage.freelancer_id === Number(assigneeFilter));
-      return matchesStatus && matchesAssignee;
-    };
-    return matchesQuery && (statusFilter === 'all' && assigneeFilter === 'all'
-      ? true
-      : path.stages.some(matchesFilters));
+    return matchesQuery;
   });
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [loadedStages, loadedPaths, loadedEmployees] = await Promise.all([
+      const [loadedStages, loadedTemplates, loadedPaths, loadedEmployees] = await Promise.all([
         getStages(),
+        getStageTemplates(),
         getPaths(),
         getEmployees('freelancer'),
       ]);
       setStages(loadedStages);
+      setTemplates(loadedTemplates);
       setPaths(loadedPaths);
       setFreelancers(loadedEmployees.employees);
     } catch (cause) {
@@ -137,16 +121,15 @@ export default function Workflow() {
   }
 
   async function saveNewStage() {
-    if (!newStageName.trim() || selectedFreelancerId === 'all') {
-      setCreateError('Informe o nome da etapa e selecione um tradutor.');
+    if (!newStageName.trim()) {
+      setCreateError('Informe o nome da etapa.');
       return;
     }
     setSaving(true);
     setCreateError(null);
     try {
-      await createStage(newStageName.trim(), Number(selectedFreelancerId));
+      await createStageTemplate(newStageName.trim());
       setNewStageName('');
-      setSelectedFreelancerId('all');
       setStageModalOpen(false);
       await loadData();
     } catch (cause) {
@@ -190,10 +173,8 @@ export default function Workflow() {
 
   function openCreateModal() {
     setCreateError(null);
-    setFreelancerPickerOpen(false);
     if (tab === 'boards') {
       setNewStageName('');
-      setSelectedFreelancerId('all');
       setStageModalOpen(true);
     } else {
       setNewPathName('');
@@ -340,7 +321,7 @@ export default function Workflow() {
                   <Text style={styles.count}>{items.length}</Text>
                 </View>
                 {items.length ? items.map((stage) => {
-                  const owner = freelancerById.get(stage.freelancer_id);
+                  const owner = stage.freelancer_id === null ? undefined : freelancerById.get(stage.freelancer_id);
                   return (
                     <View key={stage.id} style={styles.stageCard}>
                       <View style={styles.stageCardHeader}>
@@ -394,16 +375,15 @@ export default function Workflow() {
               </View>
               <View style={[styles.pathStages, narrow && styles.pathStagesNarrow]}>
                 {path.stages.length ? path.stages.map((stage, index) => {
-                  const owner = freelancerById.get(stage.freelancer_id);
                   return (
                     <View key={stage.id} style={styles.pathStageGroup}>
                       <View style={styles.pathStage}>
                         <Text style={styles.pathStageNumber}>{index + 1}</Text>
                         <View style={styles.pathStageCopy}>
                           <Text style={styles.pathStageName}>{stage.name}</Text>
-                          <Text style={styles.pathStageOwner}>
-                            {owner?.username ?? 'Sem tradutor associado'}
-                          </Text>
+                          {stage.description ? (
+                            <Text style={styles.pathStageOwner}>{stage.description}</Text>
+                          ) : null}
                         </View>
                       </View>
                       {index < path.stages.length - 1 ? (
@@ -456,7 +436,7 @@ export default function Workflow() {
             <Text style={styles.modalEyebrow}>QUADRO DE ETAPAS</Text>
             <Text style={styles.modalTitle}>Criar etapa</Text>
             <Text style={styles.modalDescription}>
-              Cadastre uma etapa e associe-a a um tradutor.
+              Cadastre uma etapa reutilizável para montar trilhas. O tradutor é atribuído quando o projeto é criado.
             </Text>
             <Text style={styles.formLabel}>Nome da etapa</Text>
             <TextInput
@@ -469,22 +449,6 @@ export default function Workflow() {
               placeholderTextColor="#98A7B1"
               style={styles.formInput}
             />
-            <View style={styles.modalSelect}>
-              <FilterSelect
-                label="Responsável"
-                value={selectedFreelancerId}
-                options={stageFreelancerOptions}
-                open={freelancerPickerOpen}
-                onToggle={() => setFreelancerPickerOpen((current) => !current)}
-                onSelect={(value) => {
-                  setSelectedFreelancerId(value);
-                  setFreelancerPickerOpen(false);
-                }}
-              />
-            </View>
-            {!freelancers.length ? (
-              <Text style={styles.formHint}>Cadastre um tradutor antes de criar uma etapa.</Text>
-            ) : null}
             {createError && stageModalOpen ? (
               <Text accessibilityRole="alert" style={styles.formError}>{createError}</Text>
             ) : null}
@@ -496,9 +460,9 @@ export default function Workflow() {
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable
-                disabled={saving || !freelancers.length}
+                disabled={saving}
                 onPress={() => void saveNewStage()}
-                style={[styles.primaryButton, (saving || !freelancers.length) && styles.disabled]}
+                style={[styles.primaryButton, saving && styles.disabled]}
               >
                 {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
                 <Text style={styles.primaryButtonText}>
@@ -544,7 +508,7 @@ export default function Workflow() {
             />
             <Text style={styles.formLabel}>Etapas cadastradas</Text>
             <ScrollView style={styles.stageChoices} keyboardShouldPersistTaps="handled">
-              {stages.length ? stages.map((stage) => {
+              {templates.length ? templates.map((stage) => {
                 const selected = selectedStageIds.includes(stage.id);
                 return (
                   <Pressable
@@ -558,9 +522,6 @@ export default function Workflow() {
                       {selected ? <Ionicons name="checkmark" size={13} color="#FFFFFF" /> : null}
                     </View>
                     <Text style={styles.stageChoiceName}>{stage.name}</Text>
-                    <Text style={styles.stageChoiceStatus}>
-                      {workflowStatuses.find((status) => status.value === stage.status)?.label}
-                    </Text>
                   </Pressable>
                 );
               }) : (
@@ -578,9 +539,9 @@ export default function Workflow() {
                 <Text style={styles.secondaryButtonText}>Cancelar</Text>
               </Pressable>
               <Pressable
-                disabled={saving || !stages.length}
+                disabled={saving || !templates.length}
                 onPress={() => void saveNewPath()}
-                style={[styles.primaryButton, (saving || !stages.length) && styles.disabled]}
+                style={[styles.primaryButton, (saving || !templates.length) && styles.disabled]}
               >
                 {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
                 <Text style={styles.primaryButtonText}>

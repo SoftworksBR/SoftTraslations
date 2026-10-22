@@ -15,7 +15,11 @@ import { completeFreelancerProfile } from '@/services/employees';
 
 export default function CompletarPerfil() {
   const { employee, refresh } = useAuth();
-  const [name, setName] = useState(employee?.username ?? '');
+  const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
+  const [specialization, setSpecialization] = useState('');
+  const [bio, setBio] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,15 +32,26 @@ export default function CompletarPerfil() {
   }
 
   async function submitProfile() {
-    if (!name.trim()) {
-      Alert.alert('Campo obrigatório', 'Informe seu nome.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate.trim()) || !phone.trim()) {
+      Alert.alert('Campos obrigatórios', 'Informe a data de nascimento (AAAA-MM-DD) e o telefone.');
+      return;
+    }
+    const rate = hourlyRate.trim() ? Number(hourlyRate.replace(',', '.')) : null;
+    if (rate !== null && (!Number.isFinite(rate) || rate < 0)) {
+      Alert.alert('Valor inválido', 'Informe um valor por hora válido.');
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      await completeFreelancerProfile(name.trim());
+      await completeFreelancerProfile({
+        birth_date: birthDate.trim(),
+        phone: phone.trim(),
+        specialization: specialization.trim() || null,
+        bio: bio.trim() || null,
+        hourly_rate: rate,
+      });
       await refresh();
       router.replace('/tradutor/servicos');
     } catch (cause) {
@@ -51,15 +66,18 @@ export default function CompletarPerfil() {
       <View style={styles.form}>
         <Text style={styles.title}>Completar perfil</Text>
         <Text style={styles.description}>
-          Informe seu nome para concluir o cadastro da sua conta.
+          Informe seus dados para concluir o cadastro da sua conta.
         </Text>
-        <Text style={styles.label}>Nome</Text>
-        <TextInput
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-          style={styles.input}
-        />
+        <Text style={styles.label}>Data de nascimento (AAAA-MM-DD)</Text>
+        <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="1990-01-31" style={styles.input} />
+        <Text style={styles.label}>Telefone</Text>
+        <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" style={styles.input} />
+        <Text style={styles.label}>Especialização</Text>
+        <TextInput value={specialization} onChangeText={setSpecialization} style={styles.input} />
+        <Text style={styles.label}>Valor por hora (R$)</Text>
+        <TextInput value={hourlyRate} onChangeText={setHourlyRate} keyboardType="decimal-pad" style={styles.input} />
+        <Text style={styles.label}>Sobre você</Text>
+        <TextInput value={bio} onChangeText={setBio} multiline style={styles.input} />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Pressable
           style={[styles.button, saving && styles.disabled]}

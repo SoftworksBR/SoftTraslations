@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,26 +17,24 @@ import {
 } from 'react-native';
 
 import { PublicNavbar } from '@/components/PublicNavbar';
-import { createRequest } from '@/services/requests';
-import type { TranslationLanguage } from '@/services/requests';
+import { WebFilePicker } from '@/components/WebFilePicker';
+import {
+  createRequest,
+  getRequestOptions,
+  uploadRequestFile,
+} from '@/services/requests';
+import type { RequestOptions } from '@/services/requests';
 
-const languages: { label: string; value: TranslationLanguage }[] = [
-  { label: 'Português', value: 'portuguese' },
-  { label: 'Inglês', value: 'english' },
-  { label: 'Espanhol', value: 'spanish' },
-  { label: 'Alemão', value: 'german' },
-  { label: 'Italiano', value: 'italian' },
-  { label: 'Francês', value: 'french' },
-  { label: 'Outro', value: 'other' },
-];
+type Option = { label: string; value: number };
 
 type RequestForm = {
   name: string;
   email: string;
   phone: string;
   company: string;
-  from: TranslationLanguage | null;
-  to: TranslationLanguage | null;
+  from: number | null;
+  to: number | null;
+  service: number | null;
   description: string;
 };
 
@@ -50,11 +48,36 @@ const initialForm: RequestForm = {
   company: '',
   from: null,
   to: null,
+  service: null,
   description: '',
 };
 
 export default function FazerSolicitacao() {
   const [form, setForm] = useState<RequestForm>(initialForm);
+  const [options, setOptions] = useState<RequestOptions>({
+    languages: [],
+    services: [],
+  });
+  const [files, setFiles] = useState<File[]>([]);
+  const languages: Option[] = options.languages.map((item) => ({
+    label: item.name,
+    value: item.id,
+  }));
+  const services: Option[] = options.services.map((item) => ({
+    label: item.name,
+    value: item.id,
+  }));
+
+  useEffect(() => {
+    getRequestOptions()
+      .then(setOptions)
+      .catch((cause) =>
+        Alert.alert(
+          'Não foi possível carregar os idiomas',
+          cause instanceof Error ? cause.message : 'Tente novamente.',
+        ),
+      );
+  }, []);
   const [step, setStep] = useState<1 | 2>(1);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -97,16 +120,32 @@ export default function FazerSolicitacao() {
 
     setSending(true);
     try {
-      await createRequest({
+      const created = await createRequest({
         username: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
         company: form.company.trim() || null,
-        translate_from: form.from,
-        translate_to: form.to,
-        observations: form.description.trim(),
+        source_language_id: form.from,
+        target_language_id: form.to,
+        service_id: form.service,
+        observations: form.description.trim() || null,
       });
       setSent(true);
+
+      const failed: string[] = [];
+      for (const file of files) {
+        try {
+          await uploadRequestFile(created.public_token, file);
+        } catch {
+          failed.push(file.name);
+        }
+      }
+      if (failed.length > 0) {
+        Alert.alert(
+          'Solicitação enviada',
+          `Não foi possível enviar os anexos: ${failed.join(', ')}.`,
+        );
+      }
     } catch (cause) {
       Alert.alert(
         'Não foi possível enviar',
@@ -119,6 +158,7 @@ export default function FazerSolicitacao() {
 
   function requestAnother() {
     setForm(initialForm);
+    setFiles([]);
     setErrors({});
     setStep(1);
     setSent(false);
@@ -223,6 +263,7 @@ export default function FazerSolicitacao() {
                       <View style={[styles.formGrid, wide && styles.formGridWide]}>
                         <LanguageField
                           label="Idioma de origem"
+                          options={languages}
                           value={form.from}
                           onSelect={(value) => update('from', value)}
                           required
@@ -230,11 +271,24 @@ export default function FazerSolicitacao() {
                         />
                         <LanguageField
                           label="Idioma de destino"
+                          options={languages}
                           value={form.to}
                           onSelect={(value) => update('to', value)}
                           required
                           error={errors.to}
                         />
+                        <LanguageField
+                          label="Tipo de serviço"
+                          placeholder="Selecione o serviço (opcional)"
+                          options={services}
+                          value={form.service}
+                          onSelect={(value) => update('service', value)}
+                          required={false}
+                        />
+                        <View style={styles.field}>
+                          <Text style={styles.fieldLabel}>Anexos</Text>
+                          <WebFilePicker files={files} onChange={setFiles} />
+                        </View>
                         <View style={wide && styles.spanTwo}>
                           <InputField
                             label="Descrição da necessidade e observações"
@@ -289,8 +343,13 @@ export default function FazerSolicitacao() {
                       <Text style={styles.reviewHeading}>Necessidade de tradução</Text>
                     </View>
                     <View style={[styles.reviewGrid, wide && styles.formGridWide]}>
-                      <ReviewValue label="Idioma de origem" value={languageName(form.from)} />
-                      <ReviewValue label="Idioma de destino" value={languageName(form.to)} />
+                      <ReviewValue label="Idioma de origem" value={optionName(languages, form.from)} />
+                      <ReviewValue label="Idioma de destino" value={optionName(languages, form.to)} />
+                      <ReviewValue label="Serviço" value={optionName(services, form.service)} />
+                      <ReviewValue
+                        label="Anexos"
+                        value={files.length ? files.map((file) => file.name).join(', ') : '—'}
+                      />
                       <View style={wide && styles.spanTwo}>
                         <ReviewValue label="Descrição e observações" value={form.description} />
                       </View>
@@ -440,14 +499,18 @@ function InputField({
 
 function LanguageField({
   label,
+  placeholder = 'Selecione o idioma',
+  options,
   value,
   onSelect,
   required,
   error,
 }: {
   label: string;
-  value: TranslationLanguage | null;
-  onSelect: (value: TranslationLanguage) => void;
+  placeholder?: string;
+  options: Option[];
+  value: number | null;
+  onSelect: (value: number) => void;
   required: boolean;
   error?: string;
 }) {
@@ -459,20 +522,20 @@ function LanguageField({
       </Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value ? languageName(value) : 'Selecione o idioma'}`}
+        accessibilityLabel={`${label}: ${value ? optionName(options, value) : placeholder}`}
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen((current) => !current)}
         style={[styles.select, error && styles.inputError]}
       >
         <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
-          {value ? languageName(value) : 'Selecione o idioma'}
+          {value ? optionName(options, value) : placeholder}
         </Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
       </Pressable>
       {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
       {open ? (
         <View style={styles.selectOptions}>
-          {languages.map((language) => (
+          {options.map((language) => (
             <Pressable
               key={language.value}
               onPress={() => {
@@ -502,8 +565,8 @@ function ReviewValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function languageName(value: TranslationLanguage | null) {
-  return languages.find((language) => language.value === value)?.label ?? '—';
+function optionName(options: Option[], value: number | null) {
+  return options.find((option) => option.value === value)?.label ?? '—';
 }
 
 const styles = StyleSheet.create({

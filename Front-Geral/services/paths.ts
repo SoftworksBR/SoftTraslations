@@ -1,10 +1,10 @@
 import { apiRequest } from './api';
-import type { TranslationStage } from './stages';
+import type { StageTemplate } from './stages';
 
 export type TranslationPath = {
   id: number;
   name: string;
-  stages: TranslationStage[];
+  stages: StageTemplate[];
 };
 
 export function getPaths() {
