@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date
 from http import HTTPStatus
 from types import SimpleNamespace
 
@@ -21,6 +22,8 @@ from src.services.employee_service import EmployeeService
 def test_pending_status_is_only_valid_for_freelancers():
     employee = EmployeeSchema(
         username='translator',
+        first_name='Anna',
+        last_name='Translator',
         email='translator@example.com',
         password='password',
         role=Roles.FREELANCER,
@@ -32,10 +35,29 @@ def test_pending_status_is_only_valid_for_freelancers():
     with pytest.raises(ValidationError):
         EmployeeSchema(
             username='staff',
+            first_name='Staff',
+            last_name='Member',
             email='staff@example.com',
             password='password',
             role=Roles.ATENDIMENTO,
             status=EmployeeStatus.PENDING,
+        )
+
+
+def test_registration_names_are_optional_only_for_admins():
+    administrator = EmployeeSchema(
+        email='admin@example.com',
+        password='password',
+        role=Roles.ADMIN,
+    )
+    assert administrator.first_name is None
+    assert administrator.last_name is None
+
+    with pytest.raises(ValidationError):
+        EmployeeSchema(
+            email='staff@example.com',
+            password='password',
+            role=Roles.ATENDIMENTO,
         )
 
 
@@ -73,7 +95,10 @@ def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
         EmployeeService.pre_register_freelancer(
             session=None,
             data=FreelancerPreRegistrationSchema(
-                email='new-freelancer@example.com', password='secret'
+                first_name='Freelancer',
+                last_name='Person',
+                email='new-freelancer@example.com',
+                password='secret',
             ),
             current_employee=SimpleNamespace(role=Roles.PROJETOS),
         )
@@ -82,6 +107,9 @@ def test_pre_registration_always_creates_pending_freelancer(monkeypatch):
     assert created_employees == [employee]
     assert employee.role == Roles.FREELANCER
     assert employee.status == EmployeeStatus.PENDING
+    assert employee.first_name == 'Freelancer'
+    assert employee.last_name == 'Person'
+    assert employee.freelancer_profile.profile_completed is False
 
 
 def test_only_projects_role_can_pre_register_freelancers():
@@ -90,7 +118,10 @@ def test_only_projects_role_can_pre_register_freelancers():
             EmployeeService.pre_register_freelancer(
                 session=None,
                 data=FreelancerPreRegistrationSchema(
-                    email='new-freelancer@example.com', password='secret'
+                    first_name='Freelancer',
+                    last_name='Person',
+                    email='new-freelancer@example.com',
+                    password='secret',
                 ),
                 current_employee=SimpleNamespace(role=Roles.ADMIN),
             )
@@ -105,6 +136,7 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
         role=Roles.FREELANCER,
         status=EmployeeStatus.PENDING,
         username='freelancer@example.com',
+        freelancer_profile=SimpleNamespace(profile_completed=False),
     )
 
     async def get_by_id(session, employee_id):
@@ -120,14 +152,18 @@ def test_completing_profile_changes_pending_to_available(monkeypatch):
         EmployeeService.complete_freelancer_profile(
             session=None,
             data=FreelancerProfileSchema(
-                name='Freelancer Name',
+                birth_date=date(1990, 1, 1),
+                phone='+5511999999999',
+                specialization='Translator',
             ),
             current_employee=employee,
         )
     )
 
-    assert updated_employee.username == 'Freelancer Name'
     assert updated_employee.status == EmployeeStatus.AVAILABLE
+    assert updated_employee.birth_date == date(1990, 1, 1)
+    assert updated_employee.phone == '+5511999999999'
+    assert updated_employee.freelancer_profile.profile_completed is True
 
 
 def test_only_freelancers_can_complete_profile():
@@ -135,7 +171,9 @@ def test_only_freelancers_can_complete_profile():
         asyncio.run(
             EmployeeService.complete_freelancer_profile(
                 session=None,
-                data=FreelancerProfileSchema(name='Someone'),
+                data=FreelancerProfileSchema(
+                    birth_date=date(1990, 1, 1), phone='+5511999999999'
+                ),
                 current_employee=SimpleNamespace(
                     id=1,
                     role=Roles.PROJETOS,
@@ -176,6 +214,8 @@ def test_generic_employee_update_cannot_complete_pending_freelancer(
                 employee_id=employee.id,
                 employee=EmployeeSchema(
                     username='Freelancer Name',
+                    first_name='Freelancer',
+                    last_name='Name',
                     email='freelancer@example.com',
                     password='secret',
                     role=Roles.FREELANCER,
