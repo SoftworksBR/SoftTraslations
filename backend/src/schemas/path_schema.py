@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.schemas.stage_schema import StageResponse
+from src.schemas.stage_schema import StageTemplateResponse
 
 
 class PathCreate(BaseModel):
@@ -21,4 +21,4 @@ class PathResponse(BaseModel):
 
     id: int
     name: str
-    stages: list[StageResponse]
+    stages: list[StageTemplateResponse]
