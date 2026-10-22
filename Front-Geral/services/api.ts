@@ -1,10 +1,27 @@
-const API_URL = (
-  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000'
-).replace(/\/$/, '');
+import Constants from 'expo-constants';
 
-// O token agora vive em cookie HttpOnly; nada a limpar no dispositivo.
-// Mantida para não quebrar quem ainda chama essa função.
-export async function clearLegacyAccessToken() {}
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const expoHostUri = Constants.expoConfig?.hostUri;
+const expoHost = expoHostUri
+  ? new URL(
+      expoHostUri.includes('://')
+        ? expoHostUri
+        : `http://${expoHostUri}`,
+    ).hostname
+  : undefined;
+const expoLanHost =
+  expoHost && /^\d{1,3}(?:\.\d{1,3}){3}$/.test(expoHost)
+    ? expoHost
+    : undefined;
+const apiUrl = new URL(
+  configuredApiUrl || `http://${expoLanHost ?? 'localhost'}:8000`,
+);
+
+if (expoLanHost && ['localhost', '127.0.0.1'].includes(apiUrl.hostname)) {
+  apiUrl.hostname = expoLanHost;
+}
+
+const API_URL = apiUrl.toString().replace(/\/$/, '');
 
 export class ApiError extends Error {
   status: number;
