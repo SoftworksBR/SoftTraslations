@@ -1,4 +1,4 @@
-import { apiRequest, clearLegacyAccessToken } from './api';
+import { apiRequest } from './api';
 import type { Employee } from './employees';
 
 export type LoginResponse = {
@@ -18,7 +18,6 @@ export async function login(email: string, password: string) {
     body: form.toString(),
   });
 
-  await clearLegacyAccessToken();
   return result;
 }
 
@@ -28,5 +27,4 @@ export function getCurrentEmployee() {
 
 export async function logout() {
   await apiRequest<void>('/auth/logout', { method: 'POST' });
-  await clearLegacyAccessToken();
 }
