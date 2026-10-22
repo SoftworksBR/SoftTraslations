@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: Literal['lax', 'strict', 'none'] = 'lax'
     CORS_ORIGINS: str = 'http://localhost:8081,http://127.0.0.1:8081'
+    UPLOAD_DIR: str = 'uploads'
+    MAX_UPLOAD_MB: int = 10
+    MAX_FILES_PER_REQUEST: int = 10
 
     @model_validator(mode='after')
     def validate_cookie_settings(self):

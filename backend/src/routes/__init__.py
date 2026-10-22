@@ -11,6 +11,7 @@ from .empresa_route import router as empresa_route
 from .language_route import router as language_router
 from .path_route import router as path_route
 from .project_route import router as project_route
+from .quote_route import router as quote_route
 from .request_route import (
     protected_router as request_protected_route,
 )
@@ -35,4 +36,5 @@ protected_router.include_router(path_route)
 protected_router.include_router(project_route)
 protected_router.include_router(empresa_route)
 protected_router.include_router(stage_route)
+protected_router.include_router(quote_route)
 protected_router.include_router(request_protected_route)

@@ -10,5 +10,6 @@ from .path_model import Path as Path
 from .project_model import Project as Project
 from .request_model import Request as Request
 from .service_model import Service as Service
+from .quote_model import Quote as Quote
 from .stage_model import Stage as Stage
 from .translation_price_model import TranslationPrice as TranslationPrice

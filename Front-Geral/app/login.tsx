@@ -1,5 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { getCurrentEmployee, login } from '@/services/auth';
+import { errorMessage, notify } from '@/services/dialog';
 import {
   View,
   Text,
@@ -9,19 +11,44 @@ import {
   ScrollView,
 } from 'react-native';
 
+const rotaPorCargo = {
+  admin: '/drawer/GerenciarAtendimento',
+  atendimento: '/atendente/requisicoes',
+  projetos: '/gestor/projetos',
+} as const;
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [entrando, setEntrando] = useState(false);
 
-  function fazerLogin() {
+  async function fazerLogin() {
     if (!email || !senha) {
-      alert('Preencha todos os campos');
+      notify('Atenção', 'Preencha todos os campos');
       return;
     }
 
-    console.log('Login:', { email, senha });
+    setEntrando(true);
 
-   router.replace('/landingPage');
+    try {
+      await login(email.trim(), senha);
+      const funcionario = await getCurrentEmployee();
+
+      if (funcionario.role === 'freelancer') {
+        notify(
+          'Atenção',
+          'A área do tradutor ainda não está disponível neste aplicativo.',
+          () => router.replace('/landingPage'),
+        );
+        return;
+      }
+
+      router.replace(rotaPorCargo[funcionario.role]);
+    } catch (error) {
+      notify('Erro ao entrar', errorMessage(error));
+    } finally {
+      setEntrando(false);
+    }
   }
 
   return (
@@ -57,10 +84,13 @@ export default function Login() {
 
           {/* BOTÃO LOGIN */}
           <Pressable
-            style={styles.loginButton}
+            style={[styles.loginButton, entrando && { opacity: 0.6 }]}
             onPress={fazerLogin}
+            disabled={entrando}
           >
-            <Text style={styles.loginText}>ENTRAR</Text>
+            <Text style={styles.loginText}>
+              {entrando ? 'ENTRANDO...' : 'ENTRAR'}
+            </Text>
           </Pressable>
         </View>
       </View>

@@ -2,11 +2,12 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.enums.enums import Roles
+from src.enums.enums import QuoteStatus, Roles
 from src.models.employee_model import Employee
 from src.models.path_model import Path
 from src.models.project_model import Project
 from src.repositories.project_repository import ProjectRepository
+from src.repositories.quote_repository import QuoteRepository
 from src.schemas.project_schema import (
     ProjectCreate,
     ProjectSearchFilters,
@@ -17,6 +18,7 @@ from src.schemas.project_schema import (
 class ProjectService:
     def __init__(self, session: AsyncSession):
         self.repository = ProjectRepository(session)
+        self.quote_repository = QuoteRepository(session)
 
     async def create(
         self, data: ProjectCreate, current_employee: Employee
@@ -36,10 +38,14 @@ class ProjectService:
                 detail='One or more paths were not found',
             )
 
+        if data.quote_id is not None:
+            await self._validate_quote(data.quote_id)
+
         project = Project(
             name=data.name,
             status=data.status,
-            creator_id=data.creator_id,
+            creator_id=current_employee.id,
+            quote_id=data.quote_id,
             paths=paths,
         )
 
@@ -108,6 +114,29 @@ class ProjectService:
             )
 
         await self.repository.delete(project)
+
+    async def _validate_quote(self, quote_id: int) -> None:
+        quote = await self.quote_repository.get_by_id(quote_id)
+        if quote is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Orçamento não encontrado',
+            )
+
+        if quote.status != QuoteStatus.APPROVED:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail='Só é possível criar projeto de orçamento aprovado',
+            )
+
+        existing = await self.repository.session.scalar(
+            select(Project.id).where(Project.quote_id == quote_id)
+        )
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail='Já existe projeto para este orçamento',
+            )
 
     @staticmethod
     def _require_projects_role(current_employee: Employee) -> None:

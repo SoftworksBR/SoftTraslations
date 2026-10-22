@@ -10,6 +10,7 @@ from src.database import get_session
 from src.enums.enums import Roles
 from src.main import app
 from src.repositories.request_repository import RequestRepository
+from src.schemas.request_schema import RequestSearchFilters
 from src.security import get_current_employee
 from src.services.request_service import RequestService
 
@@ -23,12 +24,14 @@ def test_atendimento_and_projetos_can_list_requests(role):
         def __init__(self, requests):
             self.requests = requests
 
-        async def get_all(self):
+        async def get_all(self, filters=None):
             return self.requests
 
     service.repository = FakeRepository(expected_requests)
 
-    result = asyncio.run(service.get_all(SimpleNamespace(role=role)))
+    result = asyncio.run(service.get_all(
+                SimpleNamespace(role=role), RequestSearchFilters()
+            ))
 
     assert result == expected_requests
 
@@ -43,7 +46,7 @@ def test_projetos_can_list_requests_through_api(monkeypatch):
     async def fake_session():
         yield FakeSession()
 
-    async def fake_get_all(repository):
+    async def fake_get_all(repository, filters=None):
         return repository.session.requests
 
     async def fake_current_employee():
@@ -67,7 +70,9 @@ def test_other_roles_cannot_list_requests(role):
     service = RequestService(session=None)
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(service.get_all(SimpleNamespace(role=role)))
+        asyncio.run(service.get_all(
+                SimpleNamespace(role=role), RequestSearchFilters()
+            ))
 
     assert error.value.status_code == HTTPStatus.FORBIDDEN
 
@@ -85,8 +90,8 @@ def test_projetos_cannot_modify_or_delete_requests(action):
                 email=None,
                 phone=None,
                 company=None,
-                translate_from=None,
-                translate_to=None,
+                source_language_id=None,
+                target_language_id=None,
                 observations=None,
                 employee_id=None,
             ),

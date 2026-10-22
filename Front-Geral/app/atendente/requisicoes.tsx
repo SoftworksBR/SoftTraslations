@@ -1,249 +1,229 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
   FlatList,
   Pressable,
   StyleSheet,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 
-import { router } from 'expo-router';
+import { confirmAction, errorMessage, notify } from '@/services/dialog';
+import { formatDate } from '@/services/quotes';
+import {
+  deleteRequest,
+  listRequestFiles,
+  listRequests,
+  type ApiRequest,
+  type RequestFile,
+  type RequestStatus,
+} from '@/services/requests';
 
-import { requisicoes } from '@/data/requisicoes';
+const statusLabel: Record<RequestStatus, string> = {
+  pending: 'pendente',
+  quoted: 'orçada',
+  rejected: 'recusada',
+};
 
 export default function Requisicoes() {
+  const [listaRequisicoes, setListaRequisicoes] = useState<ApiRequest[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [aberto, setAberto] = useState<number | null>(null);
+  const [arquivos, setArquivos] = useState<Record<number, RequestFile[]>>({});
+  const [somentePendentes, setSomentePendentes] = useState(true);
 
-  const [listaRequisicoes, setListaRequisicoes] =
-    useState([...requisicoes]);
+  const carregar = useCallback(async () => {
+    setCarregando(true);
 
-    const [aberto, setAberto] =
-    useState<number | null>(null);
-
-    function excluirRequisicao(id: number) {
-        Alert.alert(
-            'Excluir solicitação',
-            'Tem certeza que deseja excluir esta solicitação?',
-            [
-            {
-                text: 'Cancelar',
-                style: 'cancel',
-            },
-            {
-                text: 'Excluir',
-                style: 'destructive',
-                onPress: () => {
-                setListaRequisicoes((lista) =>
-                    lista.filter(
-                    (item) => item.id !== id
-                    )
-                );
-
-                if (aberto === id) {
-                    setAberto(null);
-                }
-                },
-            },
-            ]
-        );
+    try {
+      setListaRequisicoes(
+        await listRequests(somentePendentes ? { status: 'pending' } : {}),
+      );
+    } catch (error) {
+      notify('Erro', errorMessage(error));
+    } finally {
+      setCarregando(false);
     }
+  }, [somentePendentes]);
 
-  function alternar(id: number) {
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar]),
+  );
 
+  async function alternar(id: number) {
     if (aberto === id) {
       setAberto(null);
-    } else {
-      setAberto(id);
+      return;
     }
 
+    setAberto(id);
+
+    if (!arquivos[id]) {
+      try {
+        const lista = await listRequestFiles(id);
+        setArquivos((atual) => ({ ...atual, [id]: lista }));
+      } catch (error) {
+        notify('Erro', errorMessage(error));
+      }
+    }
+  }
+
+  function excluirRequisicao(id: number) {
+    confirmAction(
+      'Excluir solicitação',
+      'Tem certeza que deseja excluir esta solicitação?',
+      'Excluir',
+      async () => {
+        try {
+          await deleteRequest(id);
+          setListaRequisicoes((lista) =>
+            lista.filter((item) => item.id !== id),
+          );
+          if (aberto === id) {
+            setAberto(null);
+          }
+        } catch (error) {
+          notify('Erro', errorMessage(error));
+        }
+      },
+    );
   }
 
   return (
     <View style={styles.container}>
+      <Text style={styles.titulo}>Requisições</Text>
 
-      <Text style={styles.titulo}>
-        Requisições
-      </Text>
+      <Pressable
+        style={extra.filtro}
+        onPress={() => setSomentePendentes((valor) => !valor)}
+      >
+        <Text style={extra.filtroTexto}>
+          {somentePendentes
+            ? 'Mostrando apenas pendentes (tocar para ver todas)'
+            : 'Mostrando todas (tocar para ver só pendentes)'}
+        </Text>
+      </Pressable>
 
-      <FlatList
-        data={listaRequisicoes}
-        keyExtractor={(item) =>
-          item.id.toString()
-        }
+      {carregando ? (
+        <ActivityIndicator style={{ marginTop: 30 }} />
+      ) : (
+        <FlatList
+          data={listaRequisicoes}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.lista}
+          ListEmptyComponent={
+            <Text style={extra.vazio}>Nenhuma requisição encontrada.</Text>
+          }
+          renderItem={({ item }) => {
+            const expandido = aberto === item.id;
+            const anexos = arquivos[item.id] ?? [];
 
-        contentContainerStyle={styles.lista}
+            return (
+              <View style={styles.card}>
+                <Pressable
+                  style={styles.cabecalho}
+                  onPress={() => alternar(item.id)}
+                >
+                  <View style={styles.resumo}>
+                    <Text style={styles.nome}>{item.username}</Text>
 
-        renderItem={({ item }) => {
+                    <Text style={styles.servico}>
+                      {item.service_name ?? 'Serviço não informado'}
+                    </Text>
 
-          const expandido = aberto === item.id;
+                    <Text style={styles.idiomas}>
+                      {item.source_language_name}
+                      {' → '}
+                      {item.target_language_name} · {statusLabel[item.status]}
+                    </Text>
+                  </View>
 
-          return (
-            <View style={styles.card}>
+                  <Text style={styles.seta}>{expandido ? '▲' : '▼'}</Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.cabecalho}
-                onPress={() =>
-                  alternar(item.id)
-                }
-              >
+                {expandido && (
+                  <View style={styles.detalhes}>
+                    <Text style={styles.label}>E-mail</Text>
+                    <Text style={styles.valor}>{item.email}</Text>
 
-                <View style={styles.resumo}>
+                    <Text style={styles.label}>Telefone</Text>
+                    <Text style={styles.valor}>{item.phone}</Text>
 
-                  <Text style={styles.nome}>
-                    {item.nome}
-                  </Text>
-
-                  <Text style={styles.servico}>
-                    {item.servico}
-                  </Text>
-
-                  <Text style={styles.idiomas}>
-                    {item.traducaoDe}
-                    {' → '}
-                    {item.traducaoPara}
-                  </Text>
-
-                </View>
-
-                <Text style={styles.seta}>
-                  {expandido ? '▲' : '▼'}
-                </Text>
-
-              </Pressable>
-
-
-              {expandido && (
-
-                <View style={styles.detalhes}>
-
-                  <Text style={styles.label}>
-                    E-mail
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.email}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Telefone
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.telefone}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Empresa
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.empresa || 'Não informado'}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Serviço
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.servico}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Tradução
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.traducaoDe}
-                    {' → '}
-                    {item.traducaoPara}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Observações
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.observacoes || 'Nenhuma'}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Arquivos
-                  </Text>
-
-                  {item.arquivos.length > 0 ? (
-
-                    item.arquivos.map(
-                      (arquivo, index) => (
-                        <Text
-                          key={index}
-                          style={styles.arquivo}
-                        >
-                          📎 {arquivo}
-                        </Text>
-                      )
-                    )
-
-                  ) : (
-
+                    <Text style={styles.label}>Empresa</Text>
                     <Text style={styles.valor}>
-                      Nenhum arquivo
+                      {item.company || 'Não informado'}
                     </Text>
 
-                  )}
+                    <Text style={styles.label}>Serviço</Text>
+                    <Text style={styles.valor}>{item.service_name}</Text>
 
-
-                  <Text style={styles.data}>
-                    Solicitação: {item.data}
-                  </Text>
-
-
-                  <Pressable
-                    style={styles.botao}
-                    onPress={() =>
-                      router.push({
-                        pathname:
-                          '/atendente/novo-orcamento',
-
-                        params: {
-                          requisicaoId:
-                            item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-
-                    <Text style={styles.botaoTexto}>
-                      CRIAR ORÇAMENTO
+                    <Text style={styles.label}>Tradução</Text>
+                    <Text style={styles.valor}>
+                      {item.source_language_name}
+                      {' → '}
+                      {item.target_language_name}
                     </Text>
 
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.botaoExcluir}
-                    onPress={() =>
-                        excluirRequisicao(item.id)
-                    }
-                    >
-                    <Text style={styles.botaoExcluirTexto}>
-                        EXCLUIR SOLICITAÇÃO
+                    <Text style={styles.label}>Palavras (estimativa)</Text>
+                    <Text style={styles.valor}>
+                      {item.word_count ?? 'Não informado'}
                     </Text>
-                    </Pressable>
 
-                </View>
+                    <Text style={styles.label}>Observações</Text>
+                    <Text style={styles.valor}>
+                      {item.observations || 'Nenhuma'}
+                    </Text>
 
-              )}
+                    <Text style={styles.label}>Arquivos</Text>
 
-            </View>
-          );
-        }}
-      />
+                    {anexos.length > 0 ? (
+                      anexos.map((arquivo) => (
+                        <Text key={arquivo.id} style={styles.arquivo}>
+                          📎 {arquivo.original_name}
+                        </Text>
+                      ))
+                    ) : (
+                      <Text style={styles.valor}>Nenhum arquivo</Text>
+                    )}
 
+                    <Text style={styles.data}>
+                      Solicitação: {formatDate(item.created_at)}
+                    </Text>
+
+                    {item.status === 'pending' && (
+                      <>
+                        <Pressable
+                          style={styles.botao}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/atendente/novo-orcamento',
+                              params: { requisicaoId: item.id.toString() },
+                            })
+                          }
+                        >
+                          <Text style={styles.botaoTexto}>CRIAR ORÇAMENTO</Text>
+                        </Pressable>
+
+                        <Pressable
+                          style={styles.botaoExcluir}
+                          onPress={() => excluirRequisicao(item.id)}
+                        >
+                          <Text style={styles.botaoExcluirTexto}>
+                            EXCLUIR SOLICITAÇÃO
+                          </Text>
+                        </Pressable>
+                      </>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -361,4 +341,20 @@ const styles = StyleSheet.create({
     color: '#cc0000',
     fontWeight: 'bold',
     },
+});
+
+const extra = StyleSheet.create({
+  filtro: {
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  filtroTexto: {
+    color: '#555',
+    textDecorationLine: 'underline',
+  },
+  vazio: {
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 30,
+  },
 });

@@ -6,8 +6,12 @@ from src.schemas.path_schema import PathResponse
 
 class ProjectCreate(BaseModel):
     name: str
-    status: Status
-    creator_id: int
+    status: Status = Status.READY
+    # Obsoleto: o criador é sempre o funcionário autenticado.
+    creator_id: int | None = None
+    # Orçamento aprovado que originou o projeto.
+    quote_id: int | None = None
+    # Todo projeto nasce com ao menos uma trilha.
     path_ids: list[int] = Field(min_length=1)
 
 
@@ -30,6 +34,7 @@ class ProjectResponse(BaseModel):
     name: str
     status: Status
     creator_id: int
+    quote_id: int | None = None
     paths: list[PathResponse]
 
     model_config = ConfigDict(from_attributes=True)
