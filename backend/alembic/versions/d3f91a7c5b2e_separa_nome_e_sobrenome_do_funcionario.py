@@ -1,7 +1,7 @@
 """Separa nome e sobrenome do funcionário, substituindo username.
 
 Revision ID: d3f91a7c5b2e
-Revises: a2016a1cf29e
+Revises: d3f1a7c2b9e4
 """
 
 from typing import Sequence, Union
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'd3f91a7c5b2e'
-down_revision: Union[str, Sequence[str], None] = 'a2016a1cf29e'
+down_revision: Union[str, Sequence[str], None] = 'd3f1a7c2b9e4'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
