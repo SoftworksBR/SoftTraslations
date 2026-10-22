@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.path_model import Path
+from src.models.stage_model import PathStage
 
 
 class PathRepository:
@@ -18,7 +19,11 @@ class PathRepository:
     async def get_by_id(self, path_id: int) -> Path | None:
         result = await self.session.execute(
             select(Path)
-            .options(selectinload(Path.stages))
+            .options(
+                selectinload(Path.path_stages).selectinload(
+                    PathStage.stage_template
+                )
+            )
             .where(Path.id == path_id)
         )
 
@@ -26,7 +31,11 @@ class PathRepository:
 
     async def get_all(self) -> list[Path]:
         result = await self.session.execute(
-            select(Path).options(selectinload(Path.stages))
+            select(Path).options(
+                selectinload(Path.path_stages).selectinload(
+                    PathStage.stage_template
+                )
+            )
         )
 
         return list(result.scalars().all())
