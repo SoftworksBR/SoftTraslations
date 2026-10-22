@@ -112,41 +112,50 @@ export default function NovoProjeto() {
 
   if (carregando) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator style={{ marginTop: 30 }} />
+      <View style={styles.center}>
+        <ActivityIndicator color="#087F8C" />
       </View>
     );
   }
 
   if (!orcamento) {
     return (
-      <View style={styles.container}>
-        <Text>
+      <View style={styles.center}>
+        <Text style={styles.muted}>
           Orçamento não encontrado ou já utilizado em outro projeto.
         </Text>
+        <Pressable
+          style={styles.salvar}
+          onPress={() => router.replace('/gestor/orcamentos')}
+        >
+          <Text style={styles.salvarTexto}>Ver orçamentos</Text>
+        </Pressable>
       </View>
     );
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Pressable onPress={() => router.back()} style={styles.voltar}>
-        <Text style={styles.voltarTexto}>← Voltar</Text>
-      </Pressable>
-
-      <Text style={styles.title}>Novo Projeto</Text>
+      <Text style={styles.eyebrow}>GESTÃO DE PROJETOS</Text>
+      <Text style={styles.title}>Novo projeto</Text>
+      <Text style={styles.muted}>
+        Escolha as trilhas: as etapas são criadas automaticamente.
+      </Text>
 
       <View style={styles.info}>
-        <Text style={styles.infoTitulo}>Orçamento aprovado</Text>
-        <Text>Cliente: {orcamento.client_name}</Text>
-        <Text>Serviço: {orcamento.service_name}</Text>
-        <Text>
+        <Text style={styles.infoTitulo}>Orçamento aprovado #{orcamento.id}</Text>
+        <Text style={styles.muted}>Cliente: {orcamento.client_name}</Text>
+        <Text style={styles.muted}>
+          Serviço: {orcamento.service_name ?? 'Não informado'}
+        </Text>
+        <Text style={styles.muted}>
           Tradução: {orcamento.source_language_name}
           {' → '}
           {orcamento.target_language_name}
         </Text>
-        <Text>Valor: {formatMoney(orcamento.value)}</Text>
-        <Text>Prazo: {formatDate(orcamento.deadline)}</Text>
+        <Text style={styles.muted}>
+          {formatMoney(orcamento.value)} · prazo {formatDate(orcamento.deadline)}
+        </Text>
       </View>
 
       <Text style={styles.label}>Nome do projeto *</Text>
@@ -174,62 +183,61 @@ export default function NovoProjeto() {
           {salvando ? 'CRIANDO...' : 'CRIAR PROJETO'}
         </Text>
       </Pressable>
+      <Pressable onPress={() => router.back()} style={styles.link}>
+        <Text style={styles.linkText}>Cancelar</Text>
+      </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
-  },
+  container: { flex: 1, backgroundColor: '#F5F8FA' },
   content: {
+    padding: 24,
     paddingBottom: 40,
+    maxWidth: 720,
+    width: '100%',
+    alignSelf: 'center',
   },
-  voltar: {
-    marginBottom: 15,
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    padding: 24,
+    backgroundColor: '#F5F8FA',
   },
-  voltarTexto: {
-    fontSize: 16,
-    color: '#000',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
+  eyebrow: { color: '#087F8C', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  title: { marginTop: 7, color: '#0B2239', fontSize: 29, fontWeight: '800' },
+  muted: { marginTop: 4, color: '#627485', fontSize: 13, lineHeight: 19 },
   info: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 20,
-  },
-  infoTitulo: {
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#fff',
+    marginTop: 18,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#DFE7EC',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  infoTitulo: { color: '#172B3A', fontSize: 16, fontWeight: '700' },
+  label: { marginTop: 18, marginBottom: 6, color: '#172B3A', fontWeight: '600' },
+  input: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    backgroundColor: '#FFFFFF',
   },
   salvar: {
-    backgroundColor: '#000',
+    alignSelf: 'flex-start',
+    marginTop: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 10,
+    backgroundColor: '#087F8C',
   },
-  salvarTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  salvarTexto: { color: '#FFFFFF', fontWeight: '700' },
+  link: { marginTop: 14 },
+  linkText: { color: '#087F8C', fontWeight: '600' },
 });

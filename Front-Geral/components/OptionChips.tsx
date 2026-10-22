@@ -45,26 +45,26 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    backgroundColor: '#fff',
+    borderColor: '#DFE7EC',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
   chipActive: {
-    backgroundColor: '#000',
-    borderColor: '#000',
+    backgroundColor: '#087F8C',
+    borderColor: '#087F8C',
   },
   text: {
-    color: '#333',
+    color: '#172B3A',
     fontSize: 14,
   },
   textActive: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   empty: {
-    color: '#888',
+    color: '#627485',
     marginBottom: 15,
   },
 });
