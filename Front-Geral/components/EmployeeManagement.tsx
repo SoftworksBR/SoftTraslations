@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   ActivityIndicator,
   FlatList,
   Modal,
@@ -16,6 +15,7 @@ import {
 
 import { FilterPanel, FilterSelect } from '@/components/FilterPanel';
 import type { FilterOption } from '@/components/FilterPanel';
+import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import { deleteEmployee, getEmployees } from '@/services/employees';
 import type { Employee, EmployeeRole } from '@/services/employees';
 
@@ -107,27 +107,18 @@ export function EmployeeManagement() {
   }
 
   function confirmDelete(employee: Employee) {
-    Alert.alert(
+    confirmAction(
       'Excluir funcionário',
       `Deseja excluir ${employee.username}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteEmployee(employee.id);
-              await loadEmployees();
-            } catch (cause) {
-              Alert.alert(
-                'Não foi possível excluir',
-                cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
-              );
-            }
-          },
-        },
-      ],
+      'Excluir',
+      async () => {
+        try {
+          await deleteEmployee(employee.id);
+          await loadEmployees();
+        } catch (cause) {
+          notify('Não foi possível excluir', errorMessage(cause));
+        }
+      },
     );
   }
 

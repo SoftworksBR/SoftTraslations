@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import EmployeeStatus, Roles
@@ -286,7 +287,17 @@ class EmployeeService:
                 detail='Admins cannot delete other admins',
             )
 
-        await EmployeeRepository.delete(
-            session,
-            target_employee,
-        )
+        try:
+            await EmployeeRepository.delete(
+                session,
+                target_employee,
+            )
+        except IntegrityError as exc:
+            await session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    'Funcionário possui projetos, orçamentos ou solicitações '
+                    'vinculados e não pode ser excluído'
+                ),
+            ) from exc
