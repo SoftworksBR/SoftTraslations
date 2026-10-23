@@ -321,14 +321,10 @@ class EmployeeService:
         target_employee.role = employee.role
         target_employee.status = employee.status
 
-        if employee.birth_date is not None:
-            target_employee.birth_date = employee.birth_date
-
-        if employee.phone is not None:
-            target_employee.phone = employee.phone
-
-        if employee.photo_path is not None:
-            target_employee.photo_path = employee.photo_path
+        # Campo omitido fica como está; null enviado explicitamente apaga.
+        for field in ('birth_date', 'phone', 'photo_path'):
+            if field in employee.model_fields_set:
+                setattr(target_employee, field, getattr(employee, field))
 
         return await EmployeeRepository.update(
             session,

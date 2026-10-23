@@ -818,3 +818,52 @@ def test_consume_invite_token_is_a_conditional_update_on_the_token_hash():
     assert 'employees.invite_token_hash =' in query
     assert 'returning' in query
     session.commit.assert_awaited_once()
+
+
+def test_update_employee_clears_optional_fields_sent_as_null(monkeypatch):
+    target_employee = SimpleNamespace(
+        id=3,
+        role=Roles.ATENDIMENTO,
+        status=EmployeeStatus.AVAILABLE,
+        first_name='Old',
+        last_name='Name',
+        email='old@example.com',
+        password='old-hash',
+        birth_date=date(1990, 1, 1),
+        phone='1111-1111',
+        photo_path='/uploads/photo.png',
+    )
+
+    async def get_by_id(session, employee_id):
+        return target_employee
+
+    async def update(session, updated_employee):
+        return updated_employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    updated_employee = asyncio.run(
+        EmployeeService.update_employee(
+            session=None,
+            employee_id=target_employee.id,
+            employee=EmployeeUpdate(
+                first_name='Old',
+                last_name='Name',
+                email='old@example.com',
+                password='old-hash',
+                role=Roles.ATENDIMENTO,
+                status=EmployeeStatus.AVAILABLE,
+                birth_date=None,
+                phone=None,
+                photo_path=None,
+            ),
+            current_employee=SimpleNamespace(
+                id=target_employee.id, role=Roles.ATENDIMENTO
+            ),
+        )
+    )
+
+    assert updated_employee.birth_date is None
+    assert updated_employee.phone is None
+    assert updated_employee.photo_path is None
