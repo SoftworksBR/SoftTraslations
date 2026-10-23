@@ -18,7 +18,8 @@ class FreelancerProfileRepository:
         )
 
     async def create(self, profile: FreelancerProfile) -> FreelancerProfile:
+        # Só flush: o commit fica com quem chama, para o perfil sair na
+        # mesma transação da mudança de status do funcionário.
         self.session.add(profile)
-        await self.session.commit()
-        await self.session.refresh(profile)
+        await self.session.flush()
         return profile

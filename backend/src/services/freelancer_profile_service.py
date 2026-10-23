@@ -78,6 +78,8 @@ class FreelancerProfileService:
         # gestor, nunca é ativado automaticamente.
         employee.status = EmployeeStatus.UNDER_REVIEW
 
+        # Este commit grava o perfil (só com flush até aqui) e o status
+        # juntos; se falhar, nenhum dos dois fica salvo.
         return await EmployeeRepository.update(self.session, employee)
 
     async def _get_active_languages(self, language_ids: list[int]):

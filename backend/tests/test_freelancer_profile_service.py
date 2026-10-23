@@ -205,3 +205,64 @@ def test_rejects_inactive_service_id(monkeypatch):
         )
 
     assert error.value.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+class _TrackingSession:
+    # Sessão falsa: registra o que foi enviado ao banco (flush) e o que
+    # foi efetivamente gravado (commit).
+    def __init__(self):
+        self.pending = []
+        self.committed = []
+
+    def add(self, instance):
+        self.pending.append(instance)
+
+    async def flush(self):
+        pass
+
+    async def refresh(self, instance):
+        pass
+
+    async def commit(self):
+        self.committed.extend(self.pending)
+        self.pending = []
+
+    async def rollback(self):
+        self.pending = []
+
+
+def test_profile_is_not_saved_when_status_change_fails(monkeypatch):
+    employee = SimpleNamespace(
+        id=7,
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.PENDING,
+    )
+
+    async def get_by_id(session, employee_id):
+        return employee
+
+    async def update(session, updated_employee):
+        raise RuntimeError('database went away')
+
+    async def get_by_ids(self, ids):
+        if self is language_repo_instance:
+            return [_language(language_id) for language_id in ids]
+        return [_service(service_id) for service_id in ids]
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+    monkeypatch.setattr(LanguageRepository, 'get_by_ids', get_by_ids)
+    monkeypatch.setattr(ServiceRepository, 'get_by_ids', get_by_ids)
+
+    session = _TrackingSession()
+    service = FreelancerProfileService(session=session)
+    language_repo_instance = service.language_repository
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(
+            service.complete_profile(
+                _profile_data(), current_employee=employee
+            )
+        )
+
+    assert session.committed == []
