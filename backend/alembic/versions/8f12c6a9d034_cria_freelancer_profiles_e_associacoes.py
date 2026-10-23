@@ -30,7 +30,9 @@ def upgrade() -> None:
             nullable=False,
             server_default='America/Sao_Paulo',
         ),
-        sa.ForeignKeyConstraint(['employee_id'], ['employees.id']),
+        sa.ForeignKeyConstraint(
+            ['employee_id'], ['employees.id'], ondelete='CASCADE'
+        ),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('employee_id'),
     )
@@ -45,9 +47,13 @@ def upgrade() -> None:
             sa.Column('freelancer_profile_id', sa.Integer(), nullable=False),
             sa.Column('language_id', sa.Integer(), nullable=False),
             sa.ForeignKeyConstraint(
-                ['freelancer_profile_id'], ['freelancer_profiles.id']
+                ['freelancer_profile_id'],
+                ['freelancer_profiles.id'],
+                ondelete='CASCADE',
             ),
-            sa.ForeignKeyConstraint(['language_id'], ['languages.id']),
+            sa.ForeignKeyConstraint(
+                ['language_id'], ['languages.id'], ondelete='CASCADE'
+            ),
             sa.PrimaryKeyConstraint('freelancer_profile_id', 'language_id'),
         )
 
@@ -56,9 +62,13 @@ def upgrade() -> None:
         sa.Column('freelancer_profile_id', sa.Integer(), nullable=False),
         sa.Column('service_id', sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
-            ['freelancer_profile_id'], ['freelancer_profiles.id']
+            ['freelancer_profile_id'],
+            ['freelancer_profiles.id'],
+            ondelete='CASCADE',
         ),
-        sa.ForeignKeyConstraint(['service_id'], ['services.id']),
+        sa.ForeignKeyConstraint(
+            ['service_id'], ['services.id'], ondelete='CASCADE'
+        ),
         sa.PrimaryKeyConstraint('freelancer_profile_id', 'service_id'),
     )
 

@@ -15,10 +15,14 @@ freelancer_profile_source_languages = Table(
     table_registry.metadata,
     Column(
         'freelancer_profile_id',
-        ForeignKey('freelancer_profiles.id'),
+        ForeignKey('freelancer_profiles.id', ondelete='CASCADE'),
         primary_key=True,
     ),
-    Column('language_id', ForeignKey('languages.id'), primary_key=True),
+    Column(
+        'language_id',
+        ForeignKey('languages.id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
 )
 
 freelancer_profile_target_languages = Table(
@@ -26,10 +30,14 @@ freelancer_profile_target_languages = Table(
     table_registry.metadata,
     Column(
         'freelancer_profile_id',
-        ForeignKey('freelancer_profiles.id'),
+        ForeignKey('freelancer_profiles.id', ondelete='CASCADE'),
         primary_key=True,
     ),
-    Column('language_id', ForeignKey('languages.id'), primary_key=True),
+    Column(
+        'language_id',
+        ForeignKey('languages.id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
 )
 
 freelancer_profile_native_languages = Table(
@@ -37,10 +45,14 @@ freelancer_profile_native_languages = Table(
     table_registry.metadata,
     Column(
         'freelancer_profile_id',
-        ForeignKey('freelancer_profiles.id'),
+        ForeignKey('freelancer_profiles.id', ondelete='CASCADE'),
         primary_key=True,
     ),
-    Column('language_id', ForeignKey('languages.id'), primary_key=True),
+    Column(
+        'language_id',
+        ForeignKey('languages.id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
 )
 
 freelancer_profile_services = Table(
@@ -48,10 +60,14 @@ freelancer_profile_services = Table(
     table_registry.metadata,
     Column(
         'freelancer_profile_id',
-        ForeignKey('freelancer_profiles.id'),
+        ForeignKey('freelancer_profiles.id', ondelete='CASCADE'),
         primary_key=True,
     ),
-    Column('service_id', ForeignKey('services.id'), primary_key=True),
+    Column(
+        'service_id',
+        ForeignKey('services.id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
 )
 
 
@@ -63,7 +79,9 @@ class FreelancerProfile:
         init=False, primary_key=True, autoincrement=True
     )
     employee_id: Mapped[int] = mapped_column(
-        ForeignKey('employees.id'), unique=True, nullable=False
+        ForeignKey('employees.id', ondelete='CASCADE'),
+        unique=True,
+        nullable=False,
     )
     salutation: Mapped[str] = mapped_column(nullable=False)
     academic_title: Mapped[str] = mapped_column(nullable=False)
