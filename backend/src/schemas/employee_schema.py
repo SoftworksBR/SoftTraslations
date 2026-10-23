@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -11,28 +13,61 @@ from src.enums.enums import EmployeeStatus, Roles
 
 class EmployeePublicSchema(BaseModel):
     id: int
-    username: str
+    first_name: str
+    last_name: str
     email: EmailStr
     role: Roles
     status: EmployeeStatus
+    birth_date: date | None
+    phone: str | None
+    photo_path: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class EmployeeSchema(BaseModel):
-    username: str
+class EmployeeCreate(BaseModel):
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
     email: EmailStr
     role: Roles
     status: EmployeeStatus = EmployeeStatus.AVAILABLE
     password: str
 
     @model_validator(mode='after')
-    def pending_requires_freelancer(self):
+    def freelancer_only_statuses_require_freelancer_role(self):
         if (
-            self.status == EmployeeStatus.PENDING
+            self.status
+            in {EmployeeStatus.PENDING, EmployeeStatus.UNDER_REVIEW}
             and self.role != Roles.FREELANCER
         ):
-            raise ValueError('Only freelancers can have pending status')
+            raise ValueError(
+                'Only freelancers can have pending or under_review status'
+            )
+
+        return self
+
+
+class EmployeeUpdate(BaseModel):
+    first_name: str = Field(min_length=1)
+    last_name: str = ''
+    email: EmailStr
+    role: Roles
+    status: EmployeeStatus = EmployeeStatus.AVAILABLE
+    password: str
+    birth_date: date | None = None
+    phone: str | None = None
+    photo_path: str | None = None
+
+    @model_validator(mode='after')
+    def freelancer_only_statuses_require_freelancer_role(self):
+        if (
+            self.status
+            in {EmployeeStatus.PENDING, EmployeeStatus.UNDER_REVIEW}
+            and self.role != Roles.FREELANCER
+        ):
+            raise ValueError(
+                'Only freelancers can have pending or under_review status'
+            )
 
         return self
 
@@ -42,15 +77,26 @@ class EmployeeListSchema(BaseModel):
 
 
 class EmployeeSearchFilters(BaseModel):
-    username: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     email: str | None = None
     role: Roles | None = None
 
 
 class FreelancerPreRegistrationSchema(BaseModel):
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
     email: EmailStr
+
+
+class FreelancerInviteResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: EmailStr
+    invite_token: str
+
+
+class FreelancerInviteAcceptSchema(BaseModel):
+    token: str
     password: str
-
-
-class FreelancerProfileSchema(BaseModel):
-    name: str = Field(min_length=1)

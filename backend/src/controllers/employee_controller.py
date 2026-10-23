@@ -6,12 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
-    EmployeeSchema,
+    EmployeeCreate,
     EmployeeSearchFilters,
+    EmployeeUpdate,
+    FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
+from src.schemas.freelancer_profile_schema import FreelancerProfileSchema
 from src.services.employee_service import EmployeeService
+from src.services.freelancer_profile_service import FreelancerProfileService
 
 service = EmployeeService()
 
@@ -34,16 +37,21 @@ async def pre_register_freelancer(
         ) from None
 
 
+async def accept_freelancer_invite(
+    data: FreelancerInviteAcceptSchema,
+    session: AsyncSession,
+):
+    return await service.accept_freelancer_invite(session, data)
+
+
 async def complete_freelancer_profile(
     data: FreelancerProfileSchema,
     session: AsyncSession,
     current_employee: Employee,
 ):
-    return await service.complete_freelancer_profile(
-        session,
-        data,
-        current_employee,
-    )
+    profile_service = FreelancerProfileService(session)
+
+    return await profile_service.complete_profile(data, current_employee)
 
 
 async def get_employees(
@@ -65,7 +73,7 @@ async def get_employees(
 
 
 async def create_employee(
-    employee: EmployeeSchema,
+    employee: EmployeeCreate,
     session: AsyncSession,
     current_employee: Employee,
 ):
@@ -84,7 +92,7 @@ async def create_employee(
 
 
 async def create_initial_admin(
-    employee: EmployeeSchema,
+    employee: EmployeeCreate,
     session: AsyncSession,
 ):
     try:
@@ -99,7 +107,7 @@ async def create_initial_admin(
 
 async def update_employee(
     employee_id: int,
-    employee: EmployeeSchema,
+    employee: EmployeeUpdate,
     session: AsyncSession,
     current_employee: Employee,
 ):

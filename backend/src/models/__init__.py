@@ -4,11 +4,12 @@ from .empresa_model import Departamento as Departamento
 from .empresa_model import Empresa as Empresa
 from .file_model import RequestFile as RequestFile
 from .file_model import StageFile as StageFile
+from .freelancer_profile_model import FreelancerProfile as FreelancerProfile
+from .language_model import Language as Language
 from .path_model import Path as Path
 from .project_model import Project as Project
 from .request_model import Request as Request
-from .stage_model import Stage as Stage
-from .language_model import Language as Language
 from .service_model import Service as Service
-from .translation_price_model import TranslationPrice as TranslationPrice
 from .quote_model import Quote as Quote
+from .stage_model import Stage as Stage
+from .translation_price_model import TranslationPrice as TranslationPrice
