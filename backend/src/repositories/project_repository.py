@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -69,14 +69,9 @@ class ProjectRepository:
                     .join(Path.stages)
                     .join(Employee, Stage.freelancer_id == Employee.id)
                     .where(
-                        or_(
-                            Employee.first_name.ilike(
-                                f'%{filters.freelancer_name}%'
-                            ),
-                            Employee.last_name.ilike(
-                                f'%{filters.freelancer_name}%'
-                            ),
-                        )
+                        func.concat_ws(
+                            ' ', Employee.first_name, Employee.last_name
+                        ).ilike(f'%{filters.freelancer_name}%')
                     )
                 )
                 statement = statement.where(
@@ -85,10 +80,9 @@ class ProjectRepository:
 
             if filters.creator_name is not None:
                 creator_subquery = select(Employee.id).where(
-                    or_(
-                        Employee.first_name.ilike(f'%{filters.creator_name}%'),
-                        Employee.last_name.ilike(f'%{filters.creator_name}%'),
-                    )
+                    func.concat_ws(
+                        ' ', Employee.first_name, Employee.last_name
+                    ).ilike(f'%{filters.creator_name}%')
                 )
                 statement = statement.where(
                     Project.creator_id.in_(creator_subquery)
