@@ -3,10 +3,12 @@ import hashlib
 from datetime import date, datetime, timedelta
 from http import HTTPStatus
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
+from sqlalchemy.dialects import postgresql
 
 from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
@@ -188,15 +190,22 @@ def test_accept_invite_sets_password_and_clears_token(monkeypatch):
     async def get_by_invite_token_hash(session, invite_token_hash):
         return employee if invite_token_hash == valid_token_hash else None
 
-    async def update(session, updated_employee):
-        return updated_employee
+    async def consume_invite_token(
+        session, employee_id, invite_token_hash, password_hash
+    ):
+        employee.password = password_hash
+        employee.invite_token_hash = None
+        employee.invite_token_expires_at = None
+        return employee
 
     monkeypatch.setattr(
         EmployeeRepository,
         'get_by_invite_token_hash',
         get_by_invite_token_hash,
     )
-    monkeypatch.setattr(EmployeeRepository, 'update', update)
+    monkeypatch.setattr(
+        EmployeeRepository, 'consume_invite_token', consume_invite_token
+    )
 
     updated_employee = asyncio.run(
         EmployeeService.accept_freelancer_invite(
@@ -705,3 +714,107 @@ def test_freelancer_under_review_cannot_approve_themselves(
 
     assert error.value.status_code == HTTPStatus.FORBIDDEN
     assert target_employee.status == EmployeeStatus.UNDER_REVIEW
+
+
+def test_concurrent_invite_acceptance_consumes_token_only_once(monkeypatch):
+    valid_token_hash = hashlib.sha256(b'valid-token').hexdigest()
+    employee = SimpleNamespace(
+        id=9,
+        password='old-hash',
+        invite_token_hash=valid_token_hash,
+        invite_token_expires_at=datetime.now() + timedelta(days=1),
+    )
+    persisted_passwords = []
+
+    async def get_by_invite_token_hash(session, invite_token_hash):
+        # Cada requisição tem a própria sessão, então recebe a sua cópia
+        # da linha lida do banco.
+        found = (
+            SimpleNamespace(**vars(employee))
+            if employee.invite_token_hash == invite_token_hash
+            else None
+        )
+        # Cede o loop para as duas requisições lerem o token antes de
+        # qualquer uma gravar, como acontece com acessos simultâneos.
+        await asyncio.sleep(0)
+        return found
+
+    async def update(session, updated_employee):
+        persisted_passwords.append(updated_employee.password)
+        return updated_employee
+
+    async def consume_invite_token(
+        session, employee_id, invite_token_hash, password_hash
+    ):
+        # Simula o UPDATE condicional do banco: só a primeira requisição
+        # ainda encontra o hash gravado.
+        if employee.invite_token_hash != invite_token_hash:
+            return None
+        employee.password = password_hash
+        employee.invite_token_hash = None
+        employee.invite_token_expires_at = None
+        persisted_passwords.append(password_hash)
+        return employee
+
+    monkeypatch.setattr(
+        EmployeeRepository,
+        'get_by_invite_token_hash',
+        get_by_invite_token_hash,
+    )
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+    monkeypatch.setattr(
+        EmployeeRepository,
+        'consume_invite_token',
+        consume_invite_token,
+        raising=False,
+    )
+
+    async def accept_twice():
+        return await asyncio.gather(
+            EmployeeService.accept_freelancer_invite(
+                session=None,
+                data=FreelancerInviteAcceptSchema(
+                    token='valid-token', password='primeiraSenha1'
+                ),
+            ),
+            EmployeeService.accept_freelancer_invite(
+                session=None,
+                data=FreelancerInviteAcceptSchema(
+                    token='valid-token', password='segundaSenha2'
+                ),
+            ),
+            return_exceptions=True,
+        )
+
+    results = asyncio.run(accept_twice())
+
+    errors = [result for result in results if isinstance(result, Exception)]
+    assert len(persisted_passwords) == 1
+    assert len(errors) == 1
+    assert isinstance(errors[0], HTTPException)
+    assert errors[0].status_code == HTTPStatus.NOT_FOUND
+
+
+def test_consume_invite_token_is_a_conditional_update_on_the_token_hash():
+    session = SimpleNamespace(
+        scalar=AsyncMock(return_value=None),
+        commit=AsyncMock(),
+    )
+
+    consumed = asyncio.run(
+        EmployeeRepository.consume_invite_token(
+            session,
+            employee_id=9,
+            invite_token_hash='token-hash',
+            password_hash='new-hash',
+        )
+    )
+
+    statement = session.scalar.await_args.args[0]
+    query = str(statement.compile(dialect=postgresql.dialect())).lower()
+    assert consumed is None
+    assert query.startswith('update employees set')
+    assert 'employees.id =' in query
+    assert 'employees.invite_token_hash =' in query
+    assert 'returning' in query
+    session.commit.assert_awaited_once()

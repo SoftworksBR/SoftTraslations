@@ -195,8 +195,9 @@ class EmployeeService:
         session: AsyncSession,
         data: FreelancerInviteAcceptSchema,
     ) -> Employee:
+        invite_token_hash = _hash_invite_token(data.token)
         employee = await EmployeeRepository.get_by_invite_token_hash(
-            session, _hash_invite_token(data.token)
+            session, invite_token_hash
         )
         if employee is None:
             raise HTTPException(
@@ -213,11 +214,19 @@ class EmployeeService:
                 detail='Invite token has expired',
             )
 
-        employee.password = get_password_hash(data.password)
-        employee.invite_token_hash = None
-        employee.invite_token_expires_at = None
+        consumed_employee = await EmployeeRepository.consume_invite_token(
+            session,
+            employee_id=employee.id,
+            invite_token_hash=invite_token_hash,
+            password_hash=get_password_hash(data.password),
+        )
+        if consumed_employee is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Invalid invite token',
+            )
 
-        return await EmployeeRepository.update(session, employee)
+        return consumed_employee
 
     @staticmethod
     async def _create_employee_record(

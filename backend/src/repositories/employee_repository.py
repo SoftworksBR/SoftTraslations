@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
@@ -55,6 +55,32 @@ class EmployeeRepository:
                 Employee.invite_token_hash == invite_token_hash
             )
         )
+
+    @staticmethod
+    async def consume_invite_token(
+        session: AsyncSession,
+        employee_id: int,
+        invite_token_hash: str,
+        password_hash: str,
+    ) -> Employee | None:
+        # UPDATE condicional: só grava se o hash ainda estiver lá, então
+        # entre requisições simultâneas apenas uma consome o convite.
+        employee = await session.scalar(
+            update(Employee)
+            .where(
+                Employee.id == employee_id,
+                Employee.invite_token_hash == invite_token_hash,
+            )
+            .values(
+                password=password_hash,
+                invite_token_hash=None,
+                invite_token_expires_at=None,
+            )
+            .returning(Employee)
+        )
+        await session.commit()
+
+        return employee
 
     @staticmethod
     async def get_by_id(
