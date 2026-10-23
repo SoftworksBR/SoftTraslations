@@ -295,6 +295,16 @@ class EmployeeService:
                 detail='Freelancers must complete their own profile',
             )
 
+        if (
+            current_employee.role != Roles.ADMIN
+            and target_employee.status == EmployeeStatus.UNDER_REVIEW
+            and employee.status != EmployeeStatus.UNDER_REVIEW
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Freelancers cannot approve their own registration',
+            )
+
         target_employee.first_name = employee.first_name
         target_employee.last_name = employee.last_name
         target_employee.email = employee.email

@@ -659,3 +659,49 @@ def test_non_admin_cannot_change_their_own_role(monkeypatch):
 
     assert error.value.status_code == HTTPStatus.FORBIDDEN
     assert target_employee.role == Roles.FREELANCER
+
+
+@pytest.mark.parametrize(
+    'requested_status',
+    [{'status': EmployeeStatus.AVAILABLE}, {}],
+    ids=['explicit_available', 'omitted_status_defaults_to_available'],
+)
+def test_freelancer_under_review_cannot_approve_themselves(
+    monkeypatch, requested_status
+):
+    target_employee = SimpleNamespace(
+        id=8,
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.UNDER_REVIEW,
+    )
+
+    async def get_by_id(session, employee_id):
+        return target_employee
+
+    async def update(session, updated_employee):
+        pytest.fail('Freelancer must not leave under_review by themselves')
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.update_employee(
+                session=None,
+                employee_id=target_employee.id,
+                employee=EmployeeUpdate(
+                    first_name='Freelancer',
+                    last_name='Name',
+                    email='freelancer@example.com',
+                    password='secret',
+                    role=Roles.FREELANCER,
+                    **requested_status,
+                ),
+                current_employee=SimpleNamespace(
+                    id=target_employee.id, role=Roles.FREELANCER
+                ),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
+    assert target_employee.status == EmployeeStatus.UNDER_REVIEW
