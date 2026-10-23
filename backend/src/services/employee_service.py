@@ -277,6 +277,15 @@ class EmployeeService:
             )
 
         if (
+            current_employee.role != Roles.ADMIN
+            and employee.role != target_employee.role
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only admins can change employee roles',
+            )
+
+        if (
             target_employee.role == Roles.FREELANCER
             and target_employee.status == EmployeeStatus.PENDING
             and employee.status != EmployeeStatus.PENDING

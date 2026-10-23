@@ -620,3 +620,42 @@ def test_duplicate_check_on_create_uses_only_email(monkeypatch):
                 current_employee=SimpleNamespace(role=Roles.ADMIN),
             )
         )
+
+
+def test_non_admin_cannot_change_their_own_role(monkeypatch):
+    target_employee = SimpleNamespace(
+        id=4,
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.AVAILABLE,
+    )
+
+    async def get_by_id(session, employee_id):
+        return target_employee
+
+    async def update(session, updated_employee):
+        pytest.fail('Role change by a non-admin must not be persisted')
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.update_employee(
+                session=None,
+                employee_id=target_employee.id,
+                employee=EmployeeUpdate(
+                    first_name='Freelancer',
+                    last_name='Name',
+                    email='freelancer@example.com',
+                    password='secret',
+                    role=Roles.ADMIN,
+                    status=EmployeeStatus.AVAILABLE,
+                ),
+                current_employee=SimpleNamespace(
+                    id=target_employee.id, role=Roles.FREELANCER
+                ),
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
+    assert target_employee.role == Roles.FREELANCER
