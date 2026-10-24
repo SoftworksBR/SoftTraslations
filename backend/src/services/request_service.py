@@ -71,7 +71,7 @@ class RequestService:
             username=data.username,
             email=data.email,
             phone=data.phone,
-            company=data.company,
+            company_name=data.company,
             source_language_id=data.source_language_id,
             target_language_id=data.target_language_id,
             public_token=secrets.token_urlsafe(24),
@@ -295,7 +295,6 @@ class RequestService:
             'username',
             'email',
             'phone',
-            'company',
             'source_language_id',
             'target_language_id',
             'service_id',
@@ -305,6 +304,8 @@ class RequestService:
             value = getattr(data, field)
             if value is not None:
                 setattr(request, field, value)
+        if data.company is not None:
+            request.company_name = data.company
 
     async def _validate_references(
         self,

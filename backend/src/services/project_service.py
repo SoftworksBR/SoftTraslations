@@ -1,11 +1,13 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.enums.enums import QuoteStatus, Roles
 from src.models.employee_model import Employee
 from src.models.path_model import Path
-from src.models.project_model import Project
+from src.models.project_model import Project, ProjectPath
+from src.models.stage_model import ProjectStage
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.quote_repository import QuoteRepository
 from src.schemas.project_schema import (
@@ -28,7 +30,9 @@ class ProjectService:
         paths = list(
             (
                 await self.repository.session.scalars(
-                    select(Path).where(Path.id.in_(set(data.path_ids)))
+                    select(Path)
+                    .options(selectinload(Path.path_stages))
+                    .where(Path.id.in_(set(data.path_ids)))
                 )
             ).all()
         )
@@ -41,13 +45,33 @@ class ProjectService:
         if data.quote_id is not None:
             await self._validate_quote(data.quote_id)
 
+        paths_by_id = {path.id: path for path in paths}
         project = Project(
             name=data.name,
             status=data.status,
             creator_id=current_employee.id,
             quote_id=data.quote_id,
-            paths=paths,
         )
+        project.project_paths.extend(
+            ProjectPath(path_id=path_id, sequence=sequence)
+            for sequence, path_id in enumerate(data.path_ids, start=1)
+        )
+        for project_path, path_id in zip(
+            project.project_paths, data.path_ids, strict=True
+        ):
+            project_path.path = paths_by_id[path_id]
+
+        self.repository.session.add(project)
+        await self.repository.session.flush()
+        for project_path in project.project_paths:
+            project_path.executions.extend(
+                ProjectStage(
+                    project_path_id=project_path.id,
+                    path_stage_id=path_stage.id,
+                    path_id=path_stage.path_id,
+                )
+                for path_stage in project_path.path.path_stages
+            )
 
         return await self.repository.create(project)
 
