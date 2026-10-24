@@ -28,6 +28,10 @@ class _Result:
     def unique():
         return _Result()
 
+    @staticmethod
+    def scalar_one_or_none():
+        return None
+
 
 def _sql(statement):
     compiled = statement.compile(dialect=postgresql.dialect())
@@ -82,7 +86,7 @@ def test_request_search_filters_build_case_insensitive_query():
     assert 'requests.username ilike' in query
     assert 'requests.email ilike' in query
     assert 'requests.phone ilike' in query
-    assert 'requests.company ilike' in query
+    assert 'requests.company_name ilike' in query
     assert 'requests.source_language_id =' in query
     assert 'requests.target_language_id =' in query
     assert 'requests.service_id =' in query
@@ -109,7 +113,9 @@ def test_project_search_filters_include_related_path_stages():
     query = _sql(session.execute.await_args.args[0])
     assert 'projects.name ilike' in query
     assert 'projects.status =' in query
-    assert 'stages.name ilike' in query
+    assert 'stage_templates.name ilike' in query
+    assert 'project_paths' in query
+    assert 'path_stages' in query
     assert 'employees.username ilike' in query
     assert 'projects.creator_id in' in query
 
@@ -132,10 +138,28 @@ def test_stage_search_filters_include_related_projects():
     )
 
     query = _sql(session.execute.await_args.args[0])
-    assert 'stages.freelancer_id =' in query
-    assert 'stages.name ilike' in query
-    assert 'stages.status =' in query
+    assert 'project_stages.freelancer_id =' in query
+    assert 'stage_templates.name ilike' in query
+    assert 'project_stages.status =' in query
     assert 'path_stages' in query
-    assert 'path_projects' in query
+    assert 'project_paths' in query
     assert 'projects.name ilike' in query
     assert 'employees.username ilike' in query
+
+
+def test_stage_reads_eagerly_load_template_relationships():
+    session = SimpleNamespace(
+        execute=AsyncMock(return_value=_Result()),
+    )
+    repository = StageRepository(session)
+
+    asyncio.run(repository.get_by_id(1))
+    asyncio.run(repository.get_all())
+
+    for call in session.execute.await_args_list:
+        relationships = [
+            item.key
+            for item in call.args[0]._with_options[0].path
+            if hasattr(item, 'key')
+        ]
+        assert relationships == ['path_stage', 'stage_template']
