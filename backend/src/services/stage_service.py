@@ -6,8 +6,13 @@ from sqlalchemy.orm import selectinload
 from src.enums.enums import Roles, Status
 from src.models.employee_model import Employee
 from src.models.path_model import Path
-from src.models.project_model import Project
-from src.models.stage_model import Stage
+from src.models.project_model import Project, ProjectPath
+from src.models.stage_model import (
+    PathStage,
+    ProjectStage,
+    Stage,
+    StageTemplate,
+)
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
     StageCreate,
@@ -22,13 +27,11 @@ class StageService:
 
     async def create(
         self, data: StageCreate, current_employee: Employee
-    ) -> Stage:
+    ) -> StageTemplate:
         self._require_projects_role(current_employee)
 
-        return await self._create_for_freelancer(
-            data.freelancer_id,
-            data.name,
-            data.status,
+        return await self.repository.create_template(
+            StageTemplate(name=data.name)
         )
 
     async def assign_path_to_project(
@@ -45,7 +48,7 @@ class StageService:
 
         project = await self.repository.session.scalar(
             select(Project)
-            .options(selectinload(Project.paths))
+            .options(selectinload(Project.project_paths))
             .where(Project.id == project_id)
         )
         if project is None:
@@ -56,7 +59,10 @@ class StageService:
 
         path = await self.repository.session.scalar(
             select(Path)
-            .options(selectinload(Path.projects))
+            .options(
+                selectinload(Path.path_stages),
+                selectinload(Path.project_paths),
+            )
             .where(Path.id == path_id)
         )
         if path is None:
@@ -65,36 +71,38 @@ class StageService:
                 detail='Path not found',
             )
 
-        if project not in path.projects:
-            path.projects.append(project)
+        if not any(
+            project_path.path_id == path.id
+            for project_path in project.project_paths
+        ):
+            project_path = ProjectPath(
+                path_id=path.id,
+                sequence=len(project.project_paths) + 1,
+            )
+            project_path.path = path
+            project.project_paths.append(project_path)
+            self.repository.session.add(project_path)
+            await self.repository.session.flush()
+            self.repository.session.add_all([
+                ProjectStage(
+                    project_path_id=project_path.id,
+                    path_stage_id=path_stage.id,
+                    path_id=path_stage.path_id,
+                )
+                for path_stage in path.path_stages
+            ])
 
         await self.repository.session.commit()
-        await self.repository.session.refresh(path)
 
-        return path
-
-    async def _create_for_freelancer(
-        self,
-        freelancer_id: int,
-        name: str,
-        stage_status: Status,
-    ) -> Stage:
-        freelancer = await self.repository.session.scalar(
-            select(Employee).where(Employee.id == freelancer_id)
-        )
-        if freelancer is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail='Freelancer not found',
+        return await self.repository.session.scalar(
+            select(Path)
+            .options(
+                selectinload(Path.path_stages).selectinload(
+                    PathStage.stage_template
+                )
             )
-
-        stage = Stage(
-            freelancer_id=freelancer_id,
-            name=name,
-            status=stage_status,
+            .where(Path.id == path.id)
         )
-
-        return await self.repository.create(stage)
 
     async def get_by_id(self, stage_id: int) -> Stage:
 
@@ -164,7 +172,7 @@ class StageService:
             stage.freelancer_id = data.freelancer_id
 
         if data.name is not None:
-            stage.name = data.name
+            stage.path_stage.stage_template.name = data.name
 
         if data.status is not None:
             stage.status = data.status

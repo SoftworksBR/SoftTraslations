@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.models.employee_model import Employee
+from src.schemas.path_schema import StageTemplateResponse
 from src.schemas.stage_schema import (
     StageCreate,
     StageResponse,
@@ -22,7 +23,9 @@ router = APIRouter(
 
 
 @router.post(
-    '/', response_model=StageResponse, status_code=status.HTTP_201_CREATED
+    '/',
+    response_model=StageTemplateResponse,
+    status_code=status.HTTP_201_CREATED,
 )
 async def create_stage(
     data: StageCreate,

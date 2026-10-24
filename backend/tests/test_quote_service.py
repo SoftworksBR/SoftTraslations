@@ -249,10 +249,23 @@ class FakeSession:
         self.existing_project_id = existing_project_id
 
     async def scalars(self, statement):
-        return SimpleNamespace(all=lambda: [Path(name='trilha')])
+        path = Path(name='trilha')
+        path.id = 1
+        return SimpleNamespace(all=lambda: [path])
 
     async def scalar(self, statement):
         return self.existing_project_id
+
+    def add(self, project):
+        self.project = project
+
+    async def flush(self):
+        self.project.id = 1
+        for sequence, project_path in enumerate(
+            self.project.project_paths, start=1
+        ):
+            project_path.id = sequence
+            project_path.project_id = self.project.id
 
 
 def make_project_service(quote, existing_project_id=None):
