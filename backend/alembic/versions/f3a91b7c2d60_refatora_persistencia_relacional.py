@@ -68,9 +68,44 @@ def upgrade() -> None:  # noqa: PLR0915
                     'A translation price is negative; resolve it before '
                     'adding the monetary constraint';
             END IF;
+            IF EXISTS (
+                SELECT 1
+                FROM stages AS stage
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM path_stages AS path_stage
+                    JOIN path_projects AS path_project
+                      ON path_project.path_id = path_stage.path_id
+                    WHERE path_stage.stage_id = stage.id
+                )
+            ) THEN
+                RAISE EXCEPTION
+                    'A stage has no project-path execution to preserve its '
+                    'assignment and status; map it before this migration';
+            END IF;
+            IF EXISTS (
+                SELECT 1
+                FROM stage_files AS file
+                WHERE (
+                    SELECT count(*)
+                    FROM path_stages AS path_stage
+                    JOIN path_projects AS path_project
+                      ON path_project.path_id = path_stage.path_id
+                    WHERE path_stage.stage_id = file.stage_id
+                ) <> 1
+            ) THEN
+                RAISE EXCEPTION
+                    'A stage attachment has no unique project-stage mapping; '
+                    'reconcile it before this migration';
+            END IF;
         END
         $$;
         """
+    )
+    op.create_check_constraint(
+        'ck_translation_prices_nonnegative',
+        'translation_prices',
+        'price_per_word >= 0',
     )
 
     op.execute(
@@ -478,6 +513,25 @@ def upgrade() -> None:  # noqa: PLR0915
             COALESCE((SELECT max(id) FROM files), 1),
             EXISTS (SELECT 1 FROM files)
         )
+        """
+    )
+    op.execute(
+        """
+        INSERT INTO files (file_path, original_name, project_stage_id)
+        SELECT file.file_path,
+               COALESCE(
+                   NULLIF(regexp_replace(file.file_path, '^.*/', ''), ''),
+                   file.file_path
+               ),
+               execution.id
+        FROM stage_files AS file
+        JOIN path_stages AS path_stage
+          ON path_stage.stage_template_id = file.stage_id
+        JOIN project_paths AS project_path
+          ON project_path.path_id = path_stage.path_id
+        JOIN project_stages AS execution
+          ON execution.project_path_id = project_path.id
+         AND execution.path_stage_id = path_stage.id
         """
     )
 
@@ -1173,9 +1227,15 @@ def downgrade() -> None:  # noqa: PLR0915
     op.drop_constraint(
         'ck_requests_distinct_languages', 'requests', type_='check'
     )
+    op.drop_constraint(
+        'ck_translation_prices_nonnegative',
+        'translation_prices',
+        type_='check',
+    )
     op.drop_column('quotes', 'updated_at')
     op.drop_column('employees', 'updated_at')
     op.drop_column('employees', 'account_status')
+    op.execute('DROP TYPE account_status')
     op.drop_table('freelancer_profiles')
 
     op.execute(
