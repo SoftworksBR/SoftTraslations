@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.models.path_model import Path
-from src.models.stage_model import Stage
+from src.models.stage_model import PathStage, StageTemplate
 from src.repositories.path_repository import PathRepository
 from src.schemas.path_schema import PathCreate
 
@@ -22,7 +22,9 @@ class PathService:
         stages = list(
             (
                 await self.repository.session.scalars(
-                    select(Stage).where(Stage.id.in_(data.stage_ids))
+                    select(StageTemplate).where(
+                        StageTemplate.id.in_(data.stage_ids)
+                    )
                 )
             ).all()
         )
@@ -32,7 +34,13 @@ class PathService:
                 detail='One or more stages were not found',
             )
         path = Path(name=data.name)
-        path.stages.extend(stages)
+        path.path_stages.extend(
+            PathStage(
+                stage_template_id=stage_id,
+                sequence=sequence,
+            )
+            for sequence, stage_id in enumerate(data.stage_ids, start=1)
+        )
 
         return await self.repository.create(path)
 
