@@ -81,7 +81,9 @@ class ProjectPath:
         init=False, primary_key=True, autoincrement=True
     )
     project_id: Mapped[int] = mapped_column(
-        ForeignKey('projects.id', ondelete='CASCADE'), nullable=False
+        ForeignKey('projects.id', ondelete='CASCADE'),
+        nullable=False,
+        init=False,
     )
     path_id: Mapped[int] = mapped_column(
         ForeignKey('paths.id', ondelete='RESTRICT'), nullable=False

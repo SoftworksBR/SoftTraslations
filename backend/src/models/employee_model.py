@@ -26,7 +26,7 @@ class Employee:
     )
     username: Mapped[str] = mapped_column(nullable=False)
     email: Mapped[str] = mapped_column(unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(nullable=False)
+    password: Mapped[str] = mapped_column('password_hash', nullable=False)
     role: Mapped[Roles] = mapped_column(
         SQLEnum(
             Roles,

@@ -24,6 +24,11 @@ class EmployeeStatus(Enum):
     PENDING = 'pending'
 
 
+class AccountStatus(Enum):
+    ACTIVE = 'active'
+    DISABLED = 'disabled'
+
+
 class Roles(Enum):
     ADMIN = 'admin'
     PROJETOS = 'projetos'

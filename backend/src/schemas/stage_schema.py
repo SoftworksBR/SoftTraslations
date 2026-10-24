@@ -4,9 +4,7 @@ from src.enums.enums import Status
 
 
 class StageCreate(BaseModel):
-    freelancer_id: int
     name: str
-    status: Status
 
 
 class StageUpdate(BaseModel):
@@ -27,7 +25,7 @@ class StageResponse(BaseModel):
 
     id: int
     name: str
-    freelancer_id: int
+    freelancer_id: int | None
     status: Status
 
 
