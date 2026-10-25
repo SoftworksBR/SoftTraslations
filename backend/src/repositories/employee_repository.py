@@ -1,4 +1,4 @@
-from sqlalchemy import or_, select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
@@ -19,9 +19,14 @@ class EmployeeRepository:
             if filters.role is not None:
                 query = query.where(Employee.role == filters.role)
 
-            if filters.username is not None:
+            if filters.first_name is not None:
                 query = query.where(
-                    Employee.username.ilike(f'%{filters.username}%')
+                    Employee.first_name.ilike(f'%{filters.first_name}%')
+                )
+
+            if filters.last_name is not None:
+                query = query.where(
+                    Employee.last_name.ilike(f'%{filters.last_name}%')
                 )
 
             if filters.email is not None:
@@ -32,23 +37,50 @@ class EmployeeRepository:
         return result.all()
 
     @staticmethod
-    async def get_by_email_or_username(
+    async def get_by_email(
         session: AsyncSession,
-        email: str | None = None,
-        username: str | None = None,
+        email: str,
     ):
-        conditions = []
+        return await session.scalar(
+            select(Employee).where(Employee.email == email)
+        )
 
-        if email is not None:
-            conditions.append(Employee.email == email)
+    @staticmethod
+    async def get_by_invite_token_hash(
+        session: AsyncSession,
+        invite_token_hash: str,
+    ):
+        return await session.scalar(
+            select(Employee).where(
+                Employee.invite_token_hash == invite_token_hash
+            )
+        )
 
-        if username is not None:
-            conditions.append(Employee.username == username)
+    @staticmethod
+    async def consume_invite_token(
+        session: AsyncSession,
+        employee_id: int,
+        invite_token_hash: str,
+        password_hash: str,
+    ) -> Employee | None:
+        # UPDATE condicional: só grava se o hash ainda estiver lá, então
+        # entre requisições simultâneas apenas uma consome o convite.
+        employee = await session.scalar(
+            update(Employee)
+            .where(
+                Employee.id == employee_id,
+                Employee.invite_token_hash == invite_token_hash,
+            )
+            .values(
+                password=password_hash,
+                invite_token_hash=None,
+                invite_token_expires_at=None,
+            )
+            .returning(Employee)
+        )
+        await session.commit()
 
-        if not conditions:
-            return None
-
-        return await session.scalar(select(Employee).where(or_(*conditions)))
+        return employee
 
     @staticmethod
     async def get_by_id(

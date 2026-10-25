@@ -11,7 +11,7 @@ from src.enums.enums import Roles
 from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.auth_schema import TokenSchema
-from src.schemas.employee_schema import EmployeePublicSchema, EmployeeSchema
+from src.schemas.employee_schema import EmployeeCreate, EmployeePublicSchema
 from src.security import get_current_employee, settings
 
 router = APIRouter(
@@ -75,8 +75,9 @@ async def register_temporary_admin(
     session: AsyncSession = Depends(get_session),
 ):
     return await create_initial_admin(
-        EmployeeSchema(
-            username='admin',
+        EmployeeCreate(
+            first_name='Admin',
+            last_name='Admin',
             email='admin@admin.com',
             role=Roles.ADMIN,
             password='admin123',

@@ -1,3 +1,7 @@
+import hashlib
+import secrets
+from datetime import UTC, datetime, timedelta
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -5,19 +9,38 @@ from src.enums.enums import EmployeeStatus, Roles
 from src.models.employee_model import Employee
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
-    EmployeeSchema,
+    EmployeeCreate,
+    EmployeePublicSchema,
     EmployeeSearchFilters,
+    EmployeeUpdate,
+    FreelancerInviteAcceptSchema,
+    FreelancerInviteResponse,
     FreelancerPreRegistrationSchema,
-    FreelancerProfileSchema,
 )
 from src.security import get_password_hash
+
+FREELANCER_INVITE_TOKEN_TTL = timedelta(days=7)
+
+
+def _utc_now_naive() -> datetime:
+    # O banco guarda horários sem timezone (igual created_at), então o
+    # valor em memória também precisa ficar "naive" para dar pra comparar.
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _hash_invite_token(raw_token: str) -> str:
+    # SHA-256 simples: o token já tem entropia alta (secrets.token_urlsafe),
+    # então não precisa de um hash lento/salgado como o de senha — e
+    # precisa ser determinístico para dar para buscar por igualdade no
+    # banco (um hash de senha gera um valor diferente a cada chamada).
+    return hashlib.sha256(raw_token.encode()).hexdigest()
 
 
 class EmployeeService:
     @staticmethod
     async def create_initial_admin(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
     ):
         if employee.role != Roles.ADMIN:
             raise ValueError('Initial employee must be an admin')
@@ -54,17 +77,44 @@ class EmployeeService:
                 return []
             filters = filters.model_copy(update={'role': Roles.FREELANCER})
 
-        return await EmployeeRepository.get_employees(
+        employees = await EmployeeRepository.get_employees(
             session,
             limit,
             offset,
             filters=filters,
         )
 
+        return [
+            EmployeeService._to_public_schema(employee, current_employee)
+            for employee in employees
+        ]
+
+    @staticmethod
+    def _to_public_schema(
+        employee: Employee, viewer: Employee
+    ) -> EmployeePublicSchema:
+        can_view_private_fields = (
+            viewer.role == Roles.ADMIN or viewer.id == employee.id
+        )
+
+        return EmployeePublicSchema(
+            id=employee.id,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
+            email=employee.email,
+            role=employee.role,
+            status=employee.status,
+            birth_date=employee.birth_date
+            if can_view_private_fields
+            else None,
+            phone=employee.phone if can_view_private_fields else None,
+            photo_path=employee.photo_path,
+        )
+
     @staticmethod
     async def create_employee(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
         current_employee: Employee,
     ):
         if (
@@ -98,85 +148,102 @@ class EmployeeService:
         session: AsyncSession,
         data: FreelancerPreRegistrationSchema,
         current_employee: Employee,
-    ) -> Employee:
+    ) -> FreelancerInviteResponse:
         if current_employee.role != Roles.PROJETOS:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only projetos can pre-register freelancers',
             )
 
-        existing_employee = await EmployeeRepository.get_by_email_or_username(
-            session, email=data.email
+        existing_employee = await EmployeeRepository.get_by_email(
+            session, data.email
         )
         if existing_employee is not None:
             raise ValueError('Email already registered')
 
+        # Sem senha própria ainda: o freelancer só define uma ao aceitar o
+        # convite. Esse hash aleatório nunca é informado a ninguém e não
+        # permite login até ser substituído em accept_freelancer_invite.
+        unusable_password = get_password_hash(secrets.token_urlsafe(32))
+        raw_invite_token = secrets.token_urlsafe(32)
+
         employee = Employee(
-            username=data.email,
+            first_name=data.first_name,
+            last_name=data.last_name,
             email=data.email,
-            password=get_password_hash(data.password),
+            password=unusable_password,
             role=Roles.FREELANCER,
             status=EmployeeStatus.PENDING,
+            invite_token_hash=_hash_invite_token(raw_invite_token),
+            invite_token_expires_at=(
+                _utc_now_naive() + FREELANCER_INVITE_TOKEN_TTL
+            ),
         )
 
-        return await EmployeeRepository.create(session, employee)
+        created_employee = await EmployeeRepository.create(session, employee)
+
+        return FreelancerInviteResponse(
+            id=created_employee.id,
+            first_name=created_employee.first_name,
+            last_name=created_employee.last_name,
+            email=created_employee.email,
+            invite_token=raw_invite_token,
+        )
 
     @staticmethod
-    async def complete_freelancer_profile(
+    async def accept_freelancer_invite(
         session: AsyncSession,
-        data: FreelancerProfileSchema,
-        current_employee: Employee,
+        data: FreelancerInviteAcceptSchema,
     ) -> Employee:
-        if current_employee.role != Roles.FREELANCER:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='Only freelancers can complete this profile',
-            )
-        if current_employee.status != EmployeeStatus.PENDING:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail='Freelancer profile is already complete',
-            )
-
-        employee = await EmployeeRepository.get_by_id(
-            session, current_employee.id
+        invite_token_hash = _hash_invite_token(data.token)
+        employee = await EmployeeRepository.get_by_invite_token_hash(
+            session, invite_token_hash
         )
         if employee is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='Employee not found',
+                detail='Invalid invite token',
             )
-        if employee.status != EmployeeStatus.PENDING:
+
+        if (
+            employee.invite_token_expires_at is None
+            or employee.invite_token_expires_at < _utc_now_naive()
+        ):
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail='Freelancer profile is already complete',
+                status_code=status.HTTP_410_GONE,
+                detail='Invite token has expired',
             )
 
-        employee.username = data.name.strip()
-        employee.status = EmployeeStatus.AVAILABLE
+        consumed_employee = await EmployeeRepository.consume_invite_token(
+            session,
+            employee_id=employee.id,
+            invite_token_hash=invite_token_hash,
+            password_hash=get_password_hash(data.password),
+        )
+        if consumed_employee is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Invalid invite token',
+            )
 
-        return await EmployeeRepository.update(session, employee)
+        return consumed_employee
 
     @staticmethod
     async def _create_employee_record(
         session: AsyncSession,
-        employee: EmployeeSchema,
+        employee: EmployeeCreate,
     ):
-        db_employee = await EmployeeRepository.get_by_email_or_username(
+        db_employee = await EmployeeRepository.get_by_email(
             session,
             employee.email,
-            employee.username,
         )
 
         if db_employee:
-            if db_employee.email == employee.email:
-                raise ValueError('Email already registered')
-
-            if db_employee.username == employee.username:
-                raise ValueError('employeename already registered')
+            raise ValueError('Email already registered')
 
         db_employee = Employee(
-            username=employee.username,
+            first_name=employee.first_name,
+            last_name=employee.last_name,
             email=employee.email,
             role=employee.role,
             status=(
@@ -196,7 +263,7 @@ class EmployeeService:
     async def update_employee(
         session: AsyncSession,
         employee_id: int,
-        employee: EmployeeSchema,
+        employee: EmployeeUpdate,
         current_employee: Employee,
     ):
         if (
@@ -219,6 +286,15 @@ class EmployeeService:
             )
 
         if (
+            current_employee.role != Roles.ADMIN
+            and employee.role != target_employee.role
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only admins can change employee roles',
+            )
+
+        if (
             target_employee.role == Roles.FREELANCER
             and target_employee.status == EmployeeStatus.PENDING
             and employee.status != EmployeeStatus.PENDING
@@ -228,11 +304,27 @@ class EmployeeService:
                 detail='Freelancers must complete their own profile',
             )
 
-        target_employee.username = employee.username
+        if (
+            current_employee.role != Roles.ADMIN
+            and target_employee.status == EmployeeStatus.UNDER_REVIEW
+            and employee.status != EmployeeStatus.UNDER_REVIEW
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Freelancers cannot approve their own registration',
+            )
+
+        target_employee.first_name = employee.first_name
+        target_employee.last_name = employee.last_name
         target_employee.email = employee.email
         target_employee.password = get_password_hash(employee.password)
         target_employee.role = employee.role
         target_employee.status = employee.status
+
+        # Campo omitido fica como está; null enviado explicitamente apaga.
+        for field in ('birth_date', 'phone', 'photo_path'):
+            if field in employee.model_fields_set:
+                setattr(target_employee, field, getattr(employee, field))
 
         return await EmployeeRepository.update(
             session,
