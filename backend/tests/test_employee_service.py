@@ -11,6 +11,7 @@ from src.enums.enums import EmployeeStatus, Roles, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSelfUpdateSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -42,6 +43,64 @@ def test_pending_status_is_only_valid_for_freelancers():
             role=Roles.ATENDIMENTO,
             status=EmployeeStatus.PENDING,
         )
+
+
+def test_self_update_changes_only_allowed_profile_fields(monkeypatch):
+    employee = SimpleNamespace(
+        id=7,
+        role=Roles.ADMIN,
+        status=EmployeeStatus.AVAILABLE,
+        username='admin',
+        first_name='Admin',
+        last_name='User',
+        email='admin@example.com',
+        phone=None,
+    )
+
+    async def get_by_id(session, employee_id):
+        assert employee_id == employee.id
+        return employee
+
+    async def update(session, updated_employee):
+        return updated_employee
+
+    monkeypatch.setattr(EmployeeRepository, 'get_by_id', get_by_id)
+    monkeypatch.setattr(EmployeeRepository, 'update', update)
+
+    updated = asyncio.run(
+        EmployeeService.update_current_employee(
+            session=None,
+            data=EmployeeSelfUpdateSchema(
+                first_name='New name',
+                status=EmployeeStatus.BUSY,
+            ),
+            current_employee=employee,
+        )
+    )
+
+    assert updated.first_name == 'New name'
+    assert updated.status == EmployeeStatus.BUSY
+    assert updated.username == 'admin'
+    assert updated.email == 'admin@example.com'
+
+
+def test_self_update_cannot_set_pending_status():
+    employee = SimpleNamespace(
+        id=7,
+        role=Roles.ADMIN,
+        status=EmployeeStatus.AVAILABLE,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            EmployeeService.update_current_employee(
+                session=None,
+                data=EmployeeSelfUpdateSchema(status=EmployeeStatus.PENDING),
+                current_employee=employee,
+            )
+        )
+
+    assert error.value.status_code == HTTPStatus.FORBIDDEN
 
 
 def test_registration_names_are_optional_only_for_admins():
