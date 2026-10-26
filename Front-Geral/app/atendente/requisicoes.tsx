@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 
 import { API_URL } from '@/services/api';
+import { listQuotes, quoteStatusLabel } from '@/services/quotes';
+import type { Quote } from '@/services/quotes';
 import { deleteRequest, getRequestFiles, getRequests } from '@/services/requests';
 import type { RequestFile, TranslationRequest } from '@/services/requests';
 
@@ -46,6 +48,7 @@ function RequestFiles({ requestId }: { requestId: number }) {
 
 export default function Requisicoes() {
   const [requests, setRequests] = useState<TranslationRequest[]>([]);
+  const [quotesByRequest, setQuotesByRequest] = useState<Map<number, Quote>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -64,7 +67,9 @@ export default function Requisicoes() {
     setLoading(true);
     setError(null);
     try {
-      setRequests(await getRequests());
+      const [requestList, quoteList] = await Promise.all([getRequests(), listQuotes()]);
+      setRequests(requestList);
+      setQuotesByRequest(new Map(quoteList.map((quote) => [quote.request_id, quote])));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao carregar solicitações.');
     } finally {
@@ -160,18 +165,38 @@ export default function Requisicoes() {
                 </Text>
                 {item.company ? <Text style={styles.service}>{item.company}</Text> : null}
                 {item.observations ? (
-                  <Text style={styles.observations}>{item.observations}</Text>
+                  <Text numberOfLines={3} ellipsizeMode="tail" style={styles.observations}>
+                    {item.observations}
+                  </Text>
                 ) : null}
                 <RequestFiles requestId={item.id} />
                 <Text style={styles.id}>ID: {item.id}</Text>
                 <Pressable
                   style={styles.quoteButton}
+                  accessibilityRole="button"
                   onPress={() => router.push({
-                    pathname: '/atendente/novo-orcamento',
-                    params: { requisicaoId: String(item.id) },
-                  })}
+                    pathname: quotesByRequest.get(item.id)?.status === 'in_review'
+                      ? '/atendente/novo-orcamento'
+                      : quotesByRequest.has(item.id)
+                        ? '/atendente/orcamentos'
+                        : '/atendente/novo-orcamento',
+                    params: quotesByRequest.get(item.id)?.status === 'in_review'
+                      ? {
+                          requisicaoId: String(item.id),
+                          quoteId: String(quotesByRequest.get(item.id)?.id),
+                        }
+                      : quotesByRequest.has(item.id)
+                        ? {}
+                        : { requisicaoId: String(item.id) },
+                  } as never)}
                 >
-                  <Text style={styles.buttonText}>ABRIR ORÇAMENTO</Text>
+                  <Text style={styles.buttonText}>
+                    {quotesByRequest.get(item.id)?.status === 'in_review'
+                      ? 'ATUALIZAR ORÇAMENTO'
+                      : quotesByRequest.has(item.id)
+                        ? `ORÇAMENTO ${quoteStatusLabel[quotesByRequest.get(item.id)!.status].toLocaleUpperCase()}`
+                        : 'CRIAR ORÇAMENTO'}
+                  </Text>
                 </Pressable>
               </View>
               <Pressable
@@ -222,7 +247,7 @@ const styles = StyleSheet.create({
   cardCopy: { flex: 1, padding: 18 },
   name: { color: '#172B3A', fontSize: 14, fontWeight: '700' },
   service: { marginTop: 6, color: '#627485', fontSize: 13 },
-  observations: { marginTop: 10, color: '#172B3A', fontSize: 13, lineHeight: 20 },
+  observations: { marginTop: 8, color: '#172B3A', fontSize: 12, lineHeight: 17 },
   id: { marginTop: 10, color: '#627485', fontSize: 12 },
   quoteButton: {
     alignSelf: 'flex-start',

@@ -28,6 +28,15 @@ export type EmployeeInput = {
   password: string;
 };
 
+export type EmployeeSelfUpdateInput = {
+  username?: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string;
+  phone?: string | null;
+  status?: EmployeeStatus;
+};
+
 type EmployeeList = {
   employees: Employee[];
 };
@@ -53,6 +62,13 @@ export function createEmployee(employee: EmployeeInput) {
 export function updateEmployee(id: number, employee: EmployeeInput) {
   return apiRequest<Employee>(`/employee/${id}`, {
     method: 'PUT',
+    body: JSON.stringify(employee),
+  });
+}
+
+export function updateMyEmployee(employee: EmployeeSelfUpdateInput) {
+  return apiRequest<Employee>('/employee/me', {
+    method: 'PATCH',
     body: JSON.stringify(employee),
   });
 }
