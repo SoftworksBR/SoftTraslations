@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -114,29 +115,88 @@ export function FilterSelect<Value extends string>({
   onSelect: (value: Value) => void;
 }) {
   const selected = options.find((option) => option.value === value);
+  const selectRef = useRef<View>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const dropdownHeight = Math.min(options.length * 39, screenHeight - 32);
+  const placeAbove = anchor
+    ? anchor.y + anchor.height + dropdownHeight + 6 > screenHeight - 16 &&
+      anchor.y > dropdownHeight + 16
+    : false;
+  const dropdownTop = anchor
+    ? placeAbove
+      ? Math.max(16, anchor.y - dropdownHeight - 6)
+      : Math.min(screenHeight - dropdownHeight - 16, anchor.y + anchor.height + 6)
+    : 0;
+  const dropdownWidth = anchor ? Math.min(anchor.width, screenWidth - 32) : 0;
+  const dropdownLeft = anchor
+    ? Math.max(16, Math.min(anchor.x, screenWidth - dropdownWidth - 16))
+    : 0;
+
+  function toggleOptions() {
+    if (open) {
+      onToggle();
+      return;
+    }
+    selectRef.current?.measureInWindow((x, y, measuredWidth, height) => {
+      setAnchor({ x, y, width: measuredWidth, height });
+      onToggle();
+    });
+  }
 
   return (
-    <View style={[styles.field, open && styles.fieldOpen]}>
+    <>
+      <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={onToggle}
-        style={styles.select}
+        <View ref={selectRef} collapsable={false}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: open }}
+            onPress={toggleOptions}
+            style={styles.select}
+          >
+            <Text numberOfLines={1} style={styles.selectText}>
+              {selected?.label}
+            </Text>
+            <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color="#627485" />
+          </Pressable>
+        </View>
+      </View>
+      <Modal
+        visible={open && anchor !== null}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={onToggle}
       >
-        <Text numberOfLines={1} style={styles.selectText}>
-          {selected?.label}
-        </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color="#627485" />
-      </Pressable>
-      {open ? (
-        <View style={styles.options}>
+        <View style={styles.dropdownOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Fechar opções de ${label}`}
+            onPress={onToggle}
+            style={styles.dropdownScrim}
+          />
+          <ScrollView
+            keyboardShouldPersistTaps="always"
+            style={[
+              styles.options,
+              {
+                top: dropdownTop,
+                left: dropdownLeft,
+                width: dropdownWidth,
+                maxHeight: dropdownHeight,
+              },
+            ]}
+          >
           {options.map((option) => (
             <Pressable
               key={option.value}
               accessibilityRole="button"
               accessibilityState={{ selected: option.value === value }}
-              onPress={() => onSelect(option.value)}
+              onPress={() => {
+                onSelect(option.value);
+                setAnchor(null);
+              }}
               style={styles.option}
             >
               <Text style={styles.optionText}>{option.label}</Text>
@@ -145,9 +205,10 @@ export function FilterSelect<Value extends string>({
               ) : null}
             </Pressable>
           ))}
+          </ScrollView>
         </View>
-      ) : null}
-    </View>
+      </Modal>
+    </>
   );
 }
 
@@ -187,8 +248,7 @@ const styles = StyleSheet.create({
   },
   contentNarrow: { alignSelf: 'center', marginTop: 8 },
   fields: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  field: { flex: 1, minWidth: 180, position: 'relative' },
-  fieldOpen: { zIndex: 2, elevation: 2 },
+  field: { flex: 1, minWidth: 180 },
   label: { marginBottom: 6, color: '#627485', fontSize: 10, fontWeight: '700' },
   select: {
     minHeight: 40,
@@ -203,17 +263,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   selectText: { flex: 1, color: '#172B3A', fontSize: 11 },
+  dropdownOverlay: { flex: 1 },
+  dropdownScrim: { ...StyleSheet.absoluteFill },
   options: {
     position: 'absolute',
-    zIndex: 10,
-    top: 64,
-    left: 0,
-    right: 0,
     borderWidth: 1,
     borderColor: '#DFE7EC',
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
-    elevation: 12,
+    elevation: 24,
+    shadowColor: '#0B2239',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
   },
   option: {
     minHeight: 38,

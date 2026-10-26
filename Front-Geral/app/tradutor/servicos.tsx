@@ -3,6 +3,8 @@ import { Redirect, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -10,8 +12,11 @@ import {
   FlatList,
 } from 'react-native';
 
+import { WebFilePicker } from '@/components/WebFilePicker';
 import { useAuth } from '@/context/AuthContext';
-import { getStages } from '@/services/stages';
+import { API_URL } from '@/services/api';
+import { errorMessage, notify } from '@/services/dialog';
+import { getStages, uploadStageFile } from '@/services/stages';
 import type { TranslationStage } from '@/services/stages';
 
 const stageStatus: Record<TranslationStage['status'], string> = {
@@ -26,6 +31,8 @@ export default function Servicos() {
   const [stages, setStages] = useState<TranslationStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
+  const [uploadingStageId, setUploadingStageId] = useState<number | null>(null);
 
   const loadStages = useCallback(async () => {
     setLoading(true);
@@ -38,6 +45,28 @@ export default function Servicos() {
       setLoading(false);
     }
   }, []);
+
+  async function uploadDocument(stage: TranslationStage) {
+    const files = selectedFiles[stage.id] ?? [];
+    if (!files.length) {
+      notify('Selecione um documento', 'Escolha um documento antes de enviar.');
+      return;
+    }
+
+    setUploadingStageId(stage.id);
+    try {
+      for (const file of files) {
+        await uploadStageFile(stage.id, file);
+      }
+      setSelectedFiles((current) => ({ ...current, [stage.id]: [] }));
+      await loadStages();
+      notify('Sucesso', files.length === 1 ? 'Documento anexado.' : 'Documentos anexados.');
+    } catch (cause) {
+      notify('Não foi possível anexar', errorMessage(cause));
+    } finally {
+      setUploadingStageId(null);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -89,8 +118,59 @@ export default function Servicos() {
           }
           renderItem={({ item }) => (
             <View style={styles.stageCard}>
-              <Text style={styles.stageName}>{item.name}</Text>
-              <Text style={styles.stageStatus}>{stageStatus[item.status]}</Text>
+              <View style={styles.stageHeading}>
+                <Text style={styles.stageName}>{item.name}</Text>
+                <View style={[
+                  styles.statusPill,
+                  item.files.length === 0 ? styles.pendingPill : styles.completePill,
+                ]}>
+                  <Text style={[
+                    styles.stageStatus,
+                    item.files.length === 0 ? styles.pendingText : styles.completeText,
+                  ]}>
+                    {item.files.length === 0 ? 'Pendente' : stageStatus[item.status]}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.documentHint}>
+                {item.files.length
+                  ? 'Documento(s) anexado(s):'
+                  : 'Anexe o documento desta etapa para atualizar o status.'}
+              </Text>
+              {item.files.map((file) => (
+                <Pressable
+                  key={file.id}
+                  accessibilityRole="link"
+                  onPress={() => void Linking.openURL(`${API_URL}/stages/${item.id}/files/${file.id}`)}
+                  style={styles.fileLink}
+                >
+                  <Ionicons name="document-outline" size={16} color="#087F8C" />
+                  <Text numberOfLines={1} style={styles.fileName}>{file.original_name}</Text>
+                  <Ionicons name="download-outline" size={15} color="#627485" />
+                </Pressable>
+              ))}
+              <WebFilePicker
+                files={selectedFiles[item.id] ?? []}
+                onChange={(files) => setSelectedFiles((current) => ({ ...current, [item.id]: files }))}
+              />
+              {Platform.OS === 'web' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={uploadingStageId === item.id || !(selectedFiles[item.id]?.length)}
+                  onPress={() => void uploadDocument(item)}
+                  style={[
+                    styles.uploadButton,
+                    (uploadingStageId === item.id || !(selectedFiles[item.id]?.length)) && styles.disabled,
+                  ]}
+                >
+                  {uploadingStageId === item.id
+                    ? <ActivityIndicator size="small" color="#FFFFFF" />
+                    : <Ionicons name="cloud-upload-outline" size={16} color="#FFFFFF" />}
+                  <Text style={styles.buttonText}>
+                    {uploadingStageId === item.id ? 'ENVIANDO...' : 'ANEXAR DOCUMENTO'}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           )}
         />
@@ -116,8 +196,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
   },
+  stageHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   stageName: { color: '#172B3A', fontSize: 16, fontWeight: '700' },
   stageStatus: { marginTop: 6, color: '#627485', fontSize: 13 },
+  statusPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15 },
+  pendingPill: { backgroundColor: '#FFF5E3' },
+  completePill: { backgroundColor: '#E8F5EE' },
+  pendingText: { marginTop: 0, color: '#A46B12', fontSize: 10, fontWeight: '700' },
+  completeText: { marginTop: 0, color: '#20845A', fontSize: 10, fontWeight: '700' },
+  documentHint: { marginTop: 10, marginBottom: 8, color: '#627485', fontSize: 11 },
+  fileLink: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 6, paddingHorizontal: 9, borderRadius: 7, backgroundColor: '#F5F8FA' },
+  fileName: { flex: 1, color: '#087F8C', fontSize: 11 },
+  uploadButton: { minHeight: 38, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 5, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#087F8C' },
+  disabled: { opacity: 0.55 },
   emptyCard: {
     alignItems: 'center',
     alignSelf: 'center',

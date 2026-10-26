@@ -220,7 +220,7 @@ export function EmployeeManagement() {
               <Text style={[styles.tableHeading, styles.nameColumn]}>Funcionário</Text>
               <Text style={styles.profileColumn}>Perfil</Text>
               <Text style={[styles.tableHeading, styles.statusColumn]}>Status</Text>
-              <Text style={styles.tableHeading}>Ações</Text>
+              <Text style={[styles.tableHeading, styles.actionColumn]}>Ações</Text>
             </View>
           ) : null}
           ListEmptyComponent={
@@ -254,12 +254,14 @@ export function EmployeeManagement() {
                 </View>
               </View>
               <Text style={styles.profileValue}>{roleLabels[item.role]}</Text>
-              <View style={styles.rowActions}>
+              <View style={styles.statusCell}>
                 <View style={[styles.statusPill, { backgroundColor: statusStyles[item.status].backgroundColor }]}>
                   <Text style={[styles.statusText, { color: statusStyles[item.status].color }]}>
                     {statusStyles[item.status].label}
                   </Text>
                 </View>
+              </View>
+              <View style={styles.rowActions}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Editar ${item.username}`}
@@ -393,10 +395,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 10,
     backgroundColor: '#F9FBFC',
   },
-  tableHeading: { width: 110, color: '#627485', fontSize: 10, fontWeight: '700' },
+  tableHeading: { color: '#627485', fontSize: 10, fontWeight: '700' },
   nameColumn: { flex: 1 },
   profileColumn: { width: 115, color: '#627485', fontSize: 10, fontWeight: '700' },
   statusColumn: { width: 125 },
+  actionColumn: { width: 80, textAlign: 'center' },
   card: {
     minHeight: 72,
     flexDirection: 'row',
@@ -415,8 +418,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginBottom: 9,
     paddingHorizontal: 12,
+    flexWrap: 'wrap',
   },
-  info: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 11 },
+  info: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 11 },
   avatar: {
     width: 36,
     height: 36,
@@ -430,7 +434,8 @@ const styles = StyleSheet.create({
   name: { color: '#172B3A', fontSize: 13, fontWeight: '700' },
   email: { marginTop: 4, color: '#627485', fontSize: 11 },
   profileValue: { width: 115, color: '#627485', fontSize: 11 },
-  rowActions: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  statusCell: { width: 125, alignItems: 'flex-start' },
+  rowActions: { width: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   statusPill: { minWidth: 86, alignItems: 'center', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 20 },
   statusText: { fontSize: 10, fontWeight: '700' },
   actionButton: {

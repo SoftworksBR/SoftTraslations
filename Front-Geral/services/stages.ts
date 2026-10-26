@@ -2,6 +2,11 @@ import { apiRequest } from './api';
 
 export type StageStatus = 'ready' | 'in_progress' | 'testing' | 'done';
 
+export type StageFile = {
+  id: number;
+  original_name: string;
+};
+
 // Etapa de um projeto, criada a partir de uma etapa modelo da trilha.
 export type TranslationStage = {
   id: number;
@@ -13,6 +18,7 @@ export type TranslationStage = {
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  files: StageFile[];
 };
 
 // Etapa reutilizável usada para montar trilhas.
@@ -33,6 +39,15 @@ export function updateStage(
   return apiRequest<TranslationStage>(`/stages/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  });
+}
+
+export function uploadStageFile(stageId: number, file: File) {
+  const body = new FormData();
+  body.append('upload', file);
+  return apiRequest<StageFile>(`/stages/${stageId}/files`, {
+    method: 'POST',
+    body,
   });
 }
 

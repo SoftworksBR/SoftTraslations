@@ -130,12 +130,6 @@ export default function AdminDashboard() {
                 onPress={() => router.push('/drawer/funcionarios')}
               />
               <DashboardLink
-                icon="business-outline"
-                title="Empresas"
-                detail="Acesso e cadastro conforme as permissões da API"
-                onPress={() => router.push('/drawer/empresas')}
-              />
-              <DashboardLink
                 icon="settings-outline"
                 title="Configurações"
                 detail="Idiomas, serviços e preços"

@@ -13,17 +13,23 @@ import {
 import { errorMessage, notify } from '@/services/dialog';
 import {
   createQuote,
+  formatDate,
   formatMoney,
   getQuoteSuggestion,
   parseDateBr,
+  getQuote,
+  updateQuote,
 } from '@/services/quotes';
-import type { QuoteSuggestion } from '@/services/quotes';
+import type { Quote, QuoteSuggestion } from '@/services/quotes';
 
 export default function NovoOrcamento() {
-  const params = useLocalSearchParams<{ requisicaoId?: string }>();
+  const params = useLocalSearchParams<{ requisicaoId?: string; quoteId?: string }>();
   const requestId = Number(params.requisicaoId);
+  const quoteId = Number(params.quoteId);
+  const editing = Number.isInteger(quoteId) && quoteId > 0;
 
   const [suggestion, setSuggestion] = useState<QuoteSuggestion | null>(null);
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [value, setValue] = useState('');
   const [deadline, setDeadline] = useState('');
   const [observations, setObservations] = useState('');
@@ -34,20 +40,28 @@ export default function NovoOrcamento() {
   useEffect(() => {
     if (!validId) return;
     let active = true;
-    getQuoteSuggestion(requestId)
-      .then((result) => {
-        if (!active) return;
-        setSuggestion(result);
-        if (result.suggested_value) {
-          setValue(result.suggested_value.toFixed(2).replace('.', ','));
-        }
-      })
+    const load = editing
+      ? getQuote(quoteId).then((result) => {
+          if (!active) return;
+          setQuote(result);
+          setValue(result.value.toFixed(2).replace('.', ','));
+          setDeadline(formatDate(result.deadline));
+          setObservations(result.observations ?? '');
+        })
+      : getQuoteSuggestion(requestId).then((result) => {
+          if (!active) return;
+          setSuggestion(result);
+          if (result.suggested_value) {
+            setValue(result.suggested_value.toFixed(2).replace('.', ','));
+          }
+        });
+    load
       .catch((cause) => notify('Erro', errorMessage(cause)))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [requestId, validId]);
+  }, [editing, quoteId, requestId, validId]);
 
   async function save() {
     const amount = value.replace(/\./g, '').replace(',', '.').trim();
@@ -64,13 +78,17 @@ export default function NovoOrcamento() {
 
     setSaving(true);
     try {
-      await createQuote({
-        request_id: requestId,
+      const payload = {
         value: amount,
         deadline: isoDeadline,
         observations: observations.trim() || null,
-      });
-      notify('Sucesso', 'Orçamento criado com sucesso.', () =>
+      };
+      if (editing) {
+        await updateQuote(quoteId, payload);
+      } else {
+        await createQuote({ request_id: requestId, ...payload });
+      }
+      notify('Sucesso', editing ? 'Orçamento atualizado com sucesso.' : 'Orçamento criado com sucesso.', () =>
         router.replace('/atendente/orcamentos'),
       );
     } catch (cause) {
@@ -91,7 +109,7 @@ export default function NovoOrcamento() {
   if (!validId) {
     return (
       <View style={styles.container}>
-        <Text style={styles.description}>Selecione uma solicitação para criar o orçamento.</Text>
+        <Text style={styles.description}>Selecione uma solicitação para criar ou atualizar o orçamento.</Text>
         <Pressable style={styles.button} onPress={() => router.replace('/atendente/requisicoes')}>
           <Text style={styles.buttonText}>Ir para requisições</Text>
         </Pressable>
@@ -101,8 +119,9 @@ export default function NovoOrcamento() {
 
   return (
     <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
-      <Text style={styles.title}>Novo orçamento</Text>
+      <Text style={styles.title}>{editing ? 'Atualizar orçamento' : 'Novo orçamento'}</Text>
       <Text style={styles.description}>Solicitação #{requestId}</Text>
+      {quote ? <Text style={styles.hint}>Orçamento #{quote.id}</Text> : null}
       {suggestion?.suggested_value ? (
         <Text style={styles.hint}>
           Sugestão: {formatMoney(suggestion.suggested_value)}
@@ -128,7 +147,9 @@ export default function NovoOrcamento() {
       />
 
       <Pressable style={[styles.button, saving && { opacity: 0.6 }]} disabled={saving} onPress={() => void save()}>
-        <Text style={styles.buttonText}>{saving ? 'SALVANDO...' : 'CRIAR ORÇAMENTO'}</Text>
+        <Text style={styles.buttonText}>
+          {saving ? 'SALVANDO...' : editing ? 'ATUALIZAR ORÇAMENTO' : 'CRIAR ORÇAMENTO'}
+        </Text>
       </Pressable>
       <Pressable onPress={() => router.back()} style={styles.link}>
         <Text style={styles.linkText}>Cancelar</Text>
