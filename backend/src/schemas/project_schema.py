@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.enums.enums import Status
@@ -38,3 +40,36 @@ class ProjectResponse(BaseModel):
     paths: list[PathResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectFileDetails(BaseModel):
+    id: int
+    original_name: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectStageDetails(BaseModel):
+    id: int
+    name: str
+    status: Status
+    freelancer_id: int | None
+    freelancer_name: str | None
+    files: list[ProjectFileDetails]
+
+
+class ProjectPathDetails(BaseModel):
+    id: int
+    name: str
+    sequence: int
+    stages: list[ProjectStageDetails]
+
+
+class ProjectDetailsResponse(BaseModel):
+    id: int
+    name: str
+    status: Status
+    creator_id: int
+    creator_name: str
+    paths: list[ProjectPathDetails]

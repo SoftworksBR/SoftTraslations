@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.project_controller import ProjectController
@@ -10,6 +11,7 @@ from src.models.employee_model import Employee
 from src.schemas.path_schema import PathResponse
 from src.schemas.project_schema import (
     ProjectCreate,
+    ProjectDetailsResponse,
     ProjectResponse,
     ProjectSearchFilters,
     ProjectUpdate,
@@ -64,6 +66,35 @@ async def get_projects(
         current_employee,
         filters,
     )
+
+
+@router.get('/{project_id}/details', response_model=ProjectDetailsResponse)
+async def get_project_details(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await ProjectController.get_details(
+        project_id,
+        session,
+        current_employee,
+    )
+
+
+@router.get('/{project_id}/files/{file_id}')
+async def download_project_file(
+    project_id: int,
+    file_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    file = await ProjectController.get_project_file(
+        project_id,
+        file_id,
+        session,
+        current_employee,
+    )
+    return FileResponse(file.file_path, filename=file.original_name)
 
 
 @router.put('/{project_id}', response_model=ProjectResponse)
