@@ -167,7 +167,7 @@ class QuoteService:
         if data.deadline is not None:
             quote.deadline = data.deadline
 
-        if data.observations is not None:
+        if 'observations' in data.model_fields_set:
             quote.observations = data.observations
 
         enqueue_event(

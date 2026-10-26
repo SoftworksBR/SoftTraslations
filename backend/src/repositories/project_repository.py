@@ -29,7 +29,18 @@ class ProjectRepository:
                 selectinload(Project.project_paths)
                 .selectinload(ProjectPath.path)
                 .selectinload(Path.path_stages)
-                .selectinload(PathStage.stage_template)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.path_stage)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.files),
+                selectinload(Project.creator),
             )
             .where(Project.id == project.id)
         )
@@ -43,7 +54,18 @@ class ProjectRepository:
                 selectinload(Project.project_paths)
                 .selectinload(ProjectPath.path)
                 .selectinload(Path.path_stages)
-                .selectinload(PathStage.stage_template)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.path_stage)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.files),
+                selectinload(Project.creator),
             )
             .where(Project.id == project_id)
         )

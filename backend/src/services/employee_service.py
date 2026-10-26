@@ -7,6 +7,7 @@ from src.models.employee_model import Employee, FreelancerProfile
 from src.repositories.employee_repository import EmployeeRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSelfUpdateSchema,
     EmployeeSearchFilters,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
@@ -15,6 +16,63 @@ from src.security import get_password_hash
 
 
 class EmployeeService:
+    @staticmethod
+    async def update_current_employee(
+        session: AsyncSession,
+        data: EmployeeSelfUpdateSchema,
+        current_employee: Employee,
+    ) -> Employee:
+        changes = data.model_dump(exclude_unset=True)
+        if not changes:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='At least one profile field must be provided',
+            )
+        if 'username' in changes and changes['username'] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Username cannot be empty',
+            )
+        if 'email' in changes and changes['email'] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Email cannot be empty',
+            )
+        if 'status' in changes and changes['status'] is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Status cannot be empty',
+            )
+        if changes.get('status') == EmployeeStatus.PENDING:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only profile completion can set a pending status',
+            )
+        if (
+            current_employee.role == Roles.FREELANCER
+            and current_employee.status == EmployeeStatus.PENDING
+            and 'status' in changes
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Freelancers must complete their own profile first',
+            )
+
+        employee = await EmployeeRepository.get_by_id(
+            session,
+            current_employee.id,
+        )
+        if employee is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Employee not found',
+            )
+
+        for field, value in changes.items():
+            setattr(employee, field, value)
+
+        return await EmployeeRepository.update(session, employee)
+
     @staticmethod
     async def create_initial_admin(
         session: AsyncSession,

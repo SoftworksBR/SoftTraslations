@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.employee_model import Employee
 from src.schemas.project_schema import (
     ProjectCreate,
+    ProjectDetailsResponse,
     ProjectSearchFilters,
     ProjectUpdate,
 )
@@ -29,6 +30,29 @@ class ProjectController:
         service = ProjectService(session)
 
         return await service.get_all(current_employee, filters)
+
+    @staticmethod
+    async def get_details(
+        project_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ) -> ProjectDetailsResponse:
+        service = ProjectService(session)
+        return await service.get_details(project_id, current_employee)
+
+    @staticmethod
+    async def get_project_file(
+        project_id: int,
+        file_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        service = ProjectService(session)
+        return await service.get_project_file(
+            project_id,
+            file_id,
+            current_employee,
+        )
 
     @staticmethod
     async def update(

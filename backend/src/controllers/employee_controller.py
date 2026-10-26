@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSelfUpdateSchema,
     EmployeeSearchFilters,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
@@ -14,6 +15,24 @@ from src.schemas.employee_schema import (
 from src.services.employee_service import EmployeeService
 
 service = EmployeeService()
+
+
+async def update_current_employee(
+    data: EmployeeSelfUpdateSchema,
+    session: AsyncSession,
+    current_employee: Employee,
+):
+    try:
+        return await service.update_current_employee(
+            session,
+            data,
+            current_employee,
+        )
+    except IntegrityError:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail='employeename or email already registered',
+        ) from None
 
 
 async def pre_register_freelancer(

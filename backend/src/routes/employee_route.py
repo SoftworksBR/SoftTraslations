@@ -10,6 +10,7 @@ from src.controllers.employee_controller import (
     delete_employee,
     get_employees,
     pre_register_freelancer,
+    update_current_employee,
     update_employee,
 )
 from src.database import get_session
@@ -19,6 +20,7 @@ from src.schemas.employee_schema import (
     EmployeePublicSchema,
     EmployeeSchema,
     EmployeeSearchFilters,
+    EmployeeSelfUpdateSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -28,6 +30,23 @@ router = APIRouter(
     prefix='/employee',
     tags=['Employees'],
 )
+
+
+@router.patch(
+    '/me',
+    status_code=HTTPStatus.OK,
+    response_model=EmployeePublicSchema,
+)
+async def update_current_employee_route(
+    data: EmployeeSelfUpdateSchema,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await update_current_employee(
+        data,
+        session,
+        current_employee,
+    )
 
 
 @router.post(

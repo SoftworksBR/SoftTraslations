@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from src.enums.enums import QuoteStatus, Roles
 from src.models.employee_model import Employee
+from src.models.file_model import File
 from src.models.path_model import Path
 from src.models.project_model import Project, ProjectPath
 from src.models.stage_model import PathStage, ProjectStage
@@ -12,7 +13,11 @@ from src.repositories.project_repository import ProjectRepository
 from src.repositories.quote_repository import QuoteRepository
 from src.schemas.project_schema import (
     ProjectCreate,
+    ProjectDetailsResponse,
+    ProjectFileDetails,
+    ProjectPathDetails,
     ProjectSearchFilters,
+    ProjectStageDetails,
     ProjectUpdate,
 )
 from src.services.outbox import enqueue_event
@@ -112,6 +117,79 @@ class ProjectService:
             )
 
         return project
+
+    async def get_details(
+        self,
+        project_id: int,
+        current_employee: Employee,
+    ) -> ProjectDetailsResponse:
+        self._require_project_reader_role(current_employee)
+        project = await self.repository.get_by_id(project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project not found',
+            )
+
+        return ProjectDetailsResponse(
+            id=project.id,
+            name=project.name,
+            status=project.status,
+            creator_id=project.creator_id,
+            creator_name=project.creator.username,
+            paths=[
+                ProjectPathDetails(
+                    id=project_path.id,
+                    name=project_path.path.name,
+                    sequence=project_path.sequence,
+                    stages=[
+                        ProjectStageDetails(
+                            id=stage.id,
+                            name=stage.name,
+                            status=stage.status,
+                            freelancer_id=stage.freelancer_id,
+                            freelancer_name=(
+                                stage.freelancer.username
+                                if stage.freelancer is not None
+                                else None
+                            ),
+                            files=[
+                                ProjectFileDetails.model_validate(file)
+                                for file in stage.files
+                            ],
+                        )
+                        for stage in sorted(
+                            project_path.executions,
+                            key=lambda execution: execution.path_stage.sequence,
+                        )
+                    ],
+                )
+                for project_path in project.project_paths
+            ],
+        )
+
+    async def get_project_file(
+        self,
+        project_id: int,
+        file_id: int,
+        current_employee: Employee,
+    ) -> File:
+        self._require_project_reader_role(current_employee)
+        result = await self.repository.session.scalar(
+            select(File)
+            .join(File.project_stage)
+            .join(ProjectStage.project_path)
+            .where(
+                File.id == file_id,
+                ProjectPath.project_id == project_id,
+            )
+        )
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project file not found',
+            )
+        return result
 
     async def get_all(
         self,
@@ -213,4 +291,12 @@ class ProjectService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only projetos can use this endpoint',
+            )
+
+    @staticmethod
+    def _require_project_reader_role(current_employee: Employee) -> None:
+        if current_employee.role not in {Roles.PROJETOS, Roles.ADMIN}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only projetos and admins can read project details',
             )

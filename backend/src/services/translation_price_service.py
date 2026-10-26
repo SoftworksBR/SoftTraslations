@@ -38,6 +38,7 @@ class TranslationPriceService:
         service_id: int,
         source_language_id: int,
         target_language_id: int,
+        require_active: bool = True,
     ) -> None:
         if source_language_id == target_language_id:
             raise HTTPException(
@@ -48,7 +49,7 @@ class TranslationPriceService:
         service: Service | None = (
             await self.service_repository.get_by_id(service_id)
         )
-        if service is None or not service.is_active:
+        if service is None or (require_active and not service.is_active):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Serviço inexistente ou inativo.",
@@ -57,7 +58,7 @@ class TranslationPriceService:
         source: Language | None = (
             await self.language_repository.get_by_id(source_language_id)
         )
-        if source is None or not source.is_active:
+        if source is None or (require_active and not source.is_active):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Idioma de origem inexistente ou inativo.",
@@ -66,7 +67,7 @@ class TranslationPriceService:
         target: Language | None = (
             await self.language_repository.get_by_id(target_language_id)
         )
-        if target is None or not target.is_active:
+        if target is None or (require_active and not target.is_active):
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Idioma de destino inexistente ou inativo.",
@@ -112,8 +113,16 @@ class TranslationPriceService:
                 detail="Já existe um preço para esse serviço e par de idiomas.",
             ) from exc
 
-    async def get_all(self) -> list[TranslationPrice]:
+    async def get_all(
+        self,
+        employee: Employee,
+        include_inactive: bool = False,
+    ) -> list[TranslationPrice]:
+        if include_inactive:
+            self._require_admin(employee)
         prices = await self.repository.get_all()
+        if include_inactive:
+            return prices
         return [price for price in prices if price.is_active]
 
     async def update(
@@ -151,6 +160,9 @@ class TranslationPriceService:
             service_id,
             source_language_id,
             target_language_id,
+            require_active=(
+                data.is_active if data.is_active is not None else price.is_active
+            ),
         )
 
         existing = await self.repository.get_by_combination(
