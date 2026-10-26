@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import UploadFile
 
 from src.models.employee_model import Employee
 from src.schemas.stage_schema import (
@@ -11,6 +12,32 @@ from src.services.stage_service import StageService
 
 
 class StageController:
+    @staticmethod
+    async def upload_file(
+        stage_id: int,
+        upload: UploadFile,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).upload_file(
+            stage_id,
+            upload,
+            current_employee,
+        )
+
+    @staticmethod
+    async def get_file(
+        stage_id: int,
+        file_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).get_file(
+            stage_id,
+            file_id,
+            current_employee,
+        )
+
     @staticmethod
     async def create(
         data: ProjectStageCreate,

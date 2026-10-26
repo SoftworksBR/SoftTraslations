@@ -1,8 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.employee_model import Employee
+from src.models.file_model import File
 from src.models.project_model import Project, ProjectPath
 from src.models.stage_model import (
     PathStage,
@@ -46,6 +47,7 @@ class StageRepository:
                 joinedload(ProjectStage.project_path).joinedload(
                     ProjectPath.path
                 ),
+                selectinload(ProjectStage.files),
             )
             .where(ProjectStage.id == stage_id)
         )
@@ -63,6 +65,7 @@ class StageRepository:
             joinedload(ProjectStage.project_path).joinedload(
                 ProjectPath.project
             ),
+            selectinload(ProjectStage.files),
         )
 
         if freelancer_id is not None:
@@ -107,3 +110,11 @@ class StageRepository:
     async def delete(self, stage: ProjectStage) -> None:
         await self.session.delete(stage)
         await self.session.commit()
+
+    async def get_file(self, stage_id: int, file_id: int) -> File | None:
+        return await self.session.scalar(
+            select(File).where(
+                File.project_stage_id == stage_id,
+                File.id == file_id,
+            )
+        )

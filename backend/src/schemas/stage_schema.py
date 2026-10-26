@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.enums.enums import Status
 
@@ -42,6 +42,13 @@ class StageSearchFilters(BaseModel):
     freelancer_name: str | None = None
 
 
+class StageFileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    original_name: str
+
+
 class StageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,3 +61,4 @@ class StageResponse(BaseModel):
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
+    files: list[StageFileResponse] = Field(default_factory=list)
