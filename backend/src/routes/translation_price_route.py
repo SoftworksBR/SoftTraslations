@@ -36,11 +36,12 @@ async def create_translation_price(
 
 @router.get("", response_model=list[TranslationPriceResponse])
 async def list_translation_prices(
+    include_inactive: bool = False,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await TranslationPriceController.list(
-        session, current_employee
+        session, current_employee, include_inactive
     )
 
 
