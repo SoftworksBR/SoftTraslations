@@ -1,37 +1,46 @@
-# SoftworksBR
+# SoftTranslations
 
-## 📌 SoftTranslations – Gerenciamento da tradução de documentos técnicos
+## Gerenciamento de serviços de tradução
 
-Sistema desenvolvido pela SoftworksBr em parceria com a **Aliança Traduções**, com o objetivo de auxiliar colaboradores na gestão dos serviços prestados pela empresa.
-A plataforma visa conectar **clientes que necessitem de serviços de tradução** a **tradutores**, permitindo o gerenciamento completo por parte da empresa a solicitações, orçamentos, projetos e entregas.
+O SoftTranslations é uma aplicação desenvolvida pela SoftworksBR em parceria
+com a **Aliança Traduções** para organizar solicitações de tradução e o fluxo
+de trabalho interno. O projeto inclui um frontend responsivo em Expo/React
+Native e uma API FastAPI.
 
 ---
 ## 📖 Sumário
 
 - [Sobre o Projeto](#about)
-- [Objetivo do Projeto](#objective)
-- [Documentação](#documents)
+- [Recursos disponíveis](#available-features)
+- [Manuais e documentação](#documents)
 - [Backlog do Produto](#backlog)
-- [Programação por Sprint](#sprint)
 - [Tecnologias Utilizadas](#tecnologies)
 - [Autores](#authors)
 
 ---
 
-## 📌 <span id="about">Sobre o Projeto</span>
+## <span id="about">Sobre o Projeto</span>
 
-O projeto **SofTranslations** tem como objetivo servir como um hub central onde todas as operações da **Aliança Traduções** possam ser realizadas e monitoradas, facilitando a gestão dos diversos serviços em andamento. 
-O sistema permitirá a solicitação de serviços direta do cliente agilizando o processo de criação de orçamentos, ampla personalização no cadastro dos serviços e de tradutores permitindo o fácil emparelhamento entre eles, agentes de inteligencia artificial que auxiliam o usuário a utilizar o software, entre outras funcionalidades. 
+O sistema organiza solicitações públicas, propostas de orçamento e projetos
+com etapas de trabalho. O acesso interno é separado por perfis de
+administrador, atendimento, gestor de projetos e tradutor freelancer.
 
----
+## <span id="available-features">Recursos disponíveis</span>
 
+- Formulário público para envio de solicitação de tradução e anexos.
+- Consulta interna de solicitações e criação de orçamento pelo atendimento.
+- Registro de aprovação ou recusa de orçamento pelo atendimento.
+- Criação de projeto a partir de orçamento aprovado e associação a trilhas.
+- Cadastro de etapas reutilizáveis e trilhas de workflow; consulta de projetos,
+  etapas e tradutores.
+- Consulta de etapas atribuídas ao tradutor.
+- Gerenciamento de contas internas pelo administrador.
 
-## 🎯 <span id="objective">Objetivos do Projeto</span>
-
-- Facilitar a criação de orçamentos com os clientes.
-- Permitir que a gestão poça escolher o tradutor certo para cada serviço de maneira fácil e rápida.
-- utilizar workflows personalizados para deixar explícito o progresso dos serviços.
-- utilizar agentes de ia personalizados para auxiliar no uso do sistema.
+O produto está em desenvolvimento. Funcionalidades descritas no backlog não
+estão necessariamente disponíveis na interface atual. O
+[Manual do Usuário](docs/user_manual.md) registra os fluxos existentes e as
+limitações conhecidas; o [Manual de Instalação](docs/instalation_manual.md)
+descreve como executar o projeto localmente.
 
 ---
 
@@ -39,10 +48,16 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 - [Manual de Instalação](docs/instalation_manual.md)
 - [Manual do Usuário](docs/user_manual.md)
+- [Documentação do backend](backend/README.md)
+- [Notas técnicas do fluxo solicitação–orçamento–projeto](docs/FLUXO_ORCAMENTO_E_PROJETOS.md)
 
 ---
 
 # 📋 <span id="backlog">Backlog do Produto</span>
+
+O backlog abaixo é o planejamento do produto, não uma lista de recursos
+garantidamente implementados. Consulte a seção [Recursos disponíveis](#available-features)
+e os manuais para entender o que pode ser utilizado hoje.
 
 | Rank | User Story | Sprint |
 |---:|---|---|

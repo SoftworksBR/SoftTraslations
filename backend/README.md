@@ -1,165 +1,94 @@
-# SoftTranslations - Backend Documentation
+# Backend do SoftTranslations
 
-## Sumário
-- [Requisitos](#requisites)
-- [Instalar as dependências](#how-to-install)
-- [Executar o backend](#how-to-run)
-- [Executar testes](#how-to-test)
-- [Arquitetura do projeto](#project-architecture)
+API REST desenvolvida com FastAPI, SQLAlchemy assíncrono e PostgreSQL. A
+configuração detalhada do ambiente local, incluindo o frontend, está no
+[Manual de Instalação](../docs/instalation_manual.md).
 
-## <span id='requisites'> Requisitos do sistema </span>
-- Python 3.13
-- uv
-- PostgreSQL
-- MongoDB (para auditoria e logs; a API continua operando sem ele, mas a outbox
-  permanece pendente e os logs não são persistidos)
+## Requisitos
 
-**Instalação dos requisitos**
+- Python 3.13 ou superior;
+- `uv`;
+- PostgreSQL;
+- MongoDB opcional para persistir logs e entregar eventos da outbox.
 
-Verifique se já possui uma versão instalada com:
-```
-python --version
-uv --version
-```
+Sem MongoDB, a API continua funcionando, mas os logs não são persistidos e os
+eventos da outbox ficam pendentes.
 
-Pesquise por **python** no seu navegador ou clique no seguinte link: https://www.python.org/downloads/ para ser redirecionado para a tela de download. Por fim, faça o download da versão 3.13
+## Preparar e iniciar
 
-Com o python instalado, utilize o comando:
-```
-pip install uv
-```
-Para instalar o uv.
+Na raiz do repositório:
 
-Por fim, instale o PostgreSQL através desse link: https://www.postgresql.org/download/
-
-## <span id='how-to-install'> Instalando as dependências </span>
-Navegue até a pasta backend utilizando o seguinte comando
-```
+```powershell
 cd backend
-```
-
-É possível escrever "cd b" e apertar Tab para autocompletar
-
-Dentro da pasta backend, utilize o seguinte comando para fazer download do restante das dependências necessárias
-```
 uv sync
+Copy-Item .env.example .env
 ```
 
-Antes de prosseguir para a próxima etapa, inicie o ambiente virtual com
-```
-.venv\Scripts\Activate.ps1
-source .venv/bin/activate
-```
+No Linux, use `cp .env.example .env` no lugar de `Copy-Item`. Edite `.env` e
+configure `DATABASE_URL`, `SECRET_KEY` e as credenciais
+`INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_EMAIL` e `INITIAL_ADMIN_PASSWORD`.
+Crie o banco `soft_translations_db` antes de aplicar as migrações.
 
-Sendo o primeiro comando para Powershell e o segundo para Linux. Após executar um desses comandos, deve aparecer algo entre parênteses antes do caminho da pasta atual. Por exemplo:
-```
-PS C:\Users\...\SoftTraslations\backend> .venv\Scripts\Activate.ps1
-(backend) PS C:\Users\...\SoftTraslations\backend>
-```
+Ative o ambiente virtual e execute as migrações:
 
-## <span id='how-to-run'> Executando o projeto </span>
-
-Para rodar o projeto, crie um novo arquivo chamado ``.env`` a partir do arquivo ``.env.example`` e, na primeira linha, mude **postgres_username:postgres_password** para o nome do seu usuário e sua senha, por exemplo, **postgres:senha123**. O nome do cookie de autenticação pode ser alterado pela variável `ACCESS_TOKEN_COOKIE_NAME`.
-
-Configure também `MONGODB_URI` e `MONGODB_DATABASE` para o serviço MongoDB
-usado nos logs e na entrega dos eventos de auditoria. Substitua
-`SECRET_KEY` por um valor aleatório forte antes de expor a aplicação.
-Defina `INITIAL_ADMIN_USERNAME`, `INITIAL_ADMIN_EMAIL` e
-`INITIAL_ADMIN_PASSWORD` no `.env` para criar o administrador inicial. Essa
-conta é criada automaticamente na inicialização da API quando o banco ainda
-não possui funcionários; contas existentes não são alteradas. Guarde o `.env`
-em segurança e não use credenciais de exemplo em produção.
-
-Na barra de pesquisa do seu navegador, pesquise por **pgadmin** para abrir o PostgreSQL. Lá, você deve criar um banco de dados vazio com o nome **soft_translations_db**. Para isso, basta clicar nas setas ao lado de Services > PostgreSQL x, depois clique com o botão direito em Databases > Create > Database...
-
-Agora no seu terminal é possível popular o seu banco de dados com o comando
-```
+```powershell
+.\.venv\Scripts\Activate.ps1
 alembic upgrade head
 ```
 
-Antes de atualizar um ambiente com dados existentes, faça backup e valide a
-migração em uma cópia isolada. A revisão `f3a91b7c2d60` é incremental sobre o
-head do repositório; ela não foi aplicada automaticamente ao banco configurado
-neste workspace.
+No Linux, a ativação equivalente é:
 
-Depois de aplicar as migrações e configurar o administrador inicial, utilize o
-seguinte comando para executar o projeto:
+```bash
+source .venv/bin/activate
+alembic upgrade head
 ```
+
+Inicie o servidor de desenvolvimento:
+
+```text
 task run
 ```
 
-Não é necessário repetir todos esses comandos toda vez que quiser iniciar a aplicação, basta digitar ``task run`` assim que tudo estiver corretamente configurado.
-Certifique-se que está na pasta backend e com o ambiente virtual ativado.
+A API escuta na porta `8000`; a documentação interativa está em
+`http://localhost:8000/docs` e `http://localhost:8000/redoc`.
 
-## <span id='how-to-test'> Testando a aplicação </span>
-```
+O administrador inicial é criado na inicialização somente quando o banco ainda
+não contém funcionários. As variáveis `INITIAL_ADMIN_*` não redefinem uma
+conta existente. Consulte `backend/.env.example` para ver as configurações
+adicionais de autenticação, CORS, uploads e MongoDB.
+
+## Testes e qualidade
+
+Com o ambiente virtual ativo:
+
+```text
 task test
 ```
 
-## <span id='project-architecture'> Arquitetura do Projeto </span>
+O comando de teste executa o lint e gera o relatório HTML de cobertura. Para
+executar somente a suíte de testes, use `uv run pytest`; para executar somente
+o lint, use `uv run ruff check`.
+
+## Organização do código
 
 ```text
 backend/
-├── alembic/
-├── tests/
+├── alembic/       # Migrações do PostgreSQL
+├── scripts/       # Scripts de validação e suporte
 ├── src/
-│   ├── controllers/
-│   ├── models/
-│   ├── repositories/
-│   ├── routes/
-│   ├── schemas/
-│   ├── services/
+│   ├── routes/    # Endpoints HTTP
+│   ├── controllers/# Fluxo de entrada/saída das requisições
+│   ├── services/  # Regras de negócio e integrações
+│   ├── repositories/ # Acesso a dados, quando aplicável
+│   ├── models/    # Modelos SQLAlchemy
+│   ├── schemas/   # Validação e serialização
 │   ├── database.py
-│   ├── main.py
 │   ├── security.py
-│   └── settings.py
-└── ...
+│   ├── settings.py
+│   └── main.py
+└── tests/         # Testes automatizados
 ```
 
-### Camadas da aplicação
-
-**`routes/`**
-
-Responsável pela definição das **rotas HTTP** da aplicação.
-É nessa camada que os endpoints são registrados no FastAPI.
-
-**`controllers/`**
-
-Responsável por lidar com o fluxo relacionado à **requisição HTTP**.
-Os controllers recebem os dados provenientes das rotas e delegam o processamento para a camada de serviços.
-
-**`services/`**
-Responsável pela **regra de negócio da aplicação**.
-Essa é uma das principais camadas da arquitetura, pois concentra operações que representam comportamentos e regras do domínio.
-
-**`repositories/`**
-
-Responsável pelo **acesso aos dados**.
-Os repositories abstraem operações relacionadas ao banco de dados, evitando que a camada de serviços precise conhecer detalhes de queries e da infraestrutura de persistência.
-
-**`models/`**
-
-Contém os **modelos de persistência** utilizados pelo SQLAlchemy.
-Os models representam as entidades armazenadas no banco de dados e normalmente possuem correspondência com tabelas.
-
-**`schemas/`**
-
-Contém os schemas utilizados para **validação e serialização dos dados da API**.
-Enquanto o model representa a entidade persistida, o schema define quais dados podem ser recebidos ou retornados pela API.
-
-### Responsabilidade de cada camada
-
-| Camada          | Responsabilidade                            |
-| --------------- | ------------------------------------------- |
-| `routes/`       | Definição dos endpoints HTTP                |
-| `controllers/`  | Controle do fluxo da requisição             |
-| `services/`     | Regras de negócio                           |
-| `repositories/` | Acesso e persistência dos dados             |
-| `models/`       | Representação das entidades no banco        |
-| `schemas/`      | Validação e serialização dos dados da API   |
-| `database.py`   | Configuração da infraestrutura do banco     |
-| `security.py`   | Autenticação e funcionalidades de segurança |
-| `settings.py`   | Configurações da aplicação                  |
-| `main.py`       | Inicialização e composição da aplicação     |
-| `alembic/`      | Migrações do banco de dados                 |
-| `tests/`        | Testes automatizados                        |
+As rotas expõem a API, schemas validam os dados de entrada/saída, models
+representam os registros persistidos e services concentram regras do domínio.
+Migrações versionadas do PostgreSQL ficam em `alembic/versions/`.
