@@ -1,50 +1,58 @@
-# Welcome to your Expo app 👋
+# Frontend do SoftTranslations
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Frontend em Expo, React Native e TypeScript, com rotas definidas pelo
+Expo Router. A aplicação pode ser executada na web ou em um dispositivo de
+desenvolvimento pelo Expo Go.
 
-## Get started
+## Executar localmente
 
-1. Install dependencies
+O guia completo de configuração do backend, PostgreSQL, variáveis de ambiente
+e execução em rede está no [Manual de Instalação](../docs/instalation_manual.md).
 
-   ```bash
-   npm install
-   ```
+Na pasta `Front-Geral`, instale as dependências e inicie a versão web:
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+npm install
+npm run web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Para iniciar o Expo no modo LAN e abrir o app com Expo Go:
 
-## Learn more
+```text
+npx expo start --lan
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+O backend deve estar ativo na porta `8000`. No navegador do mesmo computador,
+a URL padrão da API é `http://localhost:8000`. Em um dispositivo físico, use
+`EXPO_PUBLIC_API_URL` em `Front-Geral/.env` para apontar ao endereço IPv4 do
+computador que executa o backend. Exemplo:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```text
+EXPO_PUBLIC_API_URL=http://192.168.1.10:8000
+```
 
-## Join the community
+Reinicie o Expo depois de alterar o arquivo `.env`. Não use `localhost` como
+host da API quando o app estiver rodando em um celular: nesse caso, ele se
+refere ao próprio dispositivo.
 
-Join our community of developers creating universal apps.
+## Comandos disponíveis
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+| Comando | Uso |
+| --- | --- |
+| `npm run web` | Inicia a aplicação no navegador. |
+| `npx expo start --lan` | Inicia o Expo para acesso na rede local. |
+| `npm run android` | Inicia o Expo com alvo Android configurado. |
+| `npm run ios` | Inicia o Expo com alvo iOS configurado. |
+| `npm run lint` | Executa o lint do Expo. |
+
+## Estrutura
+
+- `app/`: telas e rotas do Expo Router, agrupadas por perfil e fluxo.
+- `components/`: componentes compartilhados e formulários.
+- `context/`: contexto de autenticação.
+- `services/`: integração HTTP com a API.
+- `hooks/`: hooks compartilhados.
+- `assets/`: recursos visuais e fontes do aplicativo.
+
+O diretório `app/` define a navegação do app; telas e serviços devem continuar
+usando as rotas e padrões já adotados no projeto.

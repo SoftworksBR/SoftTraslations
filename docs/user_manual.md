@@ -1,125 +1,254 @@
 # Manual do Usuário — SoftTranslations
 
+Este manual descreve como usar as funções atualmente disponíveis no
+SoftTranslations. As telas são responsivas e podem ser abertas em um navegador;
+os menus e as ações disponíveis dependem do perfil da conta. Este guia não usa
+capturas de tela: os nomes e os passos abaixo descrevem as áreas e os fluxos
+diretamente.
+
 ## Sumário
 
-- [Sobre este manual](#sobre-este-manual)
-- [Acessar o sistema](#acessar-o-sistema)
-- [Navegação e permissões](#navegacao-e-permissoes)
-- [Área do administrador](#area-do-administrador)
-- [Área de atendimento](#area-de-atendimento)
-- [Área do gestor de projetos](#area-do-gestor-de-projetos)
-- [Área do tradutor](#area-do-tradutor)
-- [Dicas e solução de problemas](#dicas-e-solucao-de-problemas)
+- [O que o sistema faz](#o-que-o-sistema-faz)
+- [Solicitar um serviço](#solicitar-um-servico)
+- [Entrar e navegar](#entrar-e-navegar)
+- [Administrador](#administrador)
+- [Atendimento](#atendimento)
+- [Gestor de projetos](#gestor-de-projetos)
+- [Tradutor freelancer](#tradutor-freelancer)
+- [Situações e regras do fluxo](#situacoes-e-regras-do-fluxo)
+- [Problemas comuns](#problemas-comuns)
+- [Recursos ainda não disponíveis na interface](#recursos-ainda-nao-disponiveis-na-interface)
 
-## Sobre este manual
+## O que o sistema faz
 
-O SoftTranslations organiza solicitações de tradução e o trabalho da equipe em um só lugar. Este manual apresenta as telas e os fluxos disponíveis para clientes, atendimento, gestores, administradores e tradutores.
+O SoftTranslations reúne o recebimento de solicitações de tradução e o
+trabalho interno da equipe. O fluxo principal é:
 
-As imagens deste guia estão na pasta `img/` do projeto. Os menus e as ações apresentados podem variar conforme o perfil e as permissões da conta. Algumas telas podem aparecer sem registros quando ainda não há dados cadastrados.
+1. O cliente envia uma solicitação com seus dados, idiomas e serviço desejado.
+2. O atendimento analisa a solicitação e prepara um orçamento.
+3. O atendimento registra a aprovação ou a recusa do orçamento, após a decisão
+   do cliente.
+4. Com um orçamento aprovado, o gestor cria um projeto e escolhe uma ou mais
+   trilhas de trabalho.
+5. As etapas criadas para o projeto podem ser acompanhadas e atribuídas a
+   tradutores.
+6. O tradutor consulta as etapas vinculadas à sua conta.
 
-## Acessar o sistema
+| Perfil | Responsabilidade principal |
+| --- | --- |
+| Cliente sem conta | Enviar uma solicitação pública pelo formulário inicial. |
+| Administrador | Gerenciar contas da equipe e consultar o painel administrativo. |
+| Atendimento | Consultar solicitações, criar orçamentos e registrar decisões. |
+| Gestor de projetos | Organizar projetos, trilhas, etapas e tradutores. |
+| Tradutor freelancer | Completar o perfil pendente e consultar etapas atribuídas. |
 
-1. Abra no navegador o endereço da aplicação fornecido pela equipe responsável.
-2. Na página inicial, selecione **Login** ou **Fazer Login**.
-3. Informe o e-mail e a senha da sua conta e selecione **Entrar**.
-4. Após a autenticação, o sistema direciona você à área correspondente ao seu perfil.
+## Solicitar um serviço
 
-![Página inicial do SoftTranslations, com acesso ao login e resumo dos recursos](../img/landingpage.png)
+Não é necessário entrar na plataforma para enviar uma solicitação.
 
-![Tela de login](../img/login.png)
+1. Abra a página inicial e selecione **Fazer uma solicitação**.
+2. Na etapa **Dados da solicitação**, informe nome completo, e-mail e telefone.
+   A empresa é opcional.
+3. Escolha o idioma de origem, o idioma de destino e, se disponível, o serviço.
+   Os idiomas e serviços são carregados das opções ativas no sistema.
+4. Escreva uma descrição ou observação que ajude a equipe a entender o pedido.
+5. Se necessário, anexe arquivos de referência. São aceitos PDF, DOC, DOCX,
+   ODT, TXT, RTF, XLS, XLSX, PNG, JPG e JPEG. O limite é de 10 MB por arquivo e
+   10 arquivos por solicitação.
+6. Avance para **Revisão**, confira as informações e envie.
+7. Aguarde a confirmação de envio. A equipe usará os dados de contato informados
+   para dar continuidade ao atendimento.
 
-Se for seu primeiro acesso como tradutor pré-cadastrado, o sistema poderá solicitar que conclua o cadastro antes de abrir as demais telas.
+Se um anexo falhar, a confirmação informa quais arquivos não foram enviados.
+Envie novamente os arquivos que faltaram ou informe o problema ao atendimento.
 
-## Navegação e permissões
+## Entrar e navegar
 
-Use o ícone de menu (☰) no cabeçalho para abrir a navegação. As opções exibidas dependem do perfil e das permissões atribuídas à conta. Se uma opção não aparecer, solicite acesso ao administrador do sistema.
+1. Na página inicial, selecione **Acessar plataforma**.
+2. Informe o e-mail e a senha fornecidos pela equipe e selecione **Entrar**.
+3. Após a autenticação, o sistema abre a área adequada ao perfil.
+4. Use o menu de navegação para acessar as áreas disponíveis. Para sair,
+   selecione **Sair** no menu.
 
-Para encerrar a sessão, abra o menu e selecione **Deslogar**.
+Os nomes e as opções de navegação podem mudar conforme o perfil e as permissões
+da conta. Se a opção necessária não aparecer, peça ao administrador para
+verificar seu perfil. Não compartilhe sua senha.
 
-## Área do administrador
+## Administrador
 
-O administrador gerencia acessos e a organização dos perfis internos. No menu, abra **Gerenciar Administradores**, **Gerenciar Atendimento** ou **Gerenciar Gestores** para consultar as áreas correspondentes.
+### Painel administrativo
 
-![Menu de navegação do administrador](../img/admin/navbar_admin.png)
+O painel apresenta indicadores e uma visão da equipe retornada pela API. Se
+alguma seção não tiver dados, confirme se os registros foram cadastrados e se a
+API está acessível.
 
-As telas de gerenciamento apresentam listas de usuários e ações de cadastro. Ao incluir ou atualizar um usuário, confira os dados e o perfil antes de salvar, pois o perfil determina quais áreas do sistema estarão disponíveis para essa pessoa.
+### Gerenciar funcionários
 
-![Gerenciamento de administradores](../img/admin/manage_admin.png)
+Na área **Funcionários**, o administrador pode consultar, filtrar, cadastrar,
+editar e excluir contas de equipe. A busca localiza registros por nome ou
+e-mail; os filtros permitem separar por perfil e situação.
 
-![Gerenciamento de atendentes](../img/admin/manage_attendant.png)
+Os perfis internos disponíveis para cadastro nessa área são **Administrador**,
+**Atendimento** e **Projetos**. Freelancers são pré-cadastrados pelo gestor de
+projetos. Confira o perfil escolhido antes de salvar, pois ele determina as
+áreas às quais a conta terá acesso. A exclusão exige confirmação e pode ser
+irreversível.
 
-![Gerenciamento de gestores](../img/admin/manage_manager.png)
+### Configurações
 
-## Área de atendimento
+A área **Configurações** apresenta as seções **Idiomas**, **Serviços** e
+**Preços**. No estado atual da interface, a integração dessas configurações
+ainda está indisponível; não use essa área como confirmação de que uma alteração
+foi salva.
 
-O atendimento acompanha as solicitações recebidas e prepara orçamentos.
+## Atendimento
 
 ### Consultar solicitações
 
-1. No menu, abra **Requisições**.
-2. Selecione uma solicitação para expandir os detalhes.
-3. Confira os dados de contato, o par de idiomas e as observações.
-4. Se a solicitação estiver pronta para avaliação, use **Criar orçamento** para abrir o formulário associado.
-5. Para remover uma solicitação, use **Excluir solicitação** e confirme a ação.
+1. Abra **Requisições**.
+2. Consulte os dados de contato, a empresa (quando informada), o par de idiomas,
+   o serviço e as observações.
+3. Abra os anexos associados para conferir os arquivos enviados, se houver.
+4. Para iniciar o orçamento, use **Abrir orçamento** na solicitação
+   correspondente.
+5. Só exclua uma solicitação depois de confirmar que ela não deve continuar no
+   fluxo. A interface pede confirmação antes de excluir.
 
-![Lista de solicitações de tradução](../img/attendant/manage_requests.png)
+Uma lista vazia significa que não há solicitações retornadas para a conta ou
+que nenhum pedido foi enviado. Se uma falha aparecer, use **Tentar novamente**;
+se persistir, confira a conexão com a API.
 
-### Criar e acompanhar orçamentos
+### Criar um orçamento
 
-Ao criar um orçamento, revise os dados da solicitação, preencha o valor e o prazo e inclua observações quando necessário. Salve para registrar o orçamento. Na lista de orçamentos, confira cliente, serviço, idiomas, valor, prazo e situação.
+1. Abra a solicitação e selecione **Abrir orçamento**.
+2. Confira os dados do cliente, o serviço e os idiomas antes de preencher.
+3. Se houver uma tabela de preço aplicável, o formulário mostra uma sugestão
+   calculada pelo preço por palavra e pela quantidade de palavras. A sugestão é
+   apenas uma referência; revise ou informe manualmente o valor final.
+4. Informe um valor maior que zero e o prazo no formato **DD/MM/AAAA**.
+5. Adicione observações se forem importantes para a proposta e selecione
+   **Criar orçamento**.
 
-![Área de gerenciamento de orçamento](../img/attendant/manage_budget.png)
+O orçamento recém-criado fica em análise. Há apenas um orçamento por
+solicitação. Para acompanhar a proposta, abra **Orçamentos**.
 
-As telas podem estar vazias quando não houver solicitações ou orçamentos cadastrados. A aprovação e outras mudanças de situação dependem das ações habilitadas para o perfil.
+### Registrar a decisão do cliente
 
-## Área do gestor de projetos
+Na lista de orçamentos, confira cliente, serviço, idiomas, valor, prazo,
+observações e situação. Para um orçamento **Em análise**, use **Aprovar** ou
+**Recusar** depois de obter a decisão do cliente:
 
-O gestor organiza projetos, etapas, workflows e a equipe de tradutores.
+- **Aprovar** libera o orçamento para que o gestor crie um projeto.
+- **Recusar** também marca a solicitação relacionada como recusada.
+
+Essas ações registram uma decisão no sistema; o envio de uma proposta ou a
+coleta da resposta do cliente não é feito automaticamente por essa tela.
+
+## Gestor de projetos
+
+### Consultar orçamentos aprovados
+
+Abra **Solicitações disponíveis** (área de orçamentos) para consultar as
+propostas. Um orçamento aprovado e ainda não utilizado em projeto apresenta a
+ação **Criar projeto**.
+
+### Criar um projeto
+
+1. Na proposta aprovada que será executada, selecione **Criar projeto**.
+2. Confira os dados do orçamento que aparecem na tela.
+3. Informe o nome do projeto.
+4. Selecione pelo menos uma trilha. As etapas definidas nessa trilha serão
+   criadas para o projeto.
+5. Selecione **Criar projeto**.
+
+Um orçamento aprovado só pode ser vinculado a um projeto e todo projeto precisa
+de ao menos uma trilha.
 
 ### Consultar projetos
 
-Abra **Projetos** para ver os projetos disponíveis, sua situação e a quantidade de etapas associadas. As situações exibidas podem incluir **Pronto**, **Em andamento**, **Em teste** e **Concluído**.
+Em **Projetos**, pesquise pelo nome ou pela situação. Cada registro mostra o
+nome, a situação e a quantidade de trilhas associadas. As situações apresentadas
+são **Pronto**, **Em andamento**, **Em revisão** e **Concluído**.
 
-![Lista de projetos](../img/manager/projects.png)
+### Organizar workflows e etapas
 
-### Configurar workflows
+Abra **Workflow** para trabalhar com quadros/etapas e trilhas:
 
-1. Abra **Workflow** no menu do gestor.
-2. Entre em **Quadros** para consultar e organizar etapas de trabalho.
-3. Entre em **Trilhas** para montar sequências de etapas usando os quadros disponíveis.
-4. Revise a sequência e os nomes antes de utilizá-la em um projeto.
+- **Etapas reutilizáveis** são modelos que podem compor trilhas.
+- **Trilhas** agrupam etapas em uma sequência reutilizável. Para criar uma
+  trilha, informe um nome e selecione pelo menos uma etapa cadastrada.
+- As etapas instanciadas nos projetos podem ser consultadas e filtradas por
+  nome, situação ou tradutor. Quando houver tradutores cadastrados, selecione
+  um para atribuí-lo à etapa.
 
-![Área de workflows, quadros e trilhas](../img/manager/workflows.png)
+Antes de criar um projeto, confira se as etapas e a trilha necessárias já
+existem. Uma tela sem etapas de projeto pode simplesmente indicar que ainda
+não há projetos usando uma trilha.
 
-![Gerenciamento de etapas](../img/manager/stages.png)
+### Gerenciar tradutores
 
-![Gerenciamento de trilhas](../img/manager/paths.png)
+Em **Tradutores**, pesquise por nome ou e-mail e filtre por situação. Use
+**Pré-cadastrar tradutor** para criar o acesso inicial de um freelancer. O
+tradutor deve completar o perfil para avançar no sistema; acompanhe as
+informações retornadas e a situação do cadastro nessa lista.
 
-### Gerenciar tradutores e solicitações de disponibilidade
+## Tradutor freelancer
 
-Na área **Tradutores**, consulte os profissionais cadastrados ou use a opção de pré-cadastro quando disponível. A área de solicitações permite consultar pedidos de disponibilidade relacionados aos trabalhos.
+### Completar o perfil
 
-![Gerenciamento de tradutores](../img/manager/manage_translator.png)
+Se a conta estiver pendente, o sistema direciona para **Completar perfil**.
+Informe a data de nascimento no formato **AAAA-MM-DD** e o telefone. A
+especialização, o valor por hora e a apresentação pessoal são opcionais.
+Selecione **Salvar perfil** ao terminar.
 
-![Solicitações disponíveis para o gestor](../img/manager/available_requests.png)
+### Consultar etapas atribuídas
 
-## Área do tradutor
+Abra **Serviços disponíveis** para consultar as etapas vinculadas à sua conta e
+a situação atual de cada uma:
 
-### Concluir o cadastro
+- **Pronta**
+- **Em andamento**
+- **Em revisão**
+- **Concluída**
 
-Se a conta estiver aguardando a conclusão do cadastro, informe seu nome e selecione **Concluir cadastro**. O e-mail associado à conta é exibido para conferência.
+Se a lista estiver vazia, ainda não há etapas associadas à sua conta. Confirme
+com o gestor responsável se a etapa deveria ter sido atribuída. A tela atual é
+de consulta das etapas; ações de aceite e envio de arquivo não estão disponíveis
+nesta área da interface.
 
-![Tela de conclusão do cadastro do tradutor](../img/translator/complete_login.png)
+## Situações e regras do fluxo
 
-### Consultar etapas
+| Registro | Situações | Significado |
+| --- | --- | --- |
+| Solicitação | Pendente, Orçada, Recusada | Recebida, vinculada a orçamento ou encerrada após recusa. |
+| Orçamento | Em análise, Aprovado, Recusado | Aguardando decisão, liberado para projeto ou recusado. |
+| Projeto/etapa | Pronto, Em andamento, Em revisão, Concluído | Situação do trabalho ou da etapa exibida na área correspondente. |
+| Freelancer | Pendente, Disponível, Ocupado | Situação do cadastro/disponibilidade apresentada à equipe. |
 
-Na área do tradutor, abra **Minhas etapas** para consultar as etapas atribuídas à sua conta e a situação de cada uma. Se a lista estiver vazia, nenhuma etapa foi atribuída ainda; entre em contato com o gestor responsável.
+As opções para editar ou excluir um registro dependem de sua situação e do
+perfil autenticado. Por exemplo, uma solicitação com orçamento não pode ser
+alterada pelo cliente; orçamentos podem ser decididos enquanto estão em análise.
 
-![Área do tradutor com a lista de etapas atribuídas](../img/translator/available_stages.png)
+## Problemas comuns
 
-## Dicas e solução de problemas
+- **Não consigo entrar:** confira o e-mail e a senha. Se o acesso continuar
+  falhando, peça ao administrador que confirme se a conta existe e está ativa.
+- **Não vejo uma área no menu:** seu perfil pode não ter acesso a ela; consulte
+  o administrador.
+- **Uma lista está vazia:** confirme se existem registros e se foram atribuídos
+  ao seu perfil. Uma lista vazia não indica, por si só, falha do sistema.
+- **A API não responde:** atualize a tela e tente novamente. Se persistir,
+  informe à equipe responsável qual área estava usando e a mensagem exibida.
+- **A solicitação foi enviada, mas um anexo não:** consulte a mensagem de falha,
+  verifique o tamanho e o formato e tente enviar o arquivo novamente.
+- **A tela de configurações não salva:** a integração de idiomas, serviços e
+  preços ainda não está disponível na interface atual.
 
-- **Não consigo entrar:** confira se o e-mail e a senha foram digitados corretamente. Se o problema persistir, peça ao administrador para verificar seu acesso.
-- **Não vejo uma opção no menu:** a opção pode não estar habilitada para seu perfil. Solicite a permissão ao administrador.
-- **Uma lista está vazia:** confirme com o responsável se já existem registros ou atribuições para sua conta.
-- **A página não carrega ou mostra erro de conexão:** atualize a página e tente novamente. Se continuar, avise a equipe responsável pelo sistema, informando a tela e a mensagem exibida.
+## Recursos ainda não disponíveis na interface
+
+O backlog do produto descreve funcionalidades futuras que não devem ser
+confundidas com as ações disponíveis nas telas atuais. Entre elas estão o
+acompanhamento de solicitações pelo próprio cliente, a decisão de orçamento
+diretamente pelo cliente, o aceite de trabalhos e a entrega de arquivos pelo
+tradutor, notificações automáticas e configurações administrativas funcionais
+para idiomas, serviços e preços.
