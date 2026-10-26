@@ -55,6 +55,15 @@ class EmployeeSchema(BaseModel):
         return self
 
 
+class EmployeeSelfUpdateSchema(BaseModel):
+    username: str | None = Field(default=None, min_length=1, max_length=120)
+    first_name: str | None = Field(default=None, max_length=120)
+    last_name: str | None = Field(default=None, max_length=120)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=30)
+    status: EmployeeStatus | None = None
+
+
 class EmployeeListSchema(BaseModel):
     employees: list[EmployeePublicSchema]
 
