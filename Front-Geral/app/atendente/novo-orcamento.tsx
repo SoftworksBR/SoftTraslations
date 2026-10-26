@@ -1,375 +1,168 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  useLocalSearchParams,
-  router,
-} from 'expo-router';
-
-import {
-  useState,
-} from 'react';
-
-import {
-  View,
-  Text,
-  TextInput,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
-  Alert,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
+import { errorMessage, notify } from '@/services/dialog';
 import {
-  requisicoes,
-} from '@/data/requisicoes';
-
-import {
-  orcamentos,
-} from '@/data/orcamentos';
+  createQuote,
+  formatMoney,
+  getQuoteSuggestion,
+  parseDateBr,
+} from '@/services/quotes';
+import type { QuoteSuggestion } from '@/services/quotes';
 
 export default function NovoOrcamento() {
+  const params = useLocalSearchParams<{ requisicaoId?: string }>();
+  const requestId = Number(params.requisicaoId);
 
-  const params =
-    useLocalSearchParams<{
-      requisicaoId?: string;
-    }>();
+  const [suggestion, setSuggestion] = useState<QuoteSuggestion | null>(null);
+  const [value, setValue] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [observations, setObservations] = useState('');
+  const validId = Number.isInteger(requestId) && requestId > 0;
+  const [loading, setLoading] = useState(validId);
+  const [saving, setSaving] = useState(false);
 
-  const requisicaoId =
-    Number(params.requisicaoId);
+  useEffect(() => {
+    if (!validId) return;
+    let active = true;
+    getQuoteSuggestion(requestId)
+      .then((result) => {
+        if (!active) return;
+        setSuggestion(result);
+        if (result.suggested_value) {
+          setValue(result.suggested_value.toFixed(2).replace('.', ','));
+        }
+      })
+      .catch((cause) => notify('Erro', errorMessage(cause)))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, [requestId, validId]);
 
-  const requisicao =
-    requisicoes.find(
-      (item) =>
-        item.id === requisicaoId
-    );
+  async function save() {
+    const amount = value.replace(/\./g, '').replace(',', '.').trim();
+    const isoDeadline = parseDateBr(deadline);
 
-  const [valor, setValor] =
-    useState('');
+    if (!(Number(amount) > 0)) {
+      notify('Atenção', 'Informe um valor maior que zero.');
+      return;
+    }
+    if (!isoDeadline) {
+      notify('Atenção', 'Informe o prazo no formato DD/MM/AAAA.');
+      return;
+    }
 
-  const [prazo, setPrazo] =
-    useState('');
+    setSaving(true);
+    try {
+      await createQuote({
+        request_id: requestId,
+        value: amount,
+        deadline: isoDeadline,
+        observations: observations.trim() || null,
+      });
+      notify('Sucesso', 'Orçamento criado com sucesso.', () =>
+        router.replace('/atendente/orcamentos'),
+      );
+    } catch (cause) {
+      notify('Erro', errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  }
 
-  const [observacoes, setObservacoes] =
-    useState('');
-
-
-  if (!requisicao) {
-
+  if (loading) {
     return (
-      <View style={styles.erro}>
-
-        <Text>
-          Requisição não encontrada.
-        </Text>
-
+      <View style={styles.container}>
+        <ActivityIndicator color="#087F8C" />
       </View>
     );
-
   }
 
-
-  function salvar() {
-
-    if (!valor.trim()) {
-
-      Alert.alert(
-        'Atenção',
-        'Informe o valor do orçamento.'
-      );
-
-      return;
-    }
-
-
-    if (!prazo.trim()) {
-
-      Alert.alert(
-        'Atenção',
-        'Informe o prazo.'
-      );
-
-      return;
-    }
-
-
-    const novoOrcamento = {
-
-      id:
-        orcamentos.length > 0
-          ? Math.max(
-              ...orcamentos.map(
-                (item) => item.id
-              )
-            ) + 1
-          : 1,
-
-      requisicaoId:
-        requisicao.id,
-
-      cliente:
-        requisicao.nome,
-
-      servico:
-        requisicao.servico,
-
-      traducaoDe:
-        requisicao.traducaoDe,
-
-      traducaoPara:
-        requisicao.traducaoPara,
-
-      valor,
-
-      prazo,
-
-      observacoes,
-
-      status: 'em análise' as const,
-
-      data:
-        new Date().toLocaleDateString(
-          'pt-BR'
-        ),
-    };
-
-
-    orcamentos.push(
-      novoOrcamento
+  if (!validId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.description}>Selecione uma solicitação para criar o orçamento.</Text>
+        <Pressable style={styles.button} onPress={() => router.replace('/atendente/requisicoes')}>
+          <Text style={styles.buttonText}>Ir para requisições</Text>
+        </Pressable>
+      </View>
     );
-
-
-    Alert.alert(
-      'Sucesso',
-      'Orçamento criado com sucesso.',
-      [
-        {
-          text: 'OK',
-
-          onPress: () =>
-            router.replace(
-              '/atendente/orcamentos'
-            ),
-        },
-      ]
-    );
-
   }
-
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={
-        styles.conteudo
-      }
-    >
-
-      <Pressable
-        onPress={() => router.back()}
-        style={styles.voltar}
-      >
-
-        <Text style={styles.voltarTexto}>
-          ← Voltar
+    <ScrollView contentContainerStyle={styles.content} style={styles.scroll}>
+      <Text style={styles.title}>Novo orçamento</Text>
+      <Text style={styles.description}>Solicitação #{requestId}</Text>
+      {suggestion?.suggested_value ? (
+        <Text style={styles.hint}>
+          Sugestão: {formatMoney(suggestion.suggested_value)}
+          {suggestion.word_count ? ` (${suggestion.word_count} palavras` : ''}
+          {suggestion.price_per_word
+            ? ` × ${formatMoney(suggestion.price_per_word)}/palavra)`
+            : suggestion.word_count ? ')' : ''}
         </Text>
+      ) : (
+        <Text style={styles.hint}>Sem sugestão automática: informe o valor manualmente.</Text>
+      )}
 
-      </Pressable>
-
-
-      <Text style={styles.titulo}>
-        Novo Orçamento
-      </Text>
-
-
-      <View style={styles.info}>
-
-        <Text style={styles.infoTitulo}>
-          Dados da requisição
-        </Text>
-
-        <Text style={styles.infoTexto}>
-          Cliente: {requisicao.nome}
-        </Text>
-
-        <Text style={styles.infoTexto}>
-          E-mail: {requisicao.email}
-        </Text>
-
-        <Text style={styles.infoTexto}>
-          Serviço: {requisicao.servico}
-        </Text>
-
-        <Text style={styles.infoTexto}>
-          Tradução: {requisicao.traducaoDe}
-          {' → '}
-          {requisicao.traducaoPara}
-        </Text>
-
-      </View>
-
-
-      <Text style={styles.label}>
-        Valor *
-      </Text>
-
+      <Text style={styles.label}>Valor (R$) *</Text>
+      <TextInput value={value} onChangeText={setValue} keyboardType="decimal-pad" style={styles.input} />
+      <Text style={styles.label}>Prazo (DD/MM/AAAA) *</Text>
+      <TextInput value={deadline} onChangeText={setDeadline} placeholder="01/12/2026" style={styles.input} />
+      <Text style={styles.label}>Observações</Text>
       <TextInput
-        value={valor}
-        onChangeText={setValor}
-        placeholder="Ex.: R$ 850,00"
-        style={styles.input}
-      />
-
-
-      <Text style={styles.label}>
-        Prazo *
-      </Text>
-
-      <TextInput
-        value={prazo}
-        onChangeText={setPrazo}
-        placeholder="Ex.: 5 dias úteis"
-        style={styles.input}
-      />
-
-
-      <Text style={styles.label}>
-        Observações
-      </Text>
-
-      <TextInput
-        value={observacoes}
-        onChangeText={setObservacoes}
-        placeholder="Observações do orçamento"
+        value={observations}
+        onChangeText={setObservations}
         multiline
-        numberOfLines={5}
-        style={[
-          styles.input,
-          styles.textarea,
-        ]}
+        style={[styles.input, { minHeight: 90 }]}
       />
 
-
-      <Text style={styles.label}>
-        Status
-      </Text>
-
-      <View style={styles.status}>
-
-        <Text style={styles.statusTexto}>
-          Em análise
-        </Text>
-
-      </View>
-
-
-      <Pressable
-        style={styles.salvar}
-        onPress={salvar}
-      >
-
-        <Text style={styles.salvarTexto}>
-          SALVAR ORÇAMENTO
-        </Text>
-
+      <Pressable style={[styles.button, saving && { opacity: 0.6 }]} disabled={saving} onPress={() => void save()}>
+        <Text style={styles.buttonText}>{saving ? 'SALVANDO...' : 'CRIAR ORÇAMENTO'}</Text>
       </Pressable>
-
+      <Pressable onPress={() => router.back()} style={styles.link}>
+        <Text style={styles.linkText}>Cancelar</Text>
+      </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-
-  conteudo: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-
-  voltar: {
-    marginBottom: 15,
-  },
-
-  voltarTexto: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  titulo: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-
-  info: {
-    backgroundColor: '#f3f3f3',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-
-  infoTitulo: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-
-  infoTexto: {
-    fontSize: 15,
-    marginBottom: 5,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#F5F8FA' },
+  scroll: { flex: 1, backgroundColor: '#F5F8FA' },
+  content: { padding: 24, paddingBottom: 40, maxWidth: 640, width: '100%', alignSelf: 'center' },
+  title: { color: '#0B2239', fontSize: 26, fontWeight: '800' },
+  description: { marginTop: 6, color: '#627485', fontSize: 14 },
+  hint: { marginTop: 10, color: '#087F8C', fontSize: 13 },
+  label: { marginTop: 16, marginBottom: 6, color: '#172B3A', fontWeight: '600' },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
+    minHeight: 44,
     paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  button: {
+    alignSelf: 'flex-start',
+    marginTop: 22,
+    paddingHorizontal: 18,
     paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    backgroundColor: '#087F8C',
   },
-
-  textarea: {
-    minHeight: 110,
-    textAlignVertical: 'top',
-  },
-
-  status: {
-    backgroundColor: '#eee',
-    borderRadius: 6,
-    padding: 12,
-  },
-
-  statusTexto: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  salvar: {
-    backgroundColor: '#000',
-    paddingVertical: 14,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginTop: 25,
-  },
-
-  salvarTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  erro: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
+  buttonText: { color: '#FFFFFF', fontWeight: '700' },
+  link: { marginTop: 14 },
+  linkText: { color: '#087F8C', fontWeight: '600' },
 });

@@ -1,16 +1,19 @@
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.project_controller import ProjectController
 from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.models.employee_model import Employee
+from src.schemas.path_schema import PathResponse
 from src.schemas.project_schema import (
     ProjectCreate,
     ProjectResponse,
+    ProjectSearchFilters,
     ProjectUpdate,
 )
-from src.schemas.stage_schema import StageResponse
 from src.security import get_current_employee
 
 router = APIRouter(
@@ -32,19 +35,19 @@ async def create_project(
 
 
 @router.put(
-    '/{project_id}/stages/{stage_id}',
-    response_model=StageResponse,
+    '/{project_id}/paths/{path_id}',
+    response_model=PathResponse,
     status_code=status.HTTP_200_OK,
 )
-async def assign_stage_to_project(
+async def assign_path_to_project(
     project_id: int,
-    stage_id: int,
+    path_id: int,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
-    return await StageController.assign_to_project(
+    return await StageController.assign_path_to_project(
         project_id,
-        stage_id,
+        path_id,
         session,
         current_employee,
     )
@@ -52,10 +55,15 @@ async def assign_stage_to_project(
 
 @router.get('/', response_model=list[ProjectResponse])
 async def get_projects(
+    filters: Annotated[ProjectSearchFilters, Query()],
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
-    return await ProjectController.get_all(session, current_employee)
+    return await ProjectController.get_all(
+        session,
+        current_employee,
+        filters,
+    )
 
 
 @router.put('/{project_id}', response_model=ProjectResponse)

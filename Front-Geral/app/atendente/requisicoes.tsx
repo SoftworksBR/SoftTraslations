@@ -1,364 +1,262 @@
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  View,
-  Text,
+  ActivityIndicator,
+  Alert,
   FlatList,
+  Linking,
   Pressable,
   StyleSheet,
-  Alert,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
-import { router } from 'expo-router';
+import { API_URL } from '@/services/api';
+import { deleteRequest, getRequestFiles, getRequests } from '@/services/requests';
+import type { RequestFile, TranslationRequest } from '@/services/requests';
 
-import { requisicoes } from '@/data/requisicoes';
+function RequestFiles({ requestId }: { requestId: number }) {
+  const [files, setFiles] = useState<RequestFile[]>([]);
+
+  useEffect(() => {
+    getRequestFiles(requestId).then(setFiles).catch(() => setFiles([]));
+  }, [requestId]);
+
+  return (
+    <>
+      {files.map((file) => (
+        <Pressable
+          key={file.id}
+          onPress={() =>
+            void Linking.openURL(
+              `${API_URL}/requests/${requestId}/files/${file.id}`,
+            )
+          }
+        >
+          <Text style={{ color: '#087F8C', marginTop: 4 }}>
+            📎 {file.original_name}
+          </Text>
+        </Pressable>
+      ))}
+    </>
+  );
+}
 
 export default function Requisicoes() {
+  const [requests, setRequests] = useState<TranslationRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const filteredRequests = requests.filter((request) => {
+    const searchable = [
+      request.username,
+      request.email,
+      request.company ?? '',
+      request.source_language_name,
+      request.target_language_name,
+    ].join(' ').toLocaleLowerCase();
+    return searchable.includes(query.trim().toLocaleLowerCase());
+  });
 
-  const [listaRequisicoes, setListaRequisicoes] =
-    useState([...requisicoes]);
-
-    const [aberto, setAberto] =
-    useState<number | null>(null);
-
-    function excluirRequisicao(id: number) {
-        Alert.alert(
-            'Excluir solicitação',
-            'Tem certeza que deseja excluir esta solicitação?',
-            [
-            {
-                text: 'Cancelar',
-                style: 'cancel',
-            },
-            {
-                text: 'Excluir',
-                style: 'destructive',
-                onPress: () => {
-                setListaRequisicoes((lista) =>
-                    lista.filter(
-                    (item) => item.id !== id
-                    )
-                );
-
-                if (aberto === id) {
-                    setAberto(null);
-                }
-                },
-            },
-            ]
-        );
+  const loadRequests = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setRequests(await getRequests());
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Falha ao carregar solicitações.');
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-  function alternar(id: number) {
+  useFocusEffect(
+    useCallback(() => {
+      void loadRequests();
+    }, [loadRequests]),
+  );
 
-    if (aberto === id) {
-      setAberto(null);
-    } else {
-      setAberto(id);
-    }
-
+  function confirmDelete(request: TranslationRequest) {
+    Alert.alert('Excluir solicitação', 'Tem certeza que deseja excluir esta solicitação?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteRequest(request.id);
+            await loadRequests();
+          } catch (cause) {
+            Alert.alert(
+              'Não foi possível excluir',
+              cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
+            );
+          }
+        },
+      },
+    ]);
   }
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>EQUIPE DE ATENDIMENTO</Text>
+        <Text style={styles.title}>Requisições</Text>
+        <Text style={styles.description}>
+          Solicitações carregadas diretamente do sistema.
+        </Text>
+      </View>
 
-      <Text style={styles.titulo}>
-        Requisições
-      </Text>
+      <View style={styles.search}>
+        <Ionicons name="search-outline" size={18} color="#627485" />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Buscar por nome, e-mail ou empresa"
+          placeholderTextColor="#98A7B1"
+          accessibilityLabel="Buscar requisições"
+          style={styles.searchInput}
+        />
+      </View>
 
-      <FlatList
-        data={listaRequisicoes}
-        keyExtractor={(item) =>
-          item.id.toString()
-        }
-
-        contentContainerStyle={styles.lista}
-
-        renderItem={({ item }) => {
-
-          const expandido = aberto === item.id;
-
-          return (
-            <View style={styles.card}>
-
-              <Pressable
-                style={styles.cabecalho}
-                onPress={() =>
-                  alternar(item.id)
-                }
-              >
-
-                <View style={styles.resumo}>
-
-                  <Text style={styles.nome}>
-                    {item.nome}
-                  </Text>
-
-                  <Text style={styles.servico}>
-                    {item.servico}
-                  </Text>
-
-                  <Text style={styles.idiomas}>
-                    {item.traducaoDe}
-                    {' → '}
-                    {item.traducaoPara}
-                  </Text>
-
-                </View>
-
-                <Text style={styles.seta}>
-                  {expandido ? '▲' : '▼'}
-                </Text>
-
-              </Pressable>
-
-
-              {expandido && (
-
-                <View style={styles.detalhes}>
-
-                  <Text style={styles.label}>
-                    E-mail
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.email}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Telefone
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.telefone}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Empresa
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.empresa || 'Não informado'}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Serviço
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.servico}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Tradução
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.traducaoDe}
-                    {' → '}
-                    {item.traducaoPara}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Observações
-                  </Text>
-
-                  <Text style={styles.valor}>
-                    {item.observacoes || 'Nenhuma'}
-                  </Text>
-
-
-                  <Text style={styles.label}>
-                    Arquivos
-                  </Text>
-
-                  {item.arquivos.length > 0 ? (
-
-                    item.arquivos.map(
-                      (arquivo, index) => (
-                        <Text
-                          key={index}
-                          style={styles.arquivo}
-                        >
-                          📎 {arquivo}
-                        </Text>
-                      )
-                    )
-
-                  ) : (
-
-                    <Text style={styles.valor}>
-                      Nenhum arquivo
-                    </Text>
-
-                  )}
-
-
-                  <Text style={styles.data}>
-                    Solicitação: {item.data}
-                  </Text>
-
-
-                  <Pressable
-                    style={styles.botao}
-                    onPress={() =>
-                      router.push({
-                        pathname:
-                          '/atendente/novo-orcamento',
-
-                        params: {
-                          requisicaoId:
-                            item.id.toString(),
-                        },
-                      })
-                    }
-                  >
-
-                    <Text style={styles.botaoTexto}>
-                      CRIAR ORÇAMENTO
-                    </Text>
-
-                  </Pressable>
-
-                  <Pressable
-                    style={styles.botaoExcluir}
-                    onPress={() =>
-                        excluirRequisicao(item.id)
-                    }
-                    >
-                    <Text style={styles.botaoExcluirTexto}>
-                        EXCLUIR SOLICITAÇÃO
-                    </Text>
-                    </Pressable>
-
-                </View>
-
-              )}
-
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color="#087F8C" />
+          <Text style={styles.message}>Carregando solicitações...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.center}>
+          <Text style={styles.error}>Não foi possível carregar as solicitações: {error}</Text>
+          <Pressable style={styles.button} onPress={() => void loadRequests()}>
+            <Text style={styles.buttonText}>Tentar novamente</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredRequests}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>
+                {query ? 'Nenhuma requisição encontrada' : 'Nenhuma requisição recebida'}
+              </Text>
+              <Text style={styles.emptyDescription}>
+                {query
+                  ? 'Tente pesquisar por outro nome, endereço de e-mail ou empresa.'
+                  : 'As solicitações enviadas pelo formulário público aparecerão aqui.'}
+              </Text>
             </View>
-          );
-        }}
-      />
-
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardCopy}>
+                <Text style={styles.name}>{item.username}</Text>
+                <Text style={styles.service}>{item.email} · {item.phone}</Text>
+                <Text style={styles.service}>
+                  {item.source_language_name} → {item.target_language_name}
+                </Text>
+                {item.company ? <Text style={styles.service}>{item.company}</Text> : null}
+                {item.observations ? (
+                  <Text style={styles.observations}>{item.observations}</Text>
+                ) : null}
+                <RequestFiles requestId={item.id} />
+                <Text style={styles.id}>ID: {item.id}</Text>
+                <Pressable
+                  style={styles.quoteButton}
+                  onPress={() => router.push({
+                    pathname: '/atendente/novo-orcamento',
+                    params: { requisicaoId: String(item.id) },
+                  })}
+                >
+                  <Text style={styles.buttonText}>ABRIR ORÇAMENTO</Text>
+                </Pressable>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Excluir solicitação ${item.id}`}
+                style={styles.delete}
+                onPress={() => confirmDelete(item)}
+              >
+                <Text style={styles.deleteText}>×</Text>
+              </Pressable>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-
-  titulo: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-
-  lista: {
-    paddingBottom: 30,
-  },
-
-  card: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    overflow: 'hidden',
-  },
-
-  cabecalho: {
+  container: { flex: 1, backgroundColor: '#F5F8FA' },
+  header: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 17 },
+  eyebrow: { color: '#087F8C', fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
+  title: { marginTop: 5, color: '#0B2239', fontSize: 28, fontWeight: '800' },
+  description: { marginTop: 6, color: '#627485', fontSize: 13 },
+  search: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-
-  resumo: {
-    flex: 1,
-  },
-
-  nome: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-
-  servico: {
-    fontSize: 15,
-    marginBottom: 3,
-  },
-
-  idiomas: {
-    color: '#666',
-  },
-
-  seta: {
-    fontSize: 16,
-    marginLeft: 10,
-  },
-
-  detalhes: {
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    padding: 16,
-  },
-
-  label: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 10,
-  },
-
-  valor: {
-    fontSize: 15,
-    marginTop: 3,
-  },
-
-  arquivo: {
-    fontSize: 15,
-    marginTop: 5,
-  },
-
-  data: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 15,
-  },
-
-  botao: {
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-
-  botaoTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  botaoExcluir: {
+    gap: 9,
+    marginHorizontal: 24,
+    marginBottom: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#cc0000',
-    paddingVertical: 12,
-    borderRadius: 6,
+    borderColor: '#DFE7EC',
+    borderRadius: 9,
+    backgroundColor: '#FFFFFF',
+  },
+  searchInput: { flex: 1, minHeight: 42, color: '#172B3A', fontSize: 13 },
+  list: { paddingHorizontal: 24, paddingBottom: 24, gap: 10, flexGrow: 1 },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  cardCopy: { flex: 1, padding: 18 },
+  name: { color: '#172B3A', fontSize: 14, fontWeight: '700' },
+  service: { marginTop: 6, color: '#627485', fontSize: 13 },
+  observations: { marginTop: 10, color: '#172B3A', fontSize: 13, lineHeight: 20 },
+  id: { marginTop: 10, color: '#627485', fontSize: 12 },
+  quoteButton: {
+    alignSelf: 'flex-start',
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#087F8C',
+  },
+  delete: {
+    width: 48,
     alignItems: 'center',
-    marginTop: 10,
-    },
-
-    botaoExcluirTexto: {
-    color: '#cc0000',
-    fontWeight: 'bold',
-    },
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: '#DFE7EC',
+  },
+  deleteText: { color: '#B42318', fontSize: 28 },
+  emptyCard: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 520,
+    marginTop: 26,
+    padding: 26,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  emptyTitle: { color: '#172B3A', fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  emptyDescription: { marginTop: 6, color: '#627485', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  message: { padding: 24, color: '#627485', textAlign: 'center' },
+  error: { color: '#B42318', textAlign: 'center', lineHeight: 21 },
+  button: { marginTop: 16, padding: 12, borderRadius: 8, backgroundColor: '#087F8C' },
+  buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
 });

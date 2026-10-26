@@ -37,8 +37,8 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 ## 📚 <span id="documents">Manuais e Documentação</span>
 
-- 📖 [Manual de Instalação](Em produção ...)  
-- 👨‍💻 [Manual do Usuário](Em produção...)
+- [Manual de Instalação](docs/instalation_manual.md)
+- [Manual do Usuário](docs/user_manual.md)
 
 ---
 
@@ -81,11 +81,22 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 
 ## 🏃‍ DoR - Definition of Ready
 
-- em andamento ...
+- [ ] Possui descrição clara.
+- [ ] Possui critérios de aceitação definidos.
+- [ ] As dependências foram identificadas.
+- [ ] As dúvidas foram esclarecidas.
+- [ ] Pode ser estimada e desenvolvida pela equipe.
 
 ## 🏆 DoD - Definition of Done
 
-- em andamento ... 
+- [ ] Todos os critérios de aceitação foram atendidos.
+- [ ] O desenvolvimento foi finalizado.
+- [ ] Os testes necessários foram realizados.
+- [ ] O código foi revisado.
+- [ ] Não existem erros críticos conhecidos.
+- [ ] A documentação foi atualizada, quando necessário.
+- [ ] A funcionalidade foi validada pela equipe.
+- [ ] A alteração foi integrada ao projeto.
 
 ## 📅 <span id="sprint">Programação por Sprint </span>
 
@@ -106,7 +117,38 @@ O sistema permitirá a solicitação de serviços direta do cliente agilizando o
 | 7 | Como administrador, quero cadastrar tabelas de preço por par de idioma e itens adicionais, para uso na montagem de orçamentos. | Sprint 1 |
 
 ## 🚀 MVP(Mínimo Produto Viável) Sprint 1:
-Em andamento...
+
+- [1] CRUD básico de Administradores, Gestores, Atendente por parte do Administrador.
+- [2] Pré-cadastro do Freelancer por parte do Gestor.
+- [3] Conclusão de cadastro por parte do Freelancer.
+- [3] Cadastro de Workflow por parte do Gestor.
+
+---
+
+### 📈 Backlog da Sprint 2
+
+| Rank | User Story | Sprint |
+|---:|---|---|
+| 8 | Como atendimento, quero criar um orçamento a partir de uma Requisição ou solicitação do cliente, para formalizar o pedido de serviço. | Sprint 2 |
+| 9 | Como atendimento, quero registrar a aprovação do orçamento pelo cliente, para gerar a ordem de serviço. | Sprint 2 |
+| 10 | Como gestor de projeto, quero definir as etapas de uma ordem de serviço a partir de um modelo de workflow, para estruturar o projeto. | Sprint 2 |
+| 11 | Como gestor de projeto, quero selecionar ou atribuir freelancers para cada etapa, escolhendo entre atribuição automática (melhor posicionado ou primeiro a aceitar) ou manual (requisitar disponibilidade ou atribuição direta), para adequar o método a cada caso. | Sprint 2 |
+| 12 | Como freelancer, quero visualizar e aceitar os trabalhos disponibilizados a mim, para saber o que preciso executar. | Sprint 2 |
+| 13 | Como freelancer, quero entregar o arquivo referente à minha etapa, para concluir minha parte do trabalho. | Sprint 2 |
+| 14 | Como gestor de projeto, quero que o sistema encaminhe automaticamente o trabalho para o freelancer da próxima etapa assim que uma etapa for entregue, para manter o fluxo sem intervenção manual. | Sprint 2 |
+| 15 | Como gestor de projeto, quero verificar todas as etapas concluídas antes de enviar o resultado final ao cliente, para garantir que nada ficou pendente. | Sprint 2 |
+| 16 | Como freelancer, quero ter acesso apenas à etapa em que fui alocado, para preservar a confidencialidade das demais partes do projeto. | Sprint 2 |
+| 17 | Como atendimento, quero ajustar manualmente o valor final de um orçamento sem alterar a tabela de preço padrão, para atender casos específicos. | Sprint 2 |
+| 18 | Como gestor de projeto, quero visualizar a lista de ordens de serviço sem freelancer atribuído e já atribuídas, para acompanhar a distribuição do trabalho. | Sprint 2 |
+| 19 | Como administrador, quero criar e editar grupos de permissão com controles por módulo e ação, para adaptar os perfis internos da equipe conforme a estrutura real da empresa. | Sprint 2 |
+
+## 🚀 MVP (Mínimo Produto Viável) — Sprint 2
+
+1. **Orçamento e ordem de serviço (itens 8, 9 e 17):** o atendimento cria um orçamento a partir de uma requisição, informa prazo e observações, ajusta o valor final sem alterar a tabela de preços e registra a aprovação do cliente. A aprovação gera uma ordem de serviço vinculada à requisição e ao orçamento.
+2. **Preparação e distribuição do projeto (itens 10, 11 e 18):** o gestor cria o projeto da ordem de serviço usando um workflow existente, acompanha ordens com e sem freelancer atribuído e distribui cada etapa. No MVP, a atribuição pode ser direta pelo gestor ou por solicitação de disponibilidade a candidatos selecionados, com encaminhamento ao primeiro candidato que aceitar. A seleção automática por “melhor posicionado” fica para uma evolução posterior.
+3. **Execução das etapas (itens 12, 13 e 16):** o freelancer consulta os trabalhos disponibilizados, aceita uma solicitação de disponibilidade e visualiza somente as etapas atribuídas a si. Em cada etapa, pode enviar o arquivo de entrega e acompanhar sua situação.
+4. **Progressão e encerramento (itens 14 e 15):** após a entrega de uma etapa, o sistema encaminha o trabalho à próxima etapa definida no workflow. O gestor consegue conferir o progresso e só pode marcar o projeto como concluído quando todas as etapas tiverem sido entregues.
+5. **Acesso por perfil (item 19, versão mínima):** o MVP mantém o controle de acesso pelos perfis existentes — atendimento, gestor, administrador e freelancer — e garante que cada perfil opere somente nas áreas autorizadas. A criação de grupos configuráveis com permissões por módulo e ação fica para uma evolução posterior.
 
 ---
 

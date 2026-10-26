@@ -1,197 +1,94 @@
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
-
+import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
-
 import {
-  View,
-  Text,
-  TextInput,
+  ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
-  ScrollView,
-  Alert,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 
-import { tradutores } from '@/data/tradutores';
+import { useAuth } from '@/context/AuthContext';
+import { completeFreelancerProfile } from '@/services/employees';
 
 export default function CompletarPerfil() {
+  const { employee, refresh } = useAuth();
+  const [birthDate, setBirthDate] = useState('');
+  const [phone, setPhone] = useState('');
+  const [specialization, setSpecialization] = useState('');
+  const [bio, setBio] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const params = useLocalSearchParams<{
-    id?: string;
-  }>();
-
-  const id = Number(params.id ?? 1);
-
-  const tradutor = tradutores.find(
-    (item) => item.id === id
-  );
-
-  const [email, setEmail] = useState(
-    tradutor?.email ?? ''
-  );
-
-  const [telefone, setTelefone] = useState(
-    tradutor?.telefone ?? ''
-  );
-
-  const [cpf, setCpf] = useState(
-    tradutor?.cpf ?? ''
-  );
-
-  if (!tradutor) {
-    return (
-      <View style={styles.erro}>
-        <Text>
-          Tradutor não encontrado.
-        </Text>
-      </View>
-    );
+  if (!employee) {
+    return <Redirect href="/login" />;
   }
 
-  function enviarFormulario() {
+  if (employee.status !== 'pending') {
+    return <Redirect href="/tradutor/servicos" />;
+  }
 
-    if (
-      !email.trim() ||
-      !telefone.trim() ||
-      !cpf.trim()
-    ) {
-      Alert.alert(
-        'Atenção',
-        'Preencha todos os campos.'
-      );
-
+  async function submitProfile() {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate.trim()) || !phone.trim()) {
+      Alert.alert('Campos obrigatórios', 'Informe a data de nascimento (AAAA-MM-DD) e o telefone.');
+      return;
+    }
+    const rate = hourlyRate.trim() ? Number(hourlyRate.replace(',', '.')) : null;
+    if (rate !== null && (!Number.isFinite(rate) || rate < 0)) {
+      Alert.alert('Valor inválido', 'Informe um valor por hora válido.');
       return;
     }
 
-    tradutor.email = email;
-    tradutor.telefone = telefone;
-    tradutor.cpf = cpf;
-
-    tradutor.status =
-      'aguardando_aprovacao';
-
-    Alert.alert(
-      'Formulário enviado',
-      'Seu cadastro foi enviado para aprovação.',
-      [
-        {
-          text: 'OK',
-          onPress: () =>
-            router.replace(
-              `/tradutor/completar-perfil?id=${id}`
-            ),
-        },
-      ]
-    );
-  }
-
-  const aguardando =
-    tradutor.status ===
-    'aguardando_aprovacao';
-
-  if (aguardando) {
-    return (
-      <View style={styles.aguardando}>
-
-        <Text style={styles.aguardandoTitulo}>
-          Cadastro enviado
-        </Text>
-
-        <Text style={styles.aguardandoTexto}>
-          Seu perfil está aguardando aprovação
-          do gestor.
-        </Text>
-
-      </View>
-    );
+    setSaving(true);
+    setError(null);
+    try {
+      await completeFreelancerProfile({
+        birth_date: birthDate.trim(),
+        phone: phone.trim(),
+        specialization: specialization.trim() || null,
+        bio: bio.trim() || null,
+        hourly_rate: rate,
+      });
+      await refresh();
+      router.replace('/tradutor/servicos');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível atualizar o perfil.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <View style={styles.container}>
-
       <View style={styles.form}>
-
-        <Text style={styles.title}>
-          Completar Perfil
+        <Text style={styles.title}>Completar perfil</Text>
+        <Text style={styles.description}>
+          Informe seus dados para concluir o cadastro da sua conta.
         </Text>
-
-        <Text style={styles.subtitulo}>
-          Olá, {tradutor.nome}
-        </Text>
-
-        <Text style={styles.informacao}>
-          Complete seus dados para enviar seu
-          cadastro para aprovação.
-        </Text>
-
-        <ScrollView>
-
-          <Text style={styles.label}>
-            Nome
-          </Text>
-
-          <TextInput
-            value={tradutor.nome}
-            editable={false}
-            style={[
-              styles.input,
-              styles.disabled,
-            ]}
-          />
-
-          <Text style={styles.label}>
-            E-mail
-          </Text>
-
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Digite seu e-mail"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>
-            Telefone
-          </Text>
-
-          <TextInput
-            value={telefone}
-            onChangeText={setTelefone}
-            placeholder="Digite seu telefone"
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>
-            CPF
-          </Text>
-
-          <TextInput
-            value={cpf}
-            onChangeText={setCpf}
-            placeholder="Digite seu CPF"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Pressable
-            style={styles.botao}
-            onPress={enviarFormulario}
-          >
-            <Text style={styles.botaoTexto}>
-              ENVIAR PARA APROVAÇÃO
-            </Text>
-          </Pressable>
-
-        </ScrollView>
-
+        <Text style={styles.label}>Data de nascimento (AAAA-MM-DD)</Text>
+        <TextInput value={birthDate} onChangeText={setBirthDate} placeholder="1990-01-31" style={styles.input} />
+        <Text style={styles.label}>Telefone</Text>
+        <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" style={styles.input} />
+        <Text style={styles.label}>Especialização</Text>
+        <TextInput value={specialization} onChangeText={setSpecialization} style={styles.input} />
+        <Text style={styles.label}>Valor por hora (R$)</Text>
+        <TextInput value={hourlyRate} onChangeText={setHourlyRate} keyboardType="decimal-pad" style={styles.input} />
+        <Text style={styles.label}>Sobre você</Text>
+        <TextInput value={bio} onChangeText={setBio} multiline style={styles.input} />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <Pressable
+          style={[styles.button, saving && styles.disabled]}
+          disabled={saving}
+          onPress={() => void submitProfile()}
+        >
+          {saving ? <ActivityIndicator color="#FFFFFF" /> : (
+            <Text style={styles.buttonText}>SALVAR PERFIL</Text>
+          )}
+        </Pressable>
       </View>
-
     </View>
   );
 }
@@ -199,92 +96,40 @@ export default function CompletarPerfil() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eee',
     justifyContent: 'center',
     padding: 20,
+    backgroundColor: '#F5F8FA',
   },
-
   form: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     padding: 25,
-    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
   },
-
-  title: {
-    fontSize: 25,
-    fontWeight: 'bold',
-  },
-
-  subtitulo: {
-    fontSize: 18,
-    marginTop: 8,
-  },
-
-  informacao: {
-    color: '#666',
-    marginTop: 10,
-    marginBottom: 15,
-  },
-
-  label: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-
+  title: { color: '#0B2239', fontSize: 25, fontWeight: '700' },
+  description: { marginTop: 9, color: '#627485', lineHeight: 20 },
+  label: { marginTop: 20, marginBottom: 6, color: '#172B3A', fontWeight: '600' },
   input: {
     height: 48,
-    borderWidth: 1,
-    borderColor: '#bbb',
-    borderRadius: 6,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 9,
     fontSize: 16,
   },
-
-  disabled: {
-    backgroundColor: '#eee',
-    color: '#666',
-  },
-
-  botao: {
-    height: 52,
-    backgroundColor: '#000',
-    borderRadius: 6,
-    justifyContent: 'center',
+  error: { marginTop: 12, color: '#B42318', lineHeight: 20 },
+  button: {
+    minHeight: 50,
     alignItems: 'center',
-    marginTop: 25,
-  },
-
-  botaoTexto: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-
-  aguardando: {
-    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 30,
-    backgroundColor: '#f5f5f5',
+    marginTop: 24,
+    borderRadius: 9,
+    backgroundColor: '#087F8C',
   },
-
-  aguardandoTitulo: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-
-  aguardandoTexto: {
-    fontSize: 17,
-    textAlign: 'center',
-    color: '#666',
-  },
-
-  erro: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  buttonText: { color: '#FFFFFF', fontWeight: '700' },
+  disabled: { opacity: 0.65 },
 });

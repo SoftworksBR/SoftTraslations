@@ -7,10 +7,43 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
     EmployeeSchema,
+    EmployeeSearchFilters,
+    FreelancerPreRegistrationSchema,
+    FreelancerProfileSchema,
 )
 from src.services.employee_service import EmployeeService
 
 service = EmployeeService()
+
+
+async def pre_register_freelancer(
+    data: FreelancerPreRegistrationSchema,
+    session: AsyncSession,
+    current_employee: Employee,
+):
+    try:
+        return await service.pre_register_freelancer(
+            session,
+            data,
+            current_employee,
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail=str(error),
+        ) from None
+
+
+async def complete_freelancer_profile(
+    data: FreelancerProfileSchema,
+    session: AsyncSession,
+    current_employee: Employee,
+):
+    return await service.complete_freelancer_profile(
+        session,
+        data,
+        current_employee,
+    )
 
 
 async def get_employees(
@@ -18,12 +51,14 @@ async def get_employees(
     offset: int,
     session: AsyncSession,
     current_employee: Employee,
+    filters: EmployeeSearchFilters,
 ):
     employees = await service.get_employees(
         session,
         limit,
         offset,
         current_employee,
+        filters,
     )
 
     return {'employees': employees}

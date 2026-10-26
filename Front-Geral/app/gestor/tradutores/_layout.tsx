@@ -2,7 +2,21 @@ import { Stack } from 'expo-router';
 
 export default function TradutoresLayout() {
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: {
+          backgroundColor: '#F5F8FA',
+        },
+        headerStyle: {
+          backgroundColor: '#FFFFFF',
+        },
+        headerTintColor: '#0B2239',
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
