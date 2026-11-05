@@ -1,3 +1,4 @@
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,12 +23,6 @@ class LanguageRepository:
     async def get_all(self) -> list[Language]:
         result = await self.session.scalars(
             select(Language).order_by(Language.name)
-        )
-        return list(result.all())
-
-    async def get_by_ids(self, language_ids: list[int]) -> list[Language]:
-        result = await self.session.scalars(
-            select(Language).where(Language.id.in_(language_ids))
         )
         return list(result.all())
 

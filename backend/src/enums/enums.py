@@ -22,7 +22,11 @@ class EmployeeStatus(Enum):
     AVAILABLE = 'available'
     BUSY = 'busy'
     PENDING = 'pending'
-    UNDER_REVIEW = 'under_review'
+
+
+class AccountStatus(Enum):
+    ACTIVE = 'active'
+    DISABLED = 'disabled'
 
 
 class Roles(Enum):

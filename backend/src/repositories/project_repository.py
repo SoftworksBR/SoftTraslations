@@ -1,11 +1,15 @@
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.employee_model import Employee
 from src.models.path_model import Path
-from src.models.project_model import Project
-from src.models.stage_model import Stage
+from src.models.project_model import Project, ProjectPath
+from src.models.stage_model import (
+    PathStage,
+    ProjectStage,
+    StageTemplate,
+)
 from src.schemas.project_schema import ProjectSearchFilters
 
 
@@ -21,7 +25,23 @@ class ProjectRepository:
 
         result = await self.session.execute(
             select(Project)
-            .options(selectinload(Project.paths).selectinload(Path.stages))
+            .options(
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.path)
+                .selectinload(Path.path_stages)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.path_stage)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.files),
+                selectinload(Project.creator),
+            )
             .where(Project.id == project.id)
         )
 
@@ -30,7 +50,23 @@ class ProjectRepository:
     async def get_by_id(self, project_id: int) -> Project | None:
         result = await self.session.execute(
             select(Project)
-            .options(selectinload(Project.paths).selectinload(Path.stages))
+            .options(
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.path)
+                .selectinload(Path.path_stages)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.path_stage)
+                .selectinload(PathStage.stage_template),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.files),
+                selectinload(Project.creator),
+            )
             .where(Project.id == project_id)
         )
 
@@ -41,7 +77,10 @@ class ProjectRepository:
         filters: ProjectSearchFilters | None = None,
     ) -> list[Project]:
         statement = select(Project).options(
-            selectinload(Project.paths).selectinload(Path.stages)
+            selectinload(Project.project_paths)
+            .selectinload(ProjectPath.path)
+            .selectinload(Path.path_stages)
+            .selectinload(PathStage.stage_template)
         )
 
         if filters is not None:
@@ -56,22 +95,25 @@ class ProjectRepository:
             if filters.stage_name is not None:
                 stage_subquery = (
                     select(Project.id)
-                    .join(Project.paths)
-                    .join(Path.stages)
-                    .where(Stage.name.ilike(f'%{filters.stage_name}%'))
+                    .join(Project.project_paths)
+                    .join(ProjectPath.path)
+                    .join(Path.path_stages)
+                    .join(PathStage.stage_template)
+                    .where(StageTemplate.name.ilike(f'%{filters.stage_name}%'))
                 )
                 statement = statement.where(Project.id.in_(stage_subquery))
 
             if filters.freelancer_name is not None:
                 freelancer_subquery = (
                     select(Project.id)
-                    .join(Project.paths)
-                    .join(Path.stages)
-                    .join(Employee, Stage.freelancer_id == Employee.id)
+                    .join(Project.project_paths)
+                    .join(ProjectPath.executions)
+                    .join(
+                        Employee,
+                        ProjectStage.freelancer_id == Employee.id,
+                    )
                     .where(
-                        func.concat_ws(
-                            ' ', Employee.first_name, Employee.last_name
-                        ).ilike(f'%{filters.freelancer_name}%')
+                        Employee.username.ilike(f'%{filters.freelancer_name}%')
                     )
                 )
                 statement = statement.where(
@@ -80,9 +122,7 @@ class ProjectRepository:
 
             if filters.creator_name is not None:
                 creator_subquery = select(Employee.id).where(
-                    func.concat_ws(
-                        ' ', Employee.first_name, Employee.last_name
-                    ).ilike(f'%{filters.creator_name}%')
+                    Employee.username.ilike(f'%{filters.creator_name}%')
                 )
                 statement = statement.where(
                     Project.creator_id.in_(creator_subquery)

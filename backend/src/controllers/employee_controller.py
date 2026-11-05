@@ -6,17 +6,33 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
-    EmployeeCreate,
+    EmployeeSchema,
+    EmployeeSelfUpdateSchema,
     EmployeeSearchFilters,
-    EmployeeUpdate,
-    FreelancerInviteAcceptSchema,
     FreelancerPreRegistrationSchema,
+    FreelancerProfileSchema,
 )
-from src.schemas.freelancer_profile_schema import FreelancerProfileSchema
 from src.services.employee_service import EmployeeService
-from src.services.freelancer_profile_service import FreelancerProfileService
 
 service = EmployeeService()
+
+
+async def update_current_employee(
+    data: EmployeeSelfUpdateSchema,
+    session: AsyncSession,
+    current_employee: Employee,
+):
+    try:
+        return await service.update_current_employee(
+            session,
+            data,
+            current_employee,
+        )
+    except IntegrityError:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail='employeename or email already registered',
+        ) from None
 
 
 async def pre_register_freelancer(
@@ -37,21 +53,16 @@ async def pre_register_freelancer(
         ) from None
 
 
-async def accept_freelancer_invite(
-    data: FreelancerInviteAcceptSchema,
-    session: AsyncSession,
-):
-    return await service.accept_freelancer_invite(session, data)
-
-
 async def complete_freelancer_profile(
     data: FreelancerProfileSchema,
     session: AsyncSession,
     current_employee: Employee,
 ):
-    profile_service = FreelancerProfileService(session)
-
-    return await profile_service.complete_profile(data, current_employee)
+    return await service.complete_freelancer_profile(
+        session,
+        data,
+        current_employee,
+    )
 
 
 async def get_employees(
@@ -73,7 +84,7 @@ async def get_employees(
 
 
 async def create_employee(
-    employee: EmployeeCreate,
+    employee: EmployeeSchema,
     session: AsyncSession,
     current_employee: Employee,
 ):
@@ -91,23 +102,9 @@ async def create_employee(
         ) from None
 
 
-async def create_initial_admin(
-    employee: EmployeeCreate,
-    session: AsyncSession,
-):
-    try:
-        return await service.create_initial_admin(session, employee)
-
-    except ValueError as error:
-        raise HTTPException(
-            status_code=HTTPStatus.CONFLICT,
-            detail=str(error),
-        ) from None
-
-
 async def update_employee(
     employee_id: int,
-    employee: EmployeeUpdate,
+    employee: EmployeeSchema,
     session: AsyncSession,
     current_employee: Employee,
 ):
