@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.models.employee_model import Employee
+from src.schemas.employee_schema import EmployeePublicSchema
 from src.schemas.stage_schema import (
     ProjectStageCreate,
+    StageFileResponse,
     StageResponse,
     StageSearchFilters,
-    StageFileResponse,
     StageTemplateCreate,
     StageTemplateResponse,
     StageUpdate,
@@ -111,6 +112,42 @@ async def get_stages(
         session,
         current_employee,
         filters,
+    )
+
+
+@router.post('/{stage_id}/accept', response_model=StageResponse)
+async def accept_stage(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.accept(
+        stage_id, session, current_employee
+    )
+
+
+@router.post('/{stage_id}/decline', response_model=StageResponse)
+async def decline_stage(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.decline(
+        stage_id, session, current_employee
+    )
+
+
+@router.get(
+    '/{stage_id}/available-freelancers',
+    response_model=list[EmployeePublicSchema],
+)
+async def get_available_stage_freelancers(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.get_available_freelancers(
+        stage_id, session, current_employee
     )
 
 
