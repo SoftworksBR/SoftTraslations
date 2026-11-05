@@ -32,7 +32,8 @@ trabalho interno da equipe. O fluxo principal é:
    trilhas de trabalho.
 5. As etapas criadas para o projeto podem ser acompanhadas e atribuídas a
    tradutores.
-6. O tradutor consulta as etapas vinculadas à sua conta.
+6. O tradutor consulta as etapas vinculadas à sua conta e pode aceitar ou
+   recusar uma nova atribuição.
 
 | Perfil | Responsabilidade principal |
 | --- | --- |
@@ -203,18 +204,18 @@ Selecione **Salvar perfil** ao terminar.
 
 ### Consultar etapas atribuídas
 
-Abra **Serviços disponíveis** para consultar as etapas vinculadas à sua conta e
-a situação atual de cada uma:
+Abra **Meus serviços**. A tela possui duas abas:
 
-- **Pronta**
-- **Em andamento**
-- **Em revisão**
-- **Concluída**
+- **Aguardando aceite** lista etapas atribuídas pelo gestor. Selecione
+  **Aceitar** para iniciar a etapa ou **Recusar** para devolvê-la ao gestor,
+  que poderá atribuí-la a outra pessoa. A retirada pública ainda não está
+  disponível. Um freelancer que recusou a etapa deixa de aparecer entre as
+  opções de atribuição para aquela etapa.
+- **Meus serviços** lista as etapas aceitas e permite consultar os documentos
+  associados e anexar arquivos.
 
-Se a lista estiver vazia, ainda não há etapas associadas à sua conta. Confirme
-com o gestor responsável se a etapa deveria ter sido atribuída. A tela atual é
-de consulta das etapas; ações de aceite e envio de arquivo não estão disponíveis
-nesta área da interface.
+Se uma aba estiver vazia, não há etapas correspondentes atribuídas à sua conta
+no momento. Após aceitar, a etapa passa para **Em andamento**.
 
 ## Situações e regras do fluxo
 
@@ -222,7 +223,8 @@ nesta área da interface.
 | --- | --- | --- |
 | Solicitação | Pendente, Orçada, Recusada | Recebida, vinculada a orçamento ou encerrada após recusa. |
 | Orçamento | Em análise, Aprovado, Recusado | Aguardando decisão, liberado para projeto ou recusado. |
-| Projeto/etapa | Pronto, Em andamento, Em revisão, Concluído | Situação do trabalho ou da etapa exibida na área correspondente. |
+| Projeto | Pronto, Em andamento, Em revisão, Concluído | Situação geral do projeto. |
+| Etapa | Sem freelancer, Público, Pronto, Em andamento, Em revisão, Concluída | Etapas novas começam sem freelancer; uma atribuição aguarda aceite. “Público” está reservado para a funcionalidade de retirada pública. |
 | Freelancer | Pendente, Disponível, Ocupado | Situação do cadastro/disponibilidade apresentada à equipe. |
 
 As opções para editar ou excluir um registro dependem de sua situação e do
@@ -249,6 +251,7 @@ alterada pelo cliente; orçamentos podem ser decididos enquanto estão em análi
 O backlog do produto descreve funcionalidades futuras que não devem ser
 confundidas com as ações disponíveis nas telas atuais. Entre elas estão o
 acompanhamento de solicitações pelo próprio cliente, a decisão de orçamento
-diretamente pelo cliente, o aceite de trabalhos e a entrega de arquivos pelo
-tradutor, notificações automáticas e configurações administrativas funcionais
-para idiomas, serviços e preços.
+diretamente pelo cliente, notificações automáticas e configurações
+administrativas funcionais para idiomas, serviços e preços. A retirada de
+etapas públicas e a aprovação ou recusa do freelancer que solicitar uma etapa
+pública também não estão disponíveis na interface.
