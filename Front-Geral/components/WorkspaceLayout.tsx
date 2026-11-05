@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Slot, router, usePathname, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -19,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useHydrated } from '@/hooks/use-hydrated';
 import { updateMyEmployee } from '@/services/employees';
 import type { EmployeeRole, EmployeeStatus } from '@/services/employees';
+import { notify } from '@/services/dialog';
 
 type NavItem = {
   label: string;
@@ -138,7 +138,7 @@ export function WorkspaceLayout({ role }: { role: EmployeeRole }) {
       await signOut();
       router.replace('/landingPage');
     } catch (cause) {
-      Alert.alert(
+      notify(
         'Não foi possível sair',
         cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
       );

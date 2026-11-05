@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +23,7 @@ import {
   uploadRequestFile,
 } from '@/services/requests';
 import type { RequestOptions } from '@/services/requests';
+import { notify } from '@/services/dialog';
 
 type Option = { label: string; value: number };
 
@@ -72,7 +72,7 @@ export default function FazerSolicitacao() {
     getRequestOptions()
       .then(setOptions)
       .catch((cause) =>
-        Alert.alert(
+        notify(
           'Não foi possível carregar os idiomas',
           cause instanceof Error ? cause.message : 'Tente novamente.',
         ),
@@ -141,13 +141,13 @@ export default function FazerSolicitacao() {
         }
       }
       if (failed.length > 0) {
-        Alert.alert(
+        notify(
           'Solicitação enviada',
           `Não foi possível enviar os anexos: ${failed.join(', ')}.`,
         );
       }
     } catch (cause) {
-      Alert.alert(
+      notify(
         'Não foi possível enviar',
         cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado ao enviar a solicitação.',
       );
