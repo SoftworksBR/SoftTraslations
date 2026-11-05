@@ -65,7 +65,7 @@ class RequestRepository:
 
             if filters.company is not None:
                 statement = statement.where(
-                    Request.company.ilike(f'%{filters.company}%')
+                    Request.company_name.ilike(f'%{filters.company}%')
                 )
 
             if filters.source_language_id is not None:

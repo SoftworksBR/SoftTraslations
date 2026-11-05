@@ -1,4 +1,3 @@
-
 """Altera idiomas das solicitações para chaves estrangeiras.
 
 Revision ID: 70654a08a4ec
@@ -7,10 +6,10 @@ Revises: 9bf3de2890be
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
 
 revision: str = '70654a08a4ec'
 down_revision: Union[str, Sequence[str], None] = '9bf3de2890be'
@@ -19,6 +18,21 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    op.execute(
+        """
+        INSERT INTO idiomas (nome, codigo, ativo)
+        VALUES
+            ('Português', 'pt', true),
+            ('Inglês', 'en', true),
+            ('Espanhol', 'es', true),
+            ('Alemão', 'de', true),
+            ('Italiano', 'it', true),
+            ('Francês', 'fr', true),
+            ('Outro', 'other', true)
+        ON CONFLICT (codigo) DO NOTHING
+        """
+    )
+
     # Adiciona as novas colunas.
     op.add_column(
         'requests',
@@ -45,8 +59,40 @@ def upgrade() -> None:
         ['id'],
     )
 
-    # O banco local não possui solicitações, então podemos remover
-    # as colunas antigas sem precisar converter registros.
+    op.execute(
+        """
+        UPDATE requests AS request
+        SET idioma_origem_id = language.id
+        FROM idiomas AS language
+        WHERE language.codigo = CASE request.translate_from::text
+            WHEN 'PORTUGUESE' THEN 'pt'
+            WHEN 'ENGLISH' THEN 'en'
+            WHEN 'SPANISH' THEN 'es'
+            WHEN 'GERMAN' THEN 'de'
+            WHEN 'ITALIAN' THEN 'it'
+            WHEN 'FRANCH' THEN 'fr'
+            WHEN 'OTHER' THEN 'other'
+        END
+        """
+    )
+    op.execute(
+        """
+        UPDATE requests AS request
+        SET idioma_destino_id = language.id
+        FROM idiomas AS language
+        WHERE language.codigo = CASE request.translate_to::text
+            WHEN 'PORTUGUESE' THEN 'pt'
+            WHEN 'ENGLISH' THEN 'en'
+            WHEN 'SPANISH' THEN 'es'
+            WHEN 'GERMAN' THEN 'de'
+            WHEN 'ITALIAN' THEN 'it'
+            WHEN 'FRANCH' THEN 'fr'
+            WHEN 'OTHER' THEN 'other'
+        END
+        """
+    )
+
+    # Os campos legados são removidos depois de converter seus valores.
     op.drop_column('requests', 'translate_from')
     op.drop_column('requests', 'translate_to')
 
@@ -89,7 +135,60 @@ def downgrade() -> None:
         sa.Column('translate_to', translations_enum, nullable=True),
     )
 
-    # Remove as novas chaves estrangeiras e colunas.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1
+                FROM requests AS request
+                LEFT JOIN idiomas AS source_language
+                  ON source_language.id = request.idioma_origem_id
+                LEFT JOIN idiomas AS target_language
+                  ON target_language.id = request.idioma_destino_id
+                WHERE source_language.codigo NOT IN (
+                    'pt', 'en', 'es', 'de', 'it', 'fr', 'other'
+                )
+                   OR target_language.codigo NOT IN (
+                    'pt', 'en', 'es', 'de', 'it', 'fr', 'other'
+                )
+                   OR source_language.id IS NULL
+                   OR target_language.id IS NULL
+            ) THEN
+                RAISE EXCEPTION
+                    'Language IDs cannot be represented by the legacy enum';
+            END IF;
+        END
+        $$;
+        """
+    )
+    op.execute(
+        """
+        UPDATE requests AS request
+        SET translate_from = CASE source_language.codigo
+            WHEN 'pt' THEN 'PORTUGUESE'::translations
+            WHEN 'en' THEN 'ENGLISH'::translations
+            WHEN 'es' THEN 'SPANISH'::translations
+            WHEN 'de' THEN 'GERMAN'::translations
+            WHEN 'it' THEN 'ITALIAN'::translations
+            WHEN 'fr' THEN 'FRANCH'::translations
+            WHEN 'other' THEN 'OTHER'::translations
+        END,
+        translate_to = CASE target_language.codigo
+            WHEN 'pt' THEN 'PORTUGUESE'::translations
+            WHEN 'en' THEN 'ENGLISH'::translations
+            WHEN 'es' THEN 'SPANISH'::translations
+            WHEN 'de' THEN 'GERMAN'::translations
+            WHEN 'it' THEN 'ITALIAN'::translations
+            WHEN 'fr' THEN 'FRANCH'::translations
+            WHEN 'other' THEN 'OTHER'::translations
+        END
+        FROM idiomas AS source_language, idiomas AS target_language
+        WHERE source_language.id = request.idioma_origem_id
+          AND target_language.id = request.idioma_destino_id
+        """
+    )
+
     op.drop_constraint(
         'fk_requests_idioma_destino_id_idiomas',
         'requests',
@@ -103,8 +202,6 @@ def downgrade() -> None:
     op.drop_column('requests', 'idioma_destino_id')
     op.drop_column('requests', 'idioma_origem_id')
 
-    # O downgrade restaura as colunas antigas vazias, pois não há
-    # conversão automática entre IDs e valores do enum.
     op.alter_column(
         'requests',
         'translate_from',

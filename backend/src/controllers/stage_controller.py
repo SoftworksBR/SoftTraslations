@@ -1,9 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import UploadFile
 
 from src.models.employee_model import Employee
 from src.schemas.stage_schema import (
-    StageCreate,
+    ProjectStageCreate,
     StageSearchFilters,
+    StageTemplateCreate,
     StageUpdate,
 )
 from src.services.stage_service import StageService
@@ -11,14 +13,54 @@ from src.services.stage_service import StageService
 
 class StageController:
     @staticmethod
+    async def upload_file(
+        stage_id: int,
+        upload: UploadFile,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).upload_file(
+            stage_id,
+            upload,
+            current_employee,
+        )
+
+    @staticmethod
+    async def get_file(
+        stage_id: int,
+        file_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).get_file(
+            stage_id,
+            file_id,
+            current_employee,
+        )
+
+    @staticmethod
     async def create(
-        data: StageCreate,
+        data: ProjectStageCreate,
         session: AsyncSession,
         current_employee: Employee,
     ):
         service = StageService(session)
 
         return await service.create(data, current_employee)
+
+    @staticmethod
+    async def create_template(
+        data: StageTemplateCreate,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).create_template(
+            data, current_employee
+        )
+
+    @staticmethod
+    async def get_templates(session: AsyncSession, current_employee: Employee):
+        return await StageService(session).get_templates(current_employee)
 
     @staticmethod
     async def assign_path_to_project(

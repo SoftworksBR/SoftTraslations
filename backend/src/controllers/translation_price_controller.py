@@ -22,9 +22,10 @@ class TranslationPriceController:
     async def list(
         session: AsyncSession,
         current_employee: Employee,
+        include_inactive: bool = False,
     ):
         service = TranslationPriceService(session)
-        return await service.get_all()
+        return await service.get_all(current_employee, include_inactive)
 
     @staticmethod
     async def update(

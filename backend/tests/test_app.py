@@ -13,7 +13,7 @@ def test_stage_create_requires_name():
 
 def test_get_routes_expose_search_filters_as_query_parameters():
     expected_parameters = {
-        '/employee/': {'first_name', 'last_name', 'email', 'role'},
+        '/employee/': {'username', 'email', 'role'},
         '/projects/': {
             'name',
             'status',

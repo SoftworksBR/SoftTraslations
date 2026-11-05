@@ -1,18 +1,26 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.enums.enums import QuoteStatus, Roles
 from src.models.employee_model import Employee
+from src.models.file_model import File
 from src.models.path_model import Path
-from src.models.project_model import Project
+from src.models.project_model import Project, ProjectPath
+from src.models.stage_model import PathStage, ProjectStage
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.quote_repository import QuoteRepository
 from src.schemas.project_schema import (
     ProjectCreate,
+    ProjectDetailsResponse,
+    ProjectFileDetails,
+    ProjectPathDetails,
     ProjectSearchFilters,
+    ProjectStageDetails,
     ProjectUpdate,
 )
+from src.services.outbox import enqueue_event
 
 
 class ProjectService:
@@ -28,7 +36,13 @@ class ProjectService:
         paths = list(
             (
                 await self.repository.session.scalars(
-                    select(Path).where(Path.id.in_(set(data.path_ids)))
+                    select(Path)
+                    .where(Path.id.in_(set(data.path_ids)))
+                    .options(
+                        selectinload(Path.path_stages).selectinload(
+                            PathStage.stage_template
+                        )
+                    )
                 )
             ).all()
         )
@@ -46,9 +60,47 @@ class ProjectService:
             status=data.status,
             creator_id=current_employee.id,
             quote_id=data.quote_id,
-            paths=paths,
         )
+        self.repository.session.add(project)
+        await self.repository.session.flush()
 
+        path_by_id = {path.id: path for path in paths}
+        project_paths = [
+            ProjectPath(
+                project_id=project.id,
+                path_id=path_id,
+                sequence=sequence,
+            )
+            for sequence, path_id in enumerate(data.path_ids, start=1)
+        ]
+        self.repository.session.add_all(project_paths)
+        await self.repository.session.flush()
+
+        for project_path in project_paths:
+            path = path_by_id[project_path.path_id]
+            self.repository.session.add_all(
+                ProjectStage(
+                    project_path_id=project_path.id,
+                    path_stage_id=path_stage.id,
+                    path_id=path.id,
+                )
+                for path_stage in path.path_stages
+            )
+
+        enqueue_event(
+            self.repository.session,
+            event_type='project.created',
+            aggregate_type='project',
+            aggregate_id=project.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {
+                    'status': project.status.value,
+                    'path_ids': data.path_ids,
+                },
+                'source': 'api',
+            },
+        )
         return await self.repository.create(project)
 
     async def get_by_id(
@@ -65,6 +117,79 @@ class ProjectService:
             )
 
         return project
+
+    async def get_details(
+        self,
+        project_id: int,
+        current_employee: Employee,
+    ) -> ProjectDetailsResponse:
+        self._require_project_reader_role(current_employee)
+        project = await self.repository.get_by_id(project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project not found',
+            )
+
+        return ProjectDetailsResponse(
+            id=project.id,
+            name=project.name,
+            status=project.status,
+            creator_id=project.creator_id,
+            creator_name=project.creator.username,
+            paths=[
+                ProjectPathDetails(
+                    id=project_path.id,
+                    name=project_path.path.name,
+                    sequence=project_path.sequence,
+                    stages=[
+                        ProjectStageDetails(
+                            id=stage.id,
+                            name=stage.name,
+                            status=stage.status,
+                            freelancer_id=stage.freelancer_id,
+                            freelancer_name=(
+                                stage.freelancer.username
+                                if stage.freelancer is not None
+                                else None
+                            ),
+                            files=[
+                                ProjectFileDetails.model_validate(file)
+                                for file in stage.files
+                            ],
+                        )
+                        for stage in sorted(
+                            project_path.executions,
+                            key=lambda execution: execution.path_stage.sequence,
+                        )
+                    ],
+                )
+                for project_path in project.project_paths
+            ],
+        )
+
+    async def get_project_file(
+        self,
+        project_id: int,
+        file_id: int,
+        current_employee: Employee,
+    ) -> File:
+        self._require_project_reader_role(current_employee)
+        result = await self.repository.session.scalar(
+            select(File)
+            .join(File.project_stage)
+            .join(ProjectStage.project_path)
+            .where(
+                File.id == file_id,
+                ProjectPath.project_id == project_id,
+            )
+        )
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Project file not found',
+            )
+        return result
 
     async def get_all(
         self,
@@ -99,6 +224,17 @@ class ProjectService:
         if data.creator_id is not None:
             project.creator_id = data.creator_id
 
+        enqueue_event(
+            self.repository.session,
+            event_type='project.updated',
+            aggregate_type='project',
+            aggregate_id=project.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {'status': project.status.value},
+                'source': 'api',
+            },
+        )
         return await self.repository.update(project)
 
     async def delete(
@@ -113,6 +249,17 @@ class ProjectService:
                 detail='Project not found',
             )
 
+        enqueue_event(
+            self.repository.session,
+            event_type='project.deleted',
+            aggregate_type='project',
+            aggregate_id=project.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {},
+                'source': 'api',
+            },
+        )
         await self.repository.delete(project)
 
     async def _validate_quote(self, quote_id: int) -> None:
@@ -144,4 +291,12 @@ class ProjectService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='Only projetos can use this endpoint',
+            )
+
+    @staticmethod
+    def _require_project_reader_role(current_employee: Employee) -> None:
+        if current_employee.role not in {Roles.PROJETOS, Roles.ADMIN}:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only projetos and admins can read project details',
             )

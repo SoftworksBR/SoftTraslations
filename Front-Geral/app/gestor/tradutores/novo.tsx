@@ -1,133 +1,120 @@
 import { router } from 'expo-router';
-
+import { useState } from 'react';
 import {
-  View,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  Pressable,
-  StyleSheet,
-  ScrollView,
+  View,
 } from 'react-native';
 
-import { useState } from 'react';
+import { preRegisterFreelancer } from '@/services/employees';
 
 export default function NovoTradutor() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [nome, setNome] = useState('');
-  const [senha, setSenha] = useState('');
+  async function save() {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+      Alert.alert('Campos obrigatórios', 'Informe nome, sobrenome, e-mail e senha.');
+      return;
+    }
 
-  function salvar() {
-
-    const tradutor = {
-      nome,
-      senha,
-      status: 'aguardando_perfil',
-    };
-
-    console.log('Pré-cadastro do tradutor:', tradutor);
-
-    router.back();
+    setSaving(true);
+    setError(null);
+    try {
+      await preRegisterFreelancer({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim(),
+        password,
+      });
+      router.back();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Não foi possível pré-cadastrar o tradutor.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <View style={styles.container}>
-
       <View style={styles.form}>
-
-        <Text style={styles.title}>
-          Pré-cadastro de Tradutor
-        </Text>
-
+        <Text style={styles.title}>Pré-cadastro de tradutor</Text>
         <ScrollView>
-
-          <Text style={styles.label}>
-            Nome
+          <Text style={styles.description}>
+            As credenciais serão cadastradas no sistema. Nenhum usuário local de demonstração será criado.
           </Text>
-
+          <Text style={styles.label}>Nome</Text>
+          <TextInput value={firstName} onChangeText={setFirstName} autoCapitalize="words" style={styles.input} />
+          <Text style={styles.label}>Sobrenome</Text>
+          <TextInput value={lastName} onChangeText={setLastName} autoCapitalize="words" style={styles.input} />
+          <Text style={styles.label}>E-mail</Text>
           <TextInput
-            value={nome}
-            onChangeText={setNome}
-            placeholder="Digite o nome"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
             style={styles.input}
           />
-
-          <Text style={styles.label}>
-            Senha
-          </Text>
-
+          <Text style={styles.label}>Senha inicial</Text>
           <TextInput
-            value={senha}
-            onChangeText={setSenha}
-            placeholder="Digite a senha"
+            value={password}
+            onChangeText={setPassword}
             secureTextEntry
             style={styles.input}
           />
-
+          {error ? <Text style={styles.error}>{error}</Text> : null}
           <Pressable
-            style={styles.botao}
-            onPress={salvar}
+            style={[styles.button, saving && styles.disabled]}
+            disabled={saving}
+            onPress={() => void save()}
           >
-            <Text style={styles.botaoText}>
-              PRÉ-CADASTRAR
-            </Text>
+            <Text style={styles.buttonText}>{saving ? 'ENVIANDO...' : 'PRÉ-CADASTRAR'}</Text>
           </Pressable>
-
         </ScrollView>
-
       </View>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-
+  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#F5F8FA' },
   form: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 25,
+    width: '100%',
+    maxWidth: 540,
     maxHeight: '90%',
+    alignSelf: 'center',
+    padding: 25,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
   },
-
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-
-  label: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 12,
-  },
-
+  title: { color: '#0B2239', fontSize: 22, fontWeight: '700' },
+  description: { marginTop: 10, color: '#627485', lineHeight: 20 },
+  label: { marginTop: 16, marginBottom: 6, color: '#172B3A', fontWeight: '600' },
   input: {
     height: 48,
-    borderWidth: 1,
-    borderColor: '#bbb',
-    borderRadius: 6,
     paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 9,
     fontSize: 16,
   },
-
-  botao: {
+  error: { marginTop: 12, color: '#B42318', lineHeight: 20 },
+  button: {
     height: 50,
-    backgroundColor: '#000',
-    borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 25,
+    borderRadius: 9,
+    backgroundColor: '#087F8C',
   },
-
-  botaoText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  buttonText: { color: '#FFFFFF', fontWeight: '700' },
+  disabled: { opacity: 0.6 },
 });

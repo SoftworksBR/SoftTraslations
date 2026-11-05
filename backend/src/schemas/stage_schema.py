@@ -1,17 +1,37 @@
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.enums.enums import Status
 
 
 class StageCreate(BaseModel):
-    freelancer_id: int
     name: str
-    status: Status
+    freelancer_id: int
+    status: Status = Status.READY
+
+
+class StageTemplateCreate(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class StageTemplateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    description: str | None
+
+
+class ProjectStageCreate(BaseModel):
+    project_path_id: int
+    path_stage_id: int
+    freelancer_id: int | None = None
 
 
 class StageUpdate(BaseModel):
     freelancer_id: int | None = None
-    name: str | None = None
     status: Status | None = None
 
 
@@ -22,17 +42,23 @@ class StageSearchFilters(BaseModel):
     freelancer_name: str | None = None
 
 
+class StageFileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    original_name: str
+
+
 class StageResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
-    freelancer_id: int
+    project_path_id: int
+    path_stage_id: int
+    freelancer_id: int | None
     status: Status
-
-
-class PathProjectResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    path_id: int
-    project_id: int
+    created_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    files: list[StageFileResponse] = Field(default_factory=list)

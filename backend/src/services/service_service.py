@@ -42,8 +42,16 @@ class ServiceService:
                 detail="Já existe um serviço com esse nome.",
             ) from exc
 
-    async def get_all(self) -> list[Service]:
+    async def get_all(
+        self,
+        employee: Employee,
+        include_inactive: bool = False,
+    ) -> list[Service]:
+        if include_inactive:
+            self._require_admin(employee)
         services = await self.repository.get_all()
+        if include_inactive:
+            return services
         return [service for service in services if service.is_active]
 
     async def update(
@@ -64,7 +72,7 @@ class ServiceService:
         if data.name is not None:
             service.name = data.name
 
-        if data.description is not None:
+        if "description" in data.model_fields_set:
             service.description = data.description
 
         if data.is_active is not None:

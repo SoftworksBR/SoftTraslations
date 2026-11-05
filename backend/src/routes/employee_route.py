@@ -5,55 +5,54 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.controllers.employee_controller import (
-    accept_freelancer_invite,
     complete_freelancer_profile,
     create_employee,
     delete_employee,
     get_employees,
     pre_register_freelancer,
+    update_current_employee,
     update_employee,
 )
 from src.database import get_session
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import (
-    EmployeeCreate,
     EmployeeListSchema,
     EmployeePublicSchema,
+    EmployeeSchema,
     EmployeeSearchFilters,
-    EmployeeUpdate,
-    FreelancerInviteAcceptSchema,
-    FreelancerInviteResponse,
+    EmployeeSelfUpdateSchema,
     FreelancerPreRegistrationSchema,
+    FreelancerProfileSchema,
 )
-from src.schemas.freelancer_profile_schema import FreelancerProfileSchema
 from src.security import get_current_employee
 
-public_router = APIRouter(
-    prefix='/employee',
-    tags=['Employees'],
-)
-protected_router = APIRouter(
+router = APIRouter(
     prefix='/employee',
     tags=['Employees'],
 )
 
 
-@public_router.post(
-    '/freelancers/accept-invite',
+@router.patch(
+    '/me',
     status_code=HTTPStatus.OK,
     response_model=EmployeePublicSchema,
 )
-async def accept_freelancer_invite_route(
-    data: FreelancerInviteAcceptSchema,
+async def update_current_employee_route(
+    data: EmployeeSelfUpdateSchema,
     session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
 ):
-    return await accept_freelancer_invite(data, session)
+    return await update_current_employee(
+        data,
+        session,
+        current_employee,
+    )
 
 
-@protected_router.post(
+@router.post(
     '/freelancers/pre-register',
     status_code=HTTPStatus.CREATED,
-    response_model=FreelancerInviteResponse,
+    response_model=EmployeePublicSchema,
 )
 async def pre_register_freelancer_route(
     data: FreelancerPreRegistrationSchema,
@@ -67,7 +66,7 @@ async def pre_register_freelancer_route(
     )
 
 
-@protected_router.put(
+@router.put(
     '/me/profile',
     status_code=HTTPStatus.OK,
     response_model=EmployeePublicSchema,
@@ -84,7 +83,7 @@ async def complete_freelancer_profile_route(
     )
 
 
-@protected_router.get(
+@router.get(
     '/',
     status_code=HTTPStatus.OK,
     response_model=EmployeeListSchema,
@@ -105,13 +104,13 @@ async def get_employees_route(
     )
 
 
-@protected_router.post(
+@router.post(
     '/',
     status_code=HTTPStatus.CREATED,
     response_model=EmployeePublicSchema,
 )
 async def create_employee_route(
-    employee: EmployeeCreate,
+    employee: EmployeeSchema,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
@@ -122,14 +121,14 @@ async def create_employee_route(
     )
 
 
-@protected_router.put(
+@router.put(
     '/{employee_id}',
     status_code=HTTPStatus.OK,
     response_model=EmployeePublicSchema,
 )
 async def update_employee_route(
     employee_id: int,
-    employee: EmployeeUpdate,
+    employee: EmployeeSchema,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
@@ -141,7 +140,7 @@ async def update_employee_route(
     )
 
 
-@protected_router.delete(
+@router.delete(
     '/{employee_id}',
     status_code=HTTPStatus.NO_CONTENT,
 )

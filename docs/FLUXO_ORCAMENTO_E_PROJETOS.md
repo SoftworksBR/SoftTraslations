@@ -1,6 +1,9 @@
-# Fluxo: solicitação → orçamento → projeto
+# Referência técnica: solicitação → orçamento → projeto
 
-Implementação das tasks do Tiago (entidade no banco + conexão front/back).
+Este documento resume o fluxo implementado na API, seus registros e permissões.
+Para instruções operacionais das telas e limitações conhecidas da interface,
+consulte o [Manual do Usuário](./user_manual.md). Os endpoints públicos com
+token existem na API, mas nem todos têm uma tela correspondente no frontend.
 
 ```
 Cliente (sem login)         Atendimento                    Gestor (projetos)
@@ -54,7 +57,10 @@ Gestor (`projetos`):
 ## Front (`Front-Geral`)
 
 - `services/` – `requests.ts`, `quotes.ts`, `projects.ts`, `dialog.ts`, `storage.ts`, `employees.ts`
-- Cliente: `orcamentos/FazerSolicitacao`, `orcamentos/MinhasSolicitacoes` (tokens guardados em `localStorage` na web)
+- Cliente: `orcamentos/FazerSolicitacao` envia solicitação e anexos; a tela
+  `orcamentos/MinhasSolicitacoes` atualmente redireciona para o formulário.
+  Portanto, a interface ainda não persiste o token público nem oferece
+  acompanhamento, edição ou exclusão da solicitação pelo cliente.
 - Atendente: `atendente/requisicoes`, `atendente/novo-orcamento`, `atendente/orcamentos`
 - Gestor: `gestor/orcamentos` (aprovados sem projeto), `gestor/novo-projeto`, `gestor/projetos`
 - Login real (`/auth/` + `/auth/me`) com redirecionamento por cargo; logout nos três menus

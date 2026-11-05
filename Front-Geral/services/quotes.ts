@@ -65,6 +65,20 @@ export function createQuote(payload: QuotePayload) {
   });
 }
 
+export function getQuote(quoteId: number) {
+  return apiRequest<Quote>(`/quotes/${quoteId}`);
+}
+
+export function updateQuote(
+  quoteId: number,
+  payload: Omit<QuotePayload, 'request_id'>,
+) {
+  return apiRequest<Quote>(`/quotes/${quoteId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function getQuoteSuggestion(requestId: number, wordCount?: number) {
   const params = new URLSearchParams({ request_id: String(requestId) });
   if (wordCount) {
