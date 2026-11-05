@@ -1,6 +1,13 @@
 import { apiRequest } from './api';
+import type { Employee } from './employees';
 
-export type StageStatus = 'ready' | 'in_progress' | 'testing' | 'done';
+export type StageStatus =
+  | 'no_freelancer'
+  | 'public'
+  | 'ready'
+  | 'in_progress'
+  | 'testing'
+  | 'done';
 
 export type StageFile = {
   id: number;
@@ -30,6 +37,22 @@ export type StageTemplate = {
 
 export function getStages() {
   return apiRequest<TranslationStage[]>('/stages/');
+}
+
+export function getAvailableStageFreelancers(stageId: number) {
+  return apiRequest<Employee[]>(`/stages/${stageId}/available-freelancers`);
+}
+
+export function acceptStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/accept`, {
+    method: 'POST',
+  });
+}
+
+export function declineStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/decline`, {
+    method: 'POST',
+  });
 }
 
 export function updateStage(
