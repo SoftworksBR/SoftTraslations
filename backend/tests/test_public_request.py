@@ -7,6 +7,7 @@ import pytest
 from fastapi import HTTPException
 
 from src.enums.enums import RequestStatus
+from src.models.outbox_model import OutboxEvent
 from src.schemas.request_schema import RequestCreate, RequestPublicUpdate
 from src.services.request_service import RequestService
 
@@ -16,6 +17,21 @@ class FakeRequestRepository:
         self.request = request
         self.created = None
         self.deleted = None
+        self.session = SimpleNamespace(
+            add=self._add,
+            flush=self._flush,
+        )
+        self._next_id = 1
+
+    def _add(self, instance):
+        if isinstance(instance, OutboxEvent):
+            return
+        if getattr(instance, 'id', None) is None:
+            instance.id = self._next_id
+            self._next_id += 1
+
+    async def _flush(self):
+        return None
 
     async def create(self, request):
         self.created = request

@@ -29,9 +29,6 @@ class _Result:
         return _Result()
 
 
-FULL_NAME_ILIKE = 'employees.first_name, employees.last_name) ilike'
-
-
 def _sql(statement):
     compiled = statement.compile(dialect=postgresql.dialect())
     return str(compiled).lower()
@@ -48,8 +45,7 @@ def test_employee_search_filters_build_case_insensitive_query():
             limit=10,
             offset=0,
             filters=EmployeeSearchFilters(
-                first_name='ana',
-                last_name='silva',
+                username='ana',
                 email='example.com',
                 role=Roles.FREELANCER,
             ),
@@ -57,8 +53,7 @@ def test_employee_search_filters_build_case_insensitive_query():
     )
 
     query = _sql(session.scalars.await_args.args[0])
-    assert 'employees.first_name ilike' in query
-    assert 'employees.last_name ilike' in query
+    assert 'employees.username ilike' in query
     assert 'employees.email ilike' in query
     assert 'employees.role =' in query
 
@@ -87,7 +82,7 @@ def test_request_search_filters_build_case_insensitive_query():
     assert 'requests.username ilike' in query
     assert 'requests.email ilike' in query
     assert 'requests.phone ilike' in query
-    assert 'requests.company ilike' in query
+    assert 'requests.company_name ilike' in query
     assert 'requests.source_language_id =' in query
     assert 'requests.target_language_id =' in query
     assert 'requests.service_id =' in query
@@ -114,8 +109,8 @@ def test_project_search_filters_include_related_path_stages():
     query = _sql(session.execute.await_args.args[0])
     assert 'projects.name ilike' in query
     assert 'projects.status =' in query
-    assert 'stages.name ilike' in query
-    assert FULL_NAME_ILIKE in query
+    assert 'stage_templates.name ilike' in query
+    assert 'employees.username ilike' in query
     assert 'projects.creator_id in' in query
 
 
@@ -137,42 +132,10 @@ def test_stage_search_filters_include_related_projects():
     )
 
     query = _sql(session.execute.await_args.args[0])
-    assert 'stages.freelancer_id =' in query
-    assert 'stages.name ilike' in query
-    assert 'stages.status =' in query
+    assert 'project_stages.freelancer_id =' in query
+    assert 'stage_templates.name ilike' in query
+    assert 'project_stages.status =' in query
     assert 'path_stages' in query
-    assert 'path_projects' in query
+    assert 'project_paths' in query
     assert 'projects.name ilike' in query
-    assert FULL_NAME_ILIKE in query
-
-
-def test_stage_freelancer_name_filter_matches_full_name():
-    session = SimpleNamespace(
-        execute=AsyncMock(return_value=_Result()),
-    )
-
-    asyncio.run(
-        StageRepository(session).get_all(
-            filters=StageSearchFilters(freelancer_name='Ana Silva'),
-        )
-    )
-
-    query = _sql(session.execute.await_args.args[0])
-    assert 'concat_ws(' in query
-    assert FULL_NAME_ILIKE in query
-
-
-def test_project_name_filters_match_full_name():
-    for filters in (
-        ProjectSearchFilters(freelancer_name='Ana Silva'),
-        ProjectSearchFilters(creator_name='Maria Souza'),
-    ):
-        session = SimpleNamespace(
-            execute=AsyncMock(return_value=_Result()),
-        )
-
-        asyncio.run(ProjectRepository(session).get_all(filters))
-
-        query = _sql(session.execute.await_args.args[0])
-        assert 'concat_ws(' in query
-        assert FULL_NAME_ILIKE in query
+    assert 'employees.username ilike' in query

@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import Roles
@@ -31,10 +32,25 @@ class LanguageService:
             name=data.name,
             code=data.code,
         )
-        return await self.repository.create(language)
+        try:
+            return await self.repository.create(language)
+        except IntegrityError as exc:
+            await self.repository.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe um idioma com esse código.",
+            ) from exc
 
-    async def get_all(self) -> list[Language]:
+    async def get_all(
+        self,
+        employee: Employee,
+        include_inactive: bool = False,
+    ) -> list[Language]:
+        if include_inactive:
+            self._require_admin(employee)
         languages = await self.repository.get_all()
+        if include_inactive:
+            return languages
         return [language for language in languages if language.is_active]
 
     async def update(
@@ -56,10 +72,17 @@ class LanguageService:
         if data.name is not None:
             language.name = data.name
 
-        if data.code is not None:
+        if "code" in data.model_fields_set:
             language.code = data.code
 
         if data.is_active is not None:
             language.is_active = data.is_active
 
-        return await self.repository.update(language)
+        try:
+            return await self.repository.update(language)
+        except IntegrityError as exc:
+            await self.repository.session.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Já existe um idioma com esse código.",
+            ) from exc

@@ -1,5 +1,6 @@
-from sqlalchemy import select, update
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.models.employee_model import Employee
 from src.schemas.employee_schema import EmployeeSearchFilters
@@ -13,20 +14,17 @@ class EmployeeRepository:
         offset: int,
         filters: EmployeeSearchFilters | None = None,
     ):
-        query = select(Employee)
+        query = select(Employee).options(
+            selectinload(Employee.freelancer_profile)
+        )
 
         if filters is not None:
             if filters.role is not None:
                 query = query.where(Employee.role == filters.role)
 
-            if filters.first_name is not None:
+            if filters.username is not None:
                 query = query.where(
-                    Employee.first_name.ilike(f'%{filters.first_name}%')
-                )
-
-            if filters.last_name is not None:
-                query = query.where(
-                    Employee.last_name.ilike(f'%{filters.last_name}%')
+                    Employee.username.ilike(f'%{filters.username}%')
                 )
 
             if filters.email is not None:
@@ -37,50 +35,23 @@ class EmployeeRepository:
         return result.all()
 
     @staticmethod
-    async def get_by_email(
+    async def get_by_email_or_username(
         session: AsyncSession,
-        email: str,
+        email: str | None = None,
+        username: str | None = None,
     ):
-        return await session.scalar(
-            select(Employee).where(Employee.email == email)
-        )
+        conditions = []
 
-    @staticmethod
-    async def get_by_invite_token_hash(
-        session: AsyncSession,
-        invite_token_hash: str,
-    ):
-        return await session.scalar(
-            select(Employee).where(
-                Employee.invite_token_hash == invite_token_hash
-            )
-        )
+        if email is not None:
+            conditions.append(Employee.email == email)
 
-    @staticmethod
-    async def consume_invite_token(
-        session: AsyncSession,
-        employee_id: int,
-        invite_token_hash: str,
-        password_hash: str,
-    ) -> Employee | None:
-        # UPDATE condicional: só grava se o hash ainda estiver lá, então
-        # entre requisições simultâneas apenas uma consome o convite.
-        employee = await session.scalar(
-            update(Employee)
-            .where(
-                Employee.id == employee_id,
-                Employee.invite_token_hash == invite_token_hash,
-            )
-            .values(
-                password=password_hash,
-                invite_token_hash=None,
-                invite_token_expires_at=None,
-            )
-            .returning(Employee)
-        )
-        await session.commit()
+        if username is not None:
+            conditions.append(Employee.username == username)
 
-        return employee
+        if not conditions:
+            return None
+
+        return await session.scalar(select(Employee).where(or_(*conditions)))
 
     @staticmethod
     async def get_by_id(
@@ -88,7 +59,9 @@ class EmployeeRepository:
         employee_id: int,
     ) -> Employee | None:
         return await session.scalar(
-            select(Employee).where(Employee.id == employee_id)
+            select(Employee)
+            .options(selectinload(Employee.freelancer_profile))
+            .where(Employee.id == employee_id)
         )
 
     @staticmethod

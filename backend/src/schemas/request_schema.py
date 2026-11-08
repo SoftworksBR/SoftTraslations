@@ -12,7 +12,7 @@ class RequestCreate(BaseModel):
     company: str | None = Field(default=None, max_length=120)
     source_language_id: int
     target_language_id: int
-    service_id: int
+    service_id: int | None = None
     observations: str | None = Field(default=None, max_length=2000)
     word_count: int | None = Field(default=None, ge=1)
 
