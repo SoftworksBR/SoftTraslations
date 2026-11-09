@@ -12,6 +12,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "bcrypt>=5.0.0",
     "fastapi[standard]>=0.141.1",
+    "google-adk>=2.14.0",
     "pwdlib[argon2]>=0.3.1",
     "pyjwt>=2.14.0",
     "pymongo>=4.13,<5",
