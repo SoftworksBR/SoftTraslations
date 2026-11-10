@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, func
+from sqlalchemy import Column, DateTime, ForeignKey, Table, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,6 +14,22 @@ from .service_model import Service
 if TYPE_CHECKING:
     from src.models.employee_model import Employee
     from src.models.file_model import File
+
+
+request_target_languages = Table(
+    'request_target_languages',
+    table_registry.metadata,
+    Column(
+        'request_id',
+        ForeignKey('requests.id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
+    Column(
+        'language_id',
+        ForeignKey('languages.id'),
+        primary_key=True,
+    ),
+)
 
 
 @table_registry.mapped_as_dataclass
@@ -29,11 +45,6 @@ class Request:
     email: Mapped[str] = mapped_column(nullable=False)
     phone: Mapped[str] = mapped_column(nullable=False)
     source_language_id: Mapped[int] = mapped_column(
-        ForeignKey('languages.id'),
-        nullable=False,
-    )
-
-    target_language_id: Mapped[int] = mapped_column(
         ForeignKey('languages.id'),
         nullable=False,
     )
@@ -104,10 +115,11 @@ class Request:
         foreign_keys=[source_language_id],
     )
 
-    target_language: Mapped[Language] = relationship(
-        init=False,
-        lazy='joined',
-        foreign_keys=[target_language_id],
+    target_languages: Mapped[list[Language]] = relationship(
+        secondary=request_target_languages,
+        lazy='selectin',
+        order_by=Language.id,
+        default_factory=list,
     )
     files: Mapped[list['File']] = relationship(
         back_populates='request',
@@ -128,5 +140,17 @@ class Request:
         return self.source_language.name
 
     @property
+    def target_language_ids(self) -> list[int]:
+        return [language.id for language in self.target_languages]
+
+    @property
+    def target_language_names(self) -> list[str]:
+        return [language.name for language in self.target_languages]
+
+    @property
+    def target_language_id(self) -> int:
+        return self.target_languages[0].id
+
+    @property
     def target_language_name(self) -> str:
-        return self.target_language.name
+        return ', '.join(self.target_language_names)

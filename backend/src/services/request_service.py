@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.enums.enums import RequestStatus, Roles
 from src.models.employee_model import Employee
 from src.models.file_model import RequestFile
+from src.models.language_model import Language
 from src.models.request_model import Request
 from src.repositories.language_repository import LanguageRepository
 from src.repositories.quote_repository import QuoteRepository
@@ -62,10 +63,10 @@ class RequestService:
         )
 
     async def create(self, data: RequestCreate) -> Request:
-        await self._validate_references(
+        target_languages = await self._validate_references(
             data.service_id,
             data.source_language_id,
-            data.target_language_id,
+            data.target_language_ids,
         )
 
         request = Request(
@@ -74,7 +75,7 @@ class RequestService:
             phone=data.phone,
             company_name=data.company,
             source_language_id=data.source_language_id,
-            target_language_id=data.target_language_id,
+            target_languages=target_languages,
             public_token=secrets.token_urlsafe(24),
             service_id=data.service_id,
             observations=data.observations,
@@ -364,17 +365,22 @@ class RequestService:
     ) -> None:
         service_id = data.service_id or request.service_id
         source_id = data.source_language_id or request.source_language_id
-        target_id = data.target_language_id or request.target_language_id
+        target_ids = (
+            data.target_language_ids
+            if data.target_language_ids is not None
+            else request.target_language_ids
+        )
+        target_languages = None
 
         if (
             data.service_id is not None
             or data.source_language_id is not None
-            or data.target_language_id is not None
+            or data.target_language_ids is not None
         ):
-            await self._validate_references(
+            target_languages = await self._validate_references(
                 service_id,
                 source_id,
-                target_id,
+                target_ids,
             )
 
         for field in (
@@ -382,7 +388,6 @@ class RequestService:
             'email',
             'phone',
             'source_language_id',
-            'target_language_id',
             'service_id',
             'observations',
             'word_count',
@@ -390,6 +395,8 @@ class RequestService:
             value = getattr(data, field)
             if value is not None:
                 setattr(request, field, value)
+        if target_languages is not None:
+            request.target_languages = target_languages
         if data.company is not None:
             request.company_name = data.company
 
@@ -397,21 +404,29 @@ class RequestService:
         self,
         service_id: int | None,
         source_language_id: int,
-        target_language_id: int,
-    ) -> None:
-        if source_language_id == target_language_id:
+        target_language_ids: list[int],
+    ) -> list[Language]:
+        if len(target_language_ids) != len(set(target_language_ids)):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Os idiomas de destino não podem se repetir',
+            )
+        if source_language_id in target_language_ids:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail='Os idiomas de origem e destino devem ser diferentes',
             )
 
-        for language_id in (source_language_id, target_language_id):
+        languages: list[Language] = []
+        for language_id in (source_language_id, *target_language_ids):
             language = await self.language_repository.get_by_id(language_id)
             if language is None or not language.is_active:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail='Idioma inexistente ou inativo',
                 )
+            if language_id != source_language_id:
+                languages.append(language)
 
         service = (
             await self.service_repository.get_by_id(service_id)
@@ -425,6 +440,7 @@ class RequestService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail='Serviço inexistente ou inativo',
             )
+        return languages
 
     @staticmethod
     def _require_pending(request: Request) -> None:
