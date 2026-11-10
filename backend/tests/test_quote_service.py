@@ -89,6 +89,7 @@ def make_request(**overrides):
         'service_id': 1,
         'source_language_id': 1,
         'target_language_id': 2,
+        'target_languages': [SimpleNamespace(id=2)],
         'word_count': 1000,
     }
     data.update(overrides)
@@ -218,6 +219,25 @@ def test_delete_returns_request_to_pending():
     run(service.delete(3, ATENDENTE))
 
     assert service.repository.deleted is quote
+
+
+def test_suggested_price_sums_each_target_language():
+    request = make_request(
+        target_languages=[
+            SimpleNamespace(id=2),
+            SimpleNamespace(id=3),
+        ]
+    )
+    price = SimpleNamespace(
+        is_active=True,
+        price_per_word=Decimal('2.25'),
+    )
+    service = make_service(request=request, price=price)
+
+    suggestion = run(service.suggest(request.id, None, ATENDENTE))
+
+    assert suggestion.price_per_word == 4.5
+    assert suggestion.suggested_value == 4500
     assert request.status == RequestStatus.PENDING
 
 

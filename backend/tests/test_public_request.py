@@ -62,7 +62,7 @@ def make_service(request=None, active_services=(1,), active_languages=(1, 2)):
     service = RequestService(session=None)
     service.repository = FakeRequestRepository(request)
     service.language_repository = FakeLookup({
-        i: SimpleNamespace(is_active=True) for i in active_languages
+        i: SimpleNamespace(id=i, is_active=True) for i in active_languages
     })
     service.service_repository = FakeLookup({
         i: SimpleNamespace(is_active=True) for i in active_services
@@ -76,7 +76,7 @@ def valid_data(**overrides):
         'email': 'ana@example.com',
         'phone': '123',
         'source_language_id': 1,
-        'target_language_id': 2,
+        'target_language_ids': [2],
         'service_id': 1,
     }
     data.update(overrides)
@@ -90,6 +90,7 @@ def pending_request(**overrides):
         'service_id': 1,
         'source_language_id': 1,
         'target_language_id': 2,
+        'target_language_ids': [2],
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -107,6 +108,7 @@ def test_create_generates_unique_public_token_without_employee():
 
     assert first.employee_id is None
     assert first.status == RequestStatus.PENDING
+    assert [language.id for language in first.target_languages] == [2]
     assert len(first.public_token) >= 24
     assert first.public_token != second.public_token
 
@@ -116,10 +118,19 @@ def test_create_rejects_invalid_email():
         valid_data(email='nao-e-email')
 
 
+def test_create_accepts_legacy_single_target_language():
+    data = valid_data().model_dump()
+    data.pop('target_language_ids')
+    data['target_language_id'] = 2
+
+    assert RequestCreate(**data).target_language_ids == [2]
+
+
 @pytest.mark.parametrize(
     'overrides',
     [
-        {'target_language_id': 1},
+        {'target_language_ids': [1]},
+        {'target_language_ids': [2, 2]},
         {'service_id': 99},
         {'source_language_id': 99},
     ],
@@ -145,6 +156,27 @@ def test_client_can_edit_pending_request():
     run(service.update_public('tok', RequestPublicUpdate(observations='x')))
 
     assert request.observations == 'x'
+
+
+def test_client_can_update_multiple_target_languages():
+    request = pending_request(
+        observations=None,
+        target_languages=[SimpleNamespace(id=2)],
+        target_language_ids=[2],
+    )
+    service = make_service(request, active_languages=(1, 2, 3))
+
+    async def skip_response(_request):
+        return None
+
+    service._build_public_response = skip_response
+    run(
+        service.update_public(
+            'tok', RequestPublicUpdate(target_language_ids=[2, 3])
+        )
+    )
+
+    assert [language.id for language in request.target_languages] == [2, 3]
 
 
 @pytest.mark.parametrize(

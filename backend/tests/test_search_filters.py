@@ -84,7 +84,8 @@ def test_request_search_filters_build_case_insensitive_query():
     assert 'requests.phone ilike' in query
     assert 'requests.company_name ilike' in query
     assert 'requests.source_language_id =' in query
-    assert 'requests.target_language_id =' in query
+    assert 'request_target_languages' in query
+    assert 'languages.id =' in query
     assert 'requests.service_id =' in query
     assert 'requests.status =' in query
 
