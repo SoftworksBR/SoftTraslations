@@ -1,4 +1,4 @@
-# Manual do Usuário — SoftTranslations
+a\# Manual do Usuário — SoftTranslations
 
 Este manual descreve como usar as funções atualmente disponíveis no
 SoftTranslations. As telas são responsivas e podem ser abertas em um navegador;
@@ -49,8 +49,9 @@ Não é necessário entrar na plataforma para enviar uma solicitação.
 1. Abra a página inicial e selecione **Fazer uma solicitação**.
 2. Na etapa **Dados da solicitação**, informe nome completo, e-mail e telefone.
    A empresa é opcional.
-3. Escolha o idioma de origem, o idioma de destino e, se disponível, o serviço.
-   Os idiomas e serviços são carregados das opções ativas no sistema.
+3. Escolha um idioma de origem e um ou mais idiomas de destino. Se disponível,
+   selecione também o serviço. Os idiomas e serviços são carregados das opções
+   ativas no sistema.
 4. Escreva uma descrição ou observação que ajude a equipe a entender o pedido.
 5. Se necessário, anexe arquivos de referência. São aceitos PDF, DOC, DOCX,
    ODT, TXT, RTF, XLS, XLSX, PNG, JPG e JPEG. O limite é de 10 MB por arquivo e

@@ -40,7 +40,9 @@ Públicos (cliente identificado pelo `public_token` devolvido na criação):
 Atendimento (`atendimento`; `projetos` só lê):
 
 - `GET /requests/` (filtros: username, email, phone, company, source_language_id, target_language_id, service_id, status), `PUT|DELETE /requests/{id}`, `GET /requests/{id}/files[/{file_id}]`
-- `GET /quotes/suggestion?request_id=&word_count=` – preço por palavra × palavras
+- `GET /quotes/suggestion?request_id=&word_count=` – soma os preços por palavra
+  dos idiomas de destino × palavras; só sugere quando há preço ativo para todos
+  os destinos
 - `POST /quotes/`, `GET /quotes/` (filtros: status, request_id, client_name, available_for_project), `GET|PUT|DELETE /quotes/{id}`, `PUT /quotes/{id}/approve`, `PUT /quotes/{id}/reject`
 
 Gestor (`projetos`):
