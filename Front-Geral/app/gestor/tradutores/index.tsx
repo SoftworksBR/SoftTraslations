@@ -15,7 +15,7 @@ import {
 
 import { FilterPanel, FilterSelect } from '@/components/FilterPanel';
 import type { FilterOption } from '@/components/FilterPanel';
-import { getEmployees } from '@/services/employees';
+import { createPaymentInvoice, getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
 
 const statusLabels: Record<Employee['status'], string> = {
@@ -46,6 +46,10 @@ export default function Tradutores() {
   const [draftStatusFilter, setDraftStatusFilter] = useState<Employee['status'] | 'all'>('all');
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [selectedTranslator, setSelectedTranslator] = useState<Employee | null>(null);
+  const [invoiceAmount, setInvoiceAmount] = useState('');
+  const [invoiceDescription, setInvoiceDescription] = useState('Pagamento de serviços de tradução');
+  const [invoiceSending, setInvoiceSending] = useState(false);
+  const [invoiceMessage, setInvoiceMessage] = useState<string | null>(null);
   const { width } = useWindowDimensions();
   const columns = width >= 1200 ? 3 : width >= 760 ? 2 : 1;
   const visibleTranslators = translators.filter((translator) => {
@@ -233,6 +237,56 @@ export default function Tradutores() {
                 <Text style={styles.profileValue}>{statusLabels[selectedTranslator.status]}</Text>
               </View>
             ) : null}
+            <TextInput
+              value={invoiceAmount}
+              onChangeText={setInvoiceAmount}
+              placeholder="Valor do pagamento"
+              placeholderTextColor="#98A7B1"
+              keyboardType="decimal-pad"
+              style={styles.invoiceInput}
+            />
+            <TextInput
+              value={invoiceDescription}
+              onChangeText={setInvoiceDescription}
+              placeholder="Descrição do pagamento"
+              placeholderTextColor="#98A7B1"
+              style={styles.invoiceInput}
+            />
+            {invoiceMessage ? <Text style={styles.invoiceMessage}>{invoiceMessage}</Text> : null}
+            <Pressable
+              disabled={invoiceSending}
+              onPress={() => {
+                if (!selectedTranslator || !invoiceAmount.trim()) {
+                  setInvoiceMessage('Informe um valor válido para o pagamento.');
+                  return;
+                }
+                const amount = Number(invoiceAmount.replace(',', '.'));
+                if (!Number.isFinite(amount) || amount <= 0) {
+                  setInvoiceMessage('Informe um valor maior que zero.');
+                  return;
+                }
+                setInvoiceSending(true);
+                setInvoiceMessage(null);
+                void createPaymentInvoice({
+                  freelancer_id: selectedTranslator.id,
+                  amount,
+                  description: invoiceDescription.trim() || 'Pagamento de serviços',
+                })
+                  .then((invoice) => {
+                    setInvoiceMessage(`Fatura ${invoice.invoice_number} enviada para ${selectedTranslator.email}.`);
+                    setInvoiceAmount('');
+                  })
+                  .catch((cause) => {
+                    setInvoiceMessage(cause instanceof Error ? cause.message : 'Não foi possível enviar a fatura.');
+                  })
+                  .finally(() => setInvoiceSending(false));
+              }}
+              style={[styles.primaryButton, invoiceSending && styles.disabledButton]}
+            >
+              <Text style={styles.primaryButtonText}>
+                {invoiceSending ? 'Enviando...' : 'Criar e enviar fatura PDF'}
+              </Text>
+            </Pressable>
             <Pressable
               onPress={() => setSelectedTranslator(null)}
               style={styles.primaryButton}
@@ -378,4 +432,7 @@ const styles = StyleSheet.create({
   modalTitle: { marginTop: 8, color: '#172B3A', fontSize: 20, fontWeight: '800' },
   modalDescription: { marginTop: 6, marginBottom: 18, color: '#627485', fontSize: 12 },
   modalDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EDF1F3' },
+  invoiceInput: { minHeight: 42, marginTop: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 8, color: '#172B3A', fontSize: 12 },
+  invoiceMessage: { marginTop: 10, color: '#627485', fontSize: 11, lineHeight: 17 },
+  disabledButton: { opacity: 0.6 },
 });
