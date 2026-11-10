@@ -106,21 +106,30 @@ class QuoteService:
             )
 
         words = word_count if word_count is not None else request.word_count
-        price = (
-            await self.price_repository.get_by_combination(
-                request.service_id,
-                request.source_language_id,
-                request.target_language_id,
+        prices = []
+        if request.service_id is not None:
+            for language in request.target_languages:
+                price = await self.price_repository.get_by_combination(
+                    request.service_id,
+                    request.source_language_id,
+                    language.id,
+                )
+                if price is None or not price.is_active:
+                    prices = []
+                    break
+                prices.append(price)
+
+        price_per_word = (
+            sum(
+                (price.price_per_word for price in prices),
+                Decimal('0'),
             )
-            if request.service_id is not None
+            if prices
             else None
         )
-        if price is not None and not price.is_active:
-            price = None
-
         suggested = None
-        if price is not None and words:
-            suggested = (price.price_per_word * words).quantize(
+        if price_per_word is not None and words:
+            suggested = (price_per_word * words).quantize(
                 Decimal('0.01'), rounding=ROUND_HALF_UP
             )
 
@@ -128,7 +137,9 @@ class QuoteService:
             request_id=request.id,
             word_count=words,
             price_per_word=(
-                float(price.price_per_word) if price is not None else None
+                float(price_per_word)
+                if price_per_word is not None
+                else None
             ),
             suggested_value=(
                 float(suggested) if suggested is not None else None
