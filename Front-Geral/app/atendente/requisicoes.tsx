@@ -161,7 +161,7 @@ export default function Requisicoes() {
                 <Text style={styles.name}>{item.username}</Text>
                 <Text style={styles.service}>{item.email} · {item.phone}</Text>
                 <Text style={styles.service}>
-                  {item.source_language_name} → {item.target_language_name}
+                  {item.source_language_name} → {item.target_language_names.join(', ')}
                 </Text>
                 {item.company ? <Text style={styles.service}>{item.company}</Text> : null}
                 {item.observations ? (

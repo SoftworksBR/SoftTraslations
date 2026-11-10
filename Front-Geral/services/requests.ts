@@ -18,6 +18,9 @@ export type TranslationRequest = {
   phone: string;
   company: string | null;
   source_language_id: number;
+  target_language_ids: number[];
+  target_language_names: string[];
+  // Mantidos para clientes antigos da API.
   target_language_id: number;
   source_language_name: string;
   target_language_name: string;
@@ -36,7 +39,7 @@ export type TranslationRequestInput = {
   phone: string;
   company?: string | null;
   source_language_id: number;
-  target_language_id: number;
+  target_language_ids: number[];
   service_id?: number | null;
   observations?: string | null;
   word_count?: number | null;
