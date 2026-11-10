@@ -189,8 +189,8 @@ export default function Servicos() {
             <View style={styles.stageCard}>
               <View style={styles.stageHeading}>
                 <Text style={styles.stageName}>{item.name}</Text>
-                <View style={[styles.statusPill, activeTab === 'pending' ? styles.pendingPill : styles.completePill]}>
-                  <Text style={[styles.stageStatus, activeTab === 'pending' ? styles.pendingText : styles.completeText]}>
+                <View style={[styles.statusPill, activeTab === 'pending' || item.files.length === 0 ? styles.pendingPill : styles.completePill]}>
+                  <Text style={[styles.stageStatus, activeTab === 'pending' || item.files.length === 0 ? styles.pendingText : styles.completeText]}>
                     {activeTab === 'pending'
                       ? 'Aguardando aceite'
                       : item.files.length === 0

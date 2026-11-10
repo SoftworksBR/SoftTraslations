@@ -32,8 +32,8 @@ trabalho interno da equipe. O fluxo principal é:
    trilhas de trabalho.
 5. As etapas criadas para o projeto podem ser acompanhadas e atribuídas a
    tradutores.
-6. O tradutor consulta as etapas vinculadas à sua conta e pode aceitar ou
-   recusar uma nova atribuição.
+6. O tradutor consulta as etapas vinculadas à sua conta. Quando a tela oferece
+   essas ações, ele pode aceitar ou recusar uma nova atribuição.
 
 | Perfil | Responsabilidade principal |
 | --- | --- |
@@ -204,18 +204,23 @@ Selecione **Salvar perfil** ao terminar.
 
 ### Consultar etapas atribuídas
 
-Abra **Meus serviços**. A tela possui duas abas:
+Abra **Meus serviços** ou **Serviços disponíveis**, conforme a opção exibida no
+menu da sua conta. A tela pode apresentar duas abas:
 
-- **Aguardando aceite** lista etapas atribuídas pelo gestor. Selecione
-  **Aceitar** para iniciar a etapa ou **Recusar** para devolvê-la ao gestor,
-  que poderá atribuí-la a outra pessoa. A retirada pública ainda não está
-  disponível. Um freelancer que recusou a etapa deixa de aparecer entre as
-  opções de atribuição para aquela etapa.
+- **Aguardando aceite** lista etapas atribuídas pelo gestor. Quando os botões
+  estiverem disponíveis, selecione **Aceitar** para iniciar a etapa ou
+  **Recusar** para devolvê-la ao gestor, que poderá atribuí-la a outra pessoa.
+  Um freelancer que recusou a etapa deixa de aparecer entre as opções de
+  atribuição para aquela etapa.
 - **Meus serviços** lista as etapas aceitas e permite consultar os documentos
-  associados e anexar arquivos.
+  associados e anexar arquivos, quando essas ações estiverem habilitadas.
 
-Se uma aba estiver vazia, não há etapas correspondentes atribuídas à sua conta
-no momento. Após aceitar, a etapa passa para **Em andamento**.
+As etapas podem apresentar as situações **Pronta**, **Em andamento**,
+**Em revisão** ou **Concluída**. Se a tela exibir apenas a lista de etapas,
+sem abas ou ações, ela está em modo de consulta: aceite, recusa e envio de
+arquivos não estão disponíveis nessa área. A retirada pública ainda não está
+disponível. Se a lista estiver vazia, confirme com o gestor responsável se há
+etapas atribuídas à sua conta.
 
 ## Situações e regras do fluxo
 
@@ -224,7 +229,7 @@ no momento. Após aceitar, a etapa passa para **Em andamento**.
 | Solicitação | Pendente, Orçada, Recusada | Recebida, vinculada a orçamento ou encerrada após recusa. |
 | Orçamento | Em análise, Aprovado, Recusado | Aguardando decisão, liberado para projeto ou recusado. |
 | Projeto | Pronto, Em andamento, Em revisão, Concluído | Situação geral do projeto. |
-| Etapa | Sem freelancer, Público, Pronto, Em andamento, Em revisão, Concluída | Etapas novas começam sem freelancer; uma atribuição aguarda aceite. “Público” está reservado para a funcionalidade de retirada pública. |
+| Etapa | Sem freelancer, Público, Pronta, Em andamento, Em revisão, Concluída | Etapas novas começam sem freelancer; uma atribuição pode aguardar aceite. “Público” está reservado para a funcionalidade de retirada pública, ainda indisponível. |
 | Freelancer | Pendente, Disponível, Ocupado | Situação do cadastro/disponibilidade apresentada à equipe. |
 
 As opções para editar ou excluir um registro dependem de sua situação e do
@@ -253,5 +258,6 @@ confundidas com as ações disponíveis nas telas atuais. Entre elas estão o
 acompanhamento de solicitações pelo próprio cliente, a decisão de orçamento
 diretamente pelo cliente, notificações automáticas e configurações
 administrativas funcionais para idiomas, serviços e preços. A retirada de
-etapas públicas e a aprovação ou recusa do freelancer que solicitar uma etapa
-pública também não estão disponíveis na interface.
+etapas públicas também não está disponível. O aceite ou a recusa de etapas e o
+envio de arquivos dependem das ações habilitadas na tela; não estão disponíveis
+na área que oferece apenas consulta.

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -74,6 +74,8 @@ export default function Projetos() {
   const [freelancersError, setFreelancersError] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   const [updatingStageId, setUpdatingStageId] = useState<number | null>(null);
+  const freelancerRequest = useRef(0);
+  const projectRequest = useRef(0);
   const { width } = useWindowDimensions();
   const wide = width >= 720;
 
@@ -96,16 +98,21 @@ export default function Projetos() {
   }, []);
 
   const loadFreelancers = useCallback(async (stageId: number) => {
+    const request = ++freelancerRequest.current;
     setFreelancersLoading(true);
     setFreelancersError(null);
+    setFreelancers([]);
     try {
-      setFreelancers(await getAvailableStageFreelancers(stageId));
+      const available = await getAvailableStageFreelancers(stageId);
+      if (request === freelancerRequest.current) setFreelancers(available);
     } catch (cause) {
-      setFreelancersError(
-        cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
-      );
+      if (request === freelancerRequest.current) {
+        setFreelancersError(
+          cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
+        );
+      }
     } finally {
-      setFreelancersLoading(false);
+      if (request === freelancerRequest.current) setFreelancersLoading(false);
     }
   }, []);
 
@@ -116,6 +123,8 @@ export default function Projetos() {
   );
 
   async function openProject(project: Project) {
+    const request = ++projectRequest.current;
+    ++freelancerRequest.current;
     setSelectedProject(project);
     setDetails(null);
     setSelectedStageId(null);
@@ -123,6 +132,7 @@ export default function Projetos() {
     setDetailsLoading(true);
     try {
       const loadedDetails = await getProjectDetails(project.id);
+      if (request !== projectRequest.current) return;
       const firstStage = loadedDetails.paths.flatMap((path) => path.stages)[0];
       setSelectedStageId(firstStage?.id ?? null);
       setDetails(loadedDetails);
@@ -131,18 +141,23 @@ export default function Projetos() {
         await loadFreelancers(firstStage.id);
       }
     } catch (cause) {
-      setDetailsError(cause instanceof Error ? cause.message : 'Falha ao carregar detalhes do projeto.');
+      if (request === projectRequest.current) {
+        setDetailsError(cause instanceof Error ? cause.message : 'Falha ao carregar detalhes do projeto.');
+      }
     } finally {
-      setDetailsLoading(false);
+      if (request === projectRequest.current) setDetailsLoading(false);
     }
   }
 
   function closeProject() {
+    ++projectRequest.current;
+    ++freelancerRequest.current;
     setSelectedProject(null);
     setDetails(null);
     setDetailsError(null);
     setSelectedStageId(null);
     setFreelancers([]);
+    setUpdatingStageId(null);
   }
 
   async function openFile(projectId: number, fileId: number) {
@@ -157,33 +172,37 @@ export default function Projetos() {
     if (!details) {
       return;
     }
+    const request = projectRequest.current;
     setUpdatingStageId(stageId);
     setDetailsError(null);
     try {
       await updateStage(stageId, { freelancer_id: freelancerId });
       const refreshedDetails = await getProjectDetails(details.id);
+      if (request !== projectRequest.current) return;
       setDetails(refreshedDetails);
       const refreshedStageIds = refreshedDetails.paths.flatMap((path) =>
         path.stages.map((stage) => stage.id),
       );
-      setSelectedStageId(
-        refreshedStageIds.includes(stageId)
-          ? stageId
-          : (refreshedStageIds[0] ?? null),
-      );
-      await loadFreelancers(
-        refreshedStageIds.includes(stageId)
-          ? stageId
-          : (refreshedStageIds[0] ?? stageId),
-      );
+      const nextStageId = refreshedStageIds.includes(stageId)
+        ? stageId
+        : (refreshedStageIds[0] ?? null);
+      setSelectedStageId(nextStageId);
+      if (nextStageId !== null) {
+        await loadFreelancers(nextStageId);
+      } else {
+        ++freelancerRequest.current;
+        setFreelancers([]);
+      }
     } catch (cause) {
-      setDetailsError(
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível alterar o responsável da etapa.',
-      );
+      if (request === projectRequest.current) {
+        setDetailsError(
+          cause instanceof Error
+            ? cause.message
+            : 'Não foi possível alterar o responsável da etapa.',
+        );
+      }
     } finally {
-      setUpdatingStageId(null);
+      if (request === projectRequest.current) setUpdatingStageId(null);
     }
   }
 
