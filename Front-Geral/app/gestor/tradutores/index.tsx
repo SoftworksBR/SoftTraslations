@@ -15,6 +15,7 @@ import {
 
 import { FilterPanel, FilterSelect } from '@/components/FilterPanel';
 import type { FilterOption } from '@/components/FilterPanel';
+import { useSuccessToast } from '@/components/SuccessToast';
 import { createPaymentInvoice, getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
 
@@ -47,9 +48,10 @@ export default function Tradutores() {
   const [filterExpanded, setFilterExpanded] = useState(false);
   const [selectedTranslator, setSelectedTranslator] = useState<Employee | null>(null);
   const [invoiceAmount, setInvoiceAmount] = useState('');
-  const [invoiceDescription, setInvoiceDescription] = useState('Pagamento de serviços de tradução');
+  const [invoiceDescription, setInvoiceDescription] = useState('');
   const [invoiceSending, setInvoiceSending] = useState(false);
   const [invoiceMessage, setInvoiceMessage] = useState<string | null>(null);
+  const showSuccess = useSuccessToast();
   const { width } = useWindowDimensions();
   const columns = width >= 1200 ? 3 : width >= 760 ? 2 : 1;
   const visibleTranslators = translators.filter((translator) => {
@@ -98,6 +100,10 @@ export default function Tradutores() {
           <Text style={styles.primaryButtonText}>Pré-cadastrar tradutor</Text>
         </Pressable>
       </View>
+
+      {!selectedTranslator && invoiceMessage ? (
+        <Text accessibilityLiveRegion="polite" style={styles.pageInvoiceError}>{invoiceMessage}</Text>
+      ) : null}
 
       <View style={[styles.listTools, width < 720 && styles.listToolsNarrow]}>
         <View style={styles.search}>
@@ -202,10 +208,16 @@ export default function Tradutores() {
               </View>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setSelectedTranslator(item)}
-                style={styles.detailsButton}
+                disabled={invoiceSending}
+                onPress={() => {
+                  setInvoiceAmount('');
+                  setInvoiceDescription('');
+                  setInvoiceMessage(null);
+                  setSelectedTranslator(item);
+                }}
+                style={[styles.detailsButton, invoiceSending && styles.disabledButton]}
               >
-                <Text style={styles.detailsButtonText}>Ver detalhes</Text>
+                <Text style={styles.detailsButtonText}>Enviar fatura</Text>
               </Pressable>
             </View>
           )}
@@ -220,29 +232,30 @@ export default function Tradutores() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.detailsModal}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Fechar detalhes"
-              onPress={() => setSelectedTranslator(null)}
-              style={styles.modalClose}
-            >
-              <Ionicons name="close" size={21} color="#627485" />
-            </Pressable>
-            <Text style={styles.modalEyebrow}>PERFIL DO TRADUTOR</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalEyebrow}>PERFIL DO TRADUTOR</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fechar detalhes"
+                onPress={() => setSelectedTranslator(null)}
+                style={styles.modalClose}
+              >
+                <Ionicons name="close" size={21} color="#627485" />
+              </Pressable>
+            </View>
             <Text style={styles.modalTitle}>{selectedTranslator?.username}</Text>
             <Text style={styles.modalDescription}>{selectedTranslator?.email}</Text>
-            {selectedTranslator ? (
-              <View style={styles.modalDetailRow}>
-                <Text style={styles.profileLabel}>Situação</Text>
-                <Text style={styles.profileValue}>{statusLabels[selectedTranslator.status]}</Text>
-              </View>
-            ) : null}
             <TextInput
               value={invoiceAmount}
-              onChangeText={setInvoiceAmount}
+              onChangeText={(value) => {
+                if (value === '' || /^\d{1,10}([.,]\d{0,2})?$/.test(value)) {
+                  setInvoiceAmount(value);
+                }
+              }}
               placeholder="Valor do pagamento"
               placeholderTextColor="#98A7B1"
               keyboardType="decimal-pad"
+              accessibilityLabel="Valor do pagamento"
               style={styles.invoiceInput}
             />
             <TextInput
@@ -250,17 +263,20 @@ export default function Tradutores() {
               onChangeText={setInvoiceDescription}
               placeholder="Descrição do pagamento"
               placeholderTextColor="#98A7B1"
+              accessibilityLabel="Descrição do pagamento"
+              maxLength={500}
               style={styles.invoiceInput}
             />
-            {invoiceMessage ? <Text style={styles.invoiceMessage}>{invoiceMessage}</Text> : null}
+            {invoiceMessage ? <Text accessibilityLiveRegion="polite" style={styles.invoiceError}>{invoiceMessage}</Text> : null}
             <Pressable
               disabled={invoiceSending}
               onPress={() => {
-                if (!selectedTranslator || !invoiceAmount.trim()) {
-                  setInvoiceMessage('Informe um valor válido para o pagamento.');
+                const amountText = invoiceAmount.trim();
+                if (!selectedTranslator || !/^\d{1,10}([.,]\d{1,2})?$/.test(amountText)) {
+                  setInvoiceMessage('Informe um valor válido com até duas casas decimais.');
                   return;
                 }
-                const amount = Number(invoiceAmount.replace(',', '.'));
+                const amount = Number(amountText.replace(',', '.'));
                 if (!Number.isFinite(amount) || amount <= 0) {
                   setInvoiceMessage('Informe um valor maior que zero.');
                   return;
@@ -272,26 +288,22 @@ export default function Tradutores() {
                   amount,
                   description: invoiceDescription.trim() || 'Pagamento de serviços',
                 })
-                  .then((invoice) => {
-                    setInvoiceMessage(`Fatura ${invoice.invoice_number} enviada para ${selectedTranslator.email}.`);
+                  .then(() => {
                     setInvoiceAmount('');
+                    setInvoiceDescription('');
+                    setSelectedTranslator(null);
+                    showSuccess('Fatura criada com sucesso!');
                   })
                   .catch((cause) => {
                     setInvoiceMessage(cause instanceof Error ? cause.message : 'Não foi possível enviar a fatura.');
                   })
                   .finally(() => setInvoiceSending(false));
               }}
-              style={[styles.primaryButton, invoiceSending && styles.disabledButton]}
+              style={[styles.primaryButton, styles.invoiceButton, invoiceSending && styles.disabledButton]}
             >
               <Text style={styles.primaryButtonText}>
                 {invoiceSending ? 'Enviando...' : 'Criar e enviar fatura PDF'}
               </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setSelectedTranslator(null)}
-              style={styles.primaryButton}
-            >
-              <Text style={styles.primaryButtonText}>Fechar</Text>
             </Pressable>
           </View>
         </View>
@@ -386,6 +398,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
   helper: { color: '#627485', fontSize: 12, lineHeight: 19, textAlign: 'center' },
   error: { color: '#B42318', textAlign: 'center', lineHeight: 21 },
+  pageInvoiceError: { marginHorizontal: 24, marginBottom: 16, color: '#B42318', fontSize: 13 },
   primaryButton: {
     minHeight: 42,
     flexDirection: 'row',
@@ -427,12 +440,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
   },
-  modalClose: { position: 'absolute', top: 12, right: 12, padding: 5 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalClose: { padding: 5 },
   modalEyebrow: { color: '#087F8C', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   modalTitle: { marginTop: 8, color: '#172B3A', fontSize: 20, fontWeight: '800' },
   modalDescription: { marginTop: 6, marginBottom: 18, color: '#627485', fontSize: 12 },
-  modalDetailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#EDF1F3' },
   invoiceInput: { minHeight: 42, marginTop: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 8, color: '#172B3A', fontSize: 12 },
-  invoiceMessage: { marginTop: 10, color: '#627485', fontSize: 11, lineHeight: 17 },
+  invoiceError: { marginTop: 10, color: '#B42318', fontSize: 11, lineHeight: 17 },
+  invoiceButton: { marginTop: 16 },
   disabledButton: { opacity: 0.6 },
 });
