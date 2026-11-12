@@ -1,32 +1,52 @@
-import { Alert, Platform } from 'react-native';
+export type DialogRequest = {
+  title: string;
+  message: string;
+  confirmText?: string;
+  onConfirm?: () => void;
+  onOk?: () => void;
+};
 
-/** Aviso com botão OK. Funciona na web (onde Alert.alert não faz nada). */
-export function notify(title: string, message: string, onOk?: () => void) {
-  if (Platform.OS === 'web') {
-    window.alert(`${title}\n\n${message}`);
-    onOk?.();
-    return;
-  }
-  Alert.alert(title, message, [{ text: 'OK', onPress: onOk }]);
+type DialogListener = (request: DialogRequest | null) => void;
+
+let activeDialog: DialogRequest | null = null;
+const listeners = new Set<DialogListener>();
+
+function showDialog(request: DialogRequest) {
+  activeDialog = request;
+  listeners.forEach((listener) => listener(activeDialog));
 }
 
-/** Pergunta de confirmação. Chama onConfirm só se a pessoa aceitar. */
+export function subscribeToDialog(listener: DialogListener) {
+  listeners.add(listener);
+  listener(activeDialog);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export function closeDialog(confirmed: boolean) {
+  const request = activeDialog;
+  activeDialog = null;
+  listeners.forEach((listener) => listener(null));
+  if (confirmed) {
+    request?.onConfirm?.();
+    request?.onOk?.();
+  }
+}
+
+/** Presenta uma mensagem dentro do app, sem usar dialogs do navegador. */
+export function notify(title: string, message: string, onOk?: () => void) {
+  showDialog({ title, message, onOk });
+}
+
+/** Solicita confirmação dentro do app e só executa onConfirm após confirmar. */
 export function confirmAction(
   title: string,
   message: string,
   confirmText: string,
   onConfirm: () => void,
 ) {
-  if (Platform.OS === 'web') {
-    if (window.confirm(`${title}\n\n${message}`)) {
-      onConfirm();
-    }
-    return;
-  }
-  Alert.alert(title, message, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: confirmText, style: 'destructive', onPress: onConfirm },
-  ]);
+  showDialog({ title, message, confirmText, onConfirm });
 }
 
 export function errorMessage(error: unknown) {
