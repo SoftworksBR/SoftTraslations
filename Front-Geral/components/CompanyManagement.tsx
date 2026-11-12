@@ -3,7 +3,6 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -17,6 +16,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { createCompany, getCompanies } from '@/services/companies';
 import type { Company } from '@/services/companies';
+import { notify } from '@/services/dialog';
 
 export function CompanyManagement() {
   const { employee } = useAuth();
@@ -67,7 +67,7 @@ export function CompanyManagement() {
 
   async function saveCompany() {
     if (!legalName.trim() || !email.trim() || !phone.trim()) {
-      Alert.alert('Campos obrigatórios', 'Informe a razão social, o e-mail e o telefone.');
+      notify('Campos obrigatórios', 'Informe a razão social, o e-mail e o telefone.');
       return;
     }
 
@@ -88,7 +88,7 @@ export function CompanyManagement() {
       setPhone('');
       setCreateOpen(false);
     } catch (cause) {
-      Alert.alert(
+      notify(
         'Não foi possível cadastrar a empresa',
         cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
       );

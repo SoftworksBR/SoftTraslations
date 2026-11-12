@@ -12,7 +12,7 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.enums.enums import Status
+from src.enums.enums import StageStatus
 
 from .base import table_registry
 
@@ -114,14 +114,15 @@ class ProjectStage:
         nullable=True,
         default=None,
     )
-    status: Mapped[Status] = mapped_column(
+    status: Mapped[StageStatus] = mapped_column(
         SQLEnum(
-            Status,
-            name='project_status',
+            StageStatus,
+            name='stage_status',
             values_callable=lambda enum: [member.value for member in enum],
         ),
         nullable=False,
-        default=Status.READY,
+        default=StageStatus.NO_FREELANCER,
+        server_default=StageStatus.NO_FREELANCER.value,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), init=False, server_default=func.now()

@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { DialogHost } from '@/components/DialogHost';
 import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout() {
@@ -75,6 +76,7 @@ export default function RootLayout() {
       </Stack>
 
       <StatusBar style="auto" />
+      <DialogHost />
 
     </AuthProvider>
   );

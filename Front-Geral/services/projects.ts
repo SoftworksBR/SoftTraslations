@@ -22,7 +22,13 @@ export type ProjectStageFile = {
 export type ProjectStageDetails = {
   id: number;
   name: string;
-  status: 'ready' | 'in_progress' | 'testing' | 'done';
+  status:
+    | 'no_freelancer'
+    | 'public'
+    | 'ready'
+    | 'in_progress'
+    | 'testing'
+    | 'done';
   freelancer_id: number | null;
   freelancer_name: string | null;
   files: ProjectStageFile[];

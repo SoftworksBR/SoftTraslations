@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 from sqlalchemy.dialects import postgresql
 
-from src.enums.enums import RequestStatus, Roles, Status
+from src.enums.enums import RequestStatus, Roles, StageStatus, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.repositories.project_repository import ProjectRepository
 from src.repositories.request_repository import RequestRepository
@@ -124,7 +124,7 @@ def test_stage_search_filters_include_related_projects():
             freelancer_id=7,
             filters=StageSearchFilters(
                 name='review',
-                status=Status.READY,
+                status=StageStatus.READY,
                 project_name='project',
                 freelancer_name='ana',
             ),

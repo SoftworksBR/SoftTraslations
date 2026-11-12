@@ -1,5 +1,5 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.stage_schema import (
@@ -84,6 +84,32 @@ class StageController:
         service = StageService(session)
 
         return await service.get_all(current_employee, filters)
+
+    @staticmethod
+    async def accept(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).accept(stage_id, current_employee)
+
+    @staticmethod
+    async def decline(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).decline(stage_id, current_employee)
+
+    @staticmethod
+    async def get_available_freelancers(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).get_available_freelancers(
+            stage_id, current_employee
+        )
 
     @staticmethod
     async def update(
