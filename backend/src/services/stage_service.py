@@ -5,14 +5,17 @@ from http import HTTPStatus
 from pathlib import Path as StoragePath
 
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy.exc import SQLAlchemyError
+from pymongo import AsyncMongoClient
+from pymongo.errors import PyMongoError
 from sqlalchemy import func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.enums.enums import AccountStatus, Roles, Status
+from src.enums.enums import AccountStatus, Roles, StageStatus
 from src.models.employee_model import Employee
 from src.models.file_model import File
+from src.models.outbox_model import OutboxEvent
 from src.models.path_model import Path
 from src.models.project_model import Project, ProjectPath
 from src.models.stage_model import PathStage, ProjectStage, StageTemplate
@@ -76,7 +79,7 @@ class StageService:
             path_stage_id=path_stage.id,
             path_id=path_stage.path_id,
             freelancer_id=data.freelancer_id,
-            status=Status.READY,
+            status=StageStatus.NO_FREELANCER,
         )
         self.repository.session.add(stage)
         await self.repository.session.flush()
@@ -218,6 +221,86 @@ class StageService:
 
         self._raise_stage_access_denied()
 
+    async def accept(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        if current_employee.role != Roles.FREELANCER:
+            self._raise_stage_access_denied()
+
+        stage = await self.get_by_id(stage_id)
+        if stage.freelancer_id != current_employee.id:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Freelancers can only accept their own stages',
+            )
+        if stage.status != StageStatus.NO_FREELANCER:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This stage is not waiting for acceptance',
+            )
+
+        stage.status = StageStatus.IN_PROGRESS
+        if stage.started_at is None:
+            stage.started_at = datetime.now(UTC)
+        return await self.repository.update(stage)
+
+    async def decline(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        if current_employee.role != Roles.FREELANCER:
+            self._raise_stage_access_denied()
+
+        stage = await self.get_by_id(stage_id)
+        if stage.freelancer_id != current_employee.id:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Freelancers can only decline their own stages',
+            )
+        if stage.status != StageStatus.NO_FREELANCER:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This stage is not waiting for acceptance',
+            )
+
+        declined_freelancer_id = stage.freelancer_id
+        enqueue_event(
+            self.repository.session,
+            event_type='project_stage.declined',
+            aggregate_type='project_stage',
+            aggregate_id=stage.id,
+            payload={
+                'actor': self._actor(current_employee),
+                'details': {
+                    'freelancer_id': declined_freelancer_id,
+                    'status': stage.status.value,
+                },
+                'source': 'api',
+            },
+        )
+        stage.freelancer_id = None
+        return await self.repository.update(stage)
+
+    async def get_available_freelancers(
+        self, stage_id: int, current_employee: Employee
+    ) -> list[Employee]:
+        self._require_projects_role(current_employee)
+        await self.get_by_id(stage_id)
+        declined_ids = await self._get_declined_freelancer_ids(stage_id)
+
+        employees = await self.repository.session.scalars(
+            select(Employee)
+            .options(selectinload(Employee.freelancer_profile))
+            .where(
+                Employee.role == Roles.FREELANCER,
+                Employee.account_status == AccountStatus.ACTIVE,
+            )
+        )
+        return [
+            employee
+            for employee in employees
+            if employee.profile_completed and employee.id not in declined_ids
+        ]
+
     async def upload_file(
         self,
         stage_id: int,
@@ -230,6 +313,11 @@ class StageService:
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
                     detail='Freelancers can only upload files to their own stages',
+                )
+            if stage.status == StageStatus.NO_FREELANCER:
+                raise HTTPException(
+                    status_code=HTTPStatus.CONFLICT,
+                    detail='Accept the stage before uploading files',
                 )
         elif current_employee.role != Roles.PROJETOS:
             self._raise_stage_access_denied()
@@ -340,35 +428,52 @@ class StageService:
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail='Freelancers can only update their own stages',
                 )
+            if stage.status == StageStatus.NO_FREELANCER:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='Accept the stage before updating it',
+                )
             if data.freelancer_id is not None or data.status not in {
-                Status.IN_PROGRESS,
-                Status.TESTING,
-                Status.DONE,
+                StageStatus.IN_PROGRESS,
+                StageStatus.TESTING,
+                StageStatus.DONE,
             }:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail='Freelancers can only advance their own stage',
                 )
-        elif data.freelancer_id is not None:
-            await self._validate_freelancer(data.freelancer_id)
-            stage.freelancer_id = data.freelancer_id
-
         previous_status = stage.status
+        assignment_changed = (
+            current_employee.role == Roles.PROJETOS
+            and data.freelancer_id is not None
+            and data.freelancer_id != stage.freelancer_id
+        )
+        if assignment_changed:
+            await self._validate_stage_assignment(
+                stage.id, data.freelancer_id
+            )
+            stage.freelancer_id = data.freelancer_id
+            if data.status is None:
+                stage.status = StageStatus.NO_FREELANCER
+
         if data.status is not None:
             stage.status = data.status
             now = datetime.now(UTC)
-            if data.status == Status.IN_PROGRESS and stage.started_at is None:
+            if (
+                data.status == StageStatus.IN_PROGRESS
+                and stage.started_at is None
+            ):
                 stage.started_at = now
-            if data.status == Status.DONE:
+            if data.status == StageStatus.DONE:
                 if stage.started_at is None:
                     stage.started_at = now
                 stage.completed_at = now
 
-        if stage.status != previous_status or data.freelancer_id is not None:
+        if stage.status != previous_status or assignment_changed:
             event_type = (
                 'project_stage.completed'
-                if stage.status == Status.DONE
-                and previous_status != Status.DONE
+                if stage.status == StageStatus.DONE
+                and previous_status != StageStatus.DONE
                 else 'project_stage.updated'
             )
             enqueue_event(
@@ -388,6 +493,63 @@ class StageService:
             )
 
         return await self.repository.update(stage)
+
+    async def _validate_stage_assignment(
+        self, stage_id: int, freelancer_id: int | None
+    ) -> None:
+        await self._validate_freelancer(freelancer_id)
+        declined_ids = await self._get_declined_freelancer_ids(stage_id)
+        if freelancer_id in declined_ids:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This freelancer already declined this stage',
+            )
+
+    async def _get_declined_freelancer_ids(
+        self, stage_id: int
+    ) -> set[int]:
+        pending_events = await self.repository.session.scalars(
+            select(OutboxEvent.payload).where(
+                OutboxEvent.event_type == 'project_stage.declined',
+                OutboxEvent.aggregate_type == 'project_stage',
+                OutboxEvent.aggregate_id == stage_id,
+                OutboxEvent.processed_at.is_(None),
+            )
+        )
+        declined_ids = {
+            payload['details']['freelancer_id']
+            for payload in pending_events
+            if payload.get('details', {}).get('freelancer_id') is not None
+        }
+
+        client = AsyncMongoClient(
+            settings.MONGODB_URI,
+            serverSelectionTimeoutMS=settings.MONGODB_TIMEOUT_MS,
+            connectTimeoutMS=settings.MONGODB_TIMEOUT_MS,
+            appname='softtranslations-stage-declines',
+        )
+        try:
+            collection = client[settings.MONGODB_DATABASE]['audit_logs']
+            mongo_ids = await collection.distinct(
+                'details.freelancer_id',
+                {
+                    'action': 'project_stage.declined',
+                    'entity.type': 'project_stage',
+                    'entity.id': stage_id,
+                },
+            )
+            declined_ids.update(
+                value for value in mongo_ids if isinstance(value, int)
+            )
+        except PyMongoError as exc:
+            raise HTTPException(
+                status_code=HTTPStatus.SERVICE_UNAVAILABLE,
+                detail='Could not load stage assignment history',
+            ) from exc
+        finally:
+            await client.close()
+
+        return declined_ids
 
     async def delete(self, stage_id: int, current_employee: Employee) -> None:
         self._require_projects_role(current_employee)

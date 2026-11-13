@@ -2,11 +2,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { DialogHost } from '@/components/DialogHost';
+import { SuccessToastProvider } from '@/components/SuccessToast';
 import { AuthProvider } from '@/context/AuthContext';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <SuccessToastProvider>
 
       <Stack
         screenOptions={{
@@ -75,6 +78,8 @@ export default function RootLayout() {
       </Stack>
 
       <StatusBar style="auto" />
+      <DialogHost />
+      </SuccessToastProvider>
 
     </AuthProvider>
   );
