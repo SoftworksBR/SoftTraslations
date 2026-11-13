@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     MAX_UPLOAD_MB: int = 10
     MAX_FILES_PER_REQUEST: int = 10
     GOOGLE_API_KEY: str = ''
+    SMTP_HOST: str = ''
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ''
+    SMTP_PASSWORD: str = ''
+    SMTP_FROM_EMAIL: str = ''
+    SMTP_FROM_NAME: str = 'SoftTranslations'
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+    SMTP_TIMEOUT_SECONDS: int = 20
 
     @model_validator(mode='after')
     def validate_cookie_settings(self):

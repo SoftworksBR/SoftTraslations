@@ -2,7 +2,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -11,21 +10,24 @@ import {
   View,
 } from 'react-native';
 
-import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
 import {
   createStageTemplate,
   deleteStage,
+  getAvailableStageFreelancers,
   getStages,
   getStageTemplates,
   updateStage,
 } from '@/services/stages';
 import type { StageTemplate, TranslationStage } from '@/services/stages';
+import { confirmAction, notify } from '@/services/dialog';
 
 export default function Quadros() {
   const [stages, setStages] = useState<TranslationStage[]>([]);
   const [templates, setTemplates] = useState<StageTemplate[]>([]);
-  const [freelancers, setFreelancers] = useState<Employee[]>([]);
+  const [freelancersByStage, setFreelancersByStage] = useState<
+    Record<number, Employee[]>
+  >({});
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,14 +37,19 @@ export default function Quadros() {
     setLoading(true);
     setError(null);
     try {
-      const [loadedStages, loadedTemplates, loadedFreelancers] = await Promise.all([
+      const [loadedStages, loadedTemplates] = await Promise.all([
         getStages(),
         getStageTemplates(),
-        getEmployees('freelancer'),
       ]);
+      const stageFreelancers = await Promise.all(
+        loadedStages.map(async (stage) => [
+          stage.id,
+          await getAvailableStageFreelancers(stage.id),
+        ] as const),
+      );
       setStages(loadedStages);
       setTemplates(loadedTemplates);
-      setFreelancers(loadedFreelancers.employees);
+      setFreelancersByStage(Object.fromEntries(stageFreelancers));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Falha ao carregar etapas.');
     } finally {
@@ -56,7 +63,7 @@ export default function Quadros() {
 
   async function saveTemplate() {
     if (!name.trim()) {
-      Alert.alert('Campo obrigatório', 'Informe o nome da etapa.');
+      notify('Campo obrigatório', 'Informe o nome da etapa.');
       return;
     }
     setSaving(true);
@@ -83,24 +90,22 @@ export default function Quadros() {
   }
 
   function confirmDelete(stage: TranslationStage) {
-    Alert.alert('Excluir etapa', `Deseja excluir "${stage.name}" do projeto?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteStage(stage.id);
-            await loadData();
-          } catch (cause) {
-            Alert.alert(
-              'Não foi possível excluir',
-              cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
-            );
-          }
-        },
+    confirmAction(
+      'Excluir etapa',
+      `Deseja excluir "${stage.name}" do projeto?`,
+      'Excluir',
+      async () => {
+        try {
+          await deleteStage(stage.id);
+          await loadData();
+        } catch (cause) {
+          notify(
+            'Não foi possível excluir',
+            cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
+          );
+        }
       },
-    ]);
+    );
   }
 
   return (
@@ -153,12 +158,12 @@ export default function Quadros() {
                 <Text style={styles.stageName}>{item.name}</Text>
                 <Text style={styles.hint}>
                   Situação: {item.status} · Tradutor:{' '}
-                  {freelancers.find((freelancer) => freelancer.id === item.freelancer_id)?.username
+                  {freelancersByStage[item.id]?.find((freelancer) => freelancer.id === item.freelancer_id)?.username
                     ?? 'não atribuído'}
                 </Text>
-                {freelancers.length ? (
+                {freelancersByStage[item.id]?.length ? (
                   <View style={styles.employeePicker}>
-                    {freelancers.map((freelancer) => (
+                    {freelancersByStage[item.id].map((freelancer) => (
                       <Pressable
                         key={freelancer.id}
                         onPress={() => void assign(item, freelancer.id)}
@@ -176,7 +181,11 @@ export default function Quadros() {
                       </Pressable>
                     ))}
                   </View>
-                ) : null}
+                ) : (
+                  <Text style={styles.hint}>
+                    Não há freelancers disponíveis para esta etapa.
+                  </Text>
+                )}
               </View>
               <Pressable onPress={() => confirmDelete(item)} style={styles.delete}>
                 <Text style={styles.deleteText}>×</Text>

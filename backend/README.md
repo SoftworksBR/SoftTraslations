@@ -139,6 +139,13 @@ A migração `20261110_invoice` cria a tabela de faturas; aplique-a com `alembic
 
 O endpoint `POST /payment-invoices/` cria a fatura, gera o PDF e o envia como anexo ao e-mail do freelancer. O PDF também pode ser baixado por `GET /payment-invoices/{id}/pdf`.
 
+Para criar e enviar faturas de pagamento aos freelancers, configure também
+`SMTP_HOST`, `SMTP_FROM_EMAIL` e as demais variáveis `SMTP_*` no `.env`.
+A migração `20261110_invoice` cria a tabela de faturas; aplique-a com
+`alembic upgrade head`. O endpoint `POST /payment-invoices/` cria a fatura,
+gera o PDF e o envia como anexo ao e-mail do freelancer. O PDF também pode
+ser baixado por `GET /payment-invoices/{id}/pdf`.
+
 ## Testes e qualidade
 
 Com o ambiente virtual ativo:

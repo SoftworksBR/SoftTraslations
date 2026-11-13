@@ -2,7 +2,6 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +17,7 @@ import {
   updateEmployee,
 } from '@/services/employees';
 import type { Employee, EmployeeRole } from '@/services/employees';
+import { notify } from '@/services/dialog';
 
 const roleLabels: Record<EmployeeRole, string> = {
   admin: 'Administrador',
@@ -80,11 +80,11 @@ function EmployeeForm() {
       return;
     }
     if (!username.trim() || !email.trim() || !password) {
-      Alert.alert('Campos obrigatórios', 'Preencha nome, e-mail e senha.');
+      notify('Campos obrigatórios', 'Preencha nome, e-mail e senha.');
       return;
     }
     if (role !== 'admin' && (!firstName.trim() || !lastName.trim())) {
-      Alert.alert('Campos obrigatórios', 'Preencha nome e sobrenome.');
+      notify('Campos obrigatórios', 'Preencha nome e sobrenome.');
       return;
     }
 

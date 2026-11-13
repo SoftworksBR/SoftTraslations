@@ -20,6 +20,8 @@ import { createStageTemplate, getStages, getStageTemplates } from '@/services/st
 import type { StageTemplate, TranslationStage } from '@/services/stages';
 
 const stageStatuses: Record<TranslationStage['status'], { label: string; color: string }> = {
+  no_freelancer: { label: 'Sem freelancer', color: '#A46B12' },
+  public: { label: 'Público', color: '#7357A8' },
   ready: { label: 'Pronto', color: '#8A99A5' },
   in_progress: { label: 'Em andamento', color: '#397BC5' },
   testing: { label: 'Em teste', color: '#8064B5' },

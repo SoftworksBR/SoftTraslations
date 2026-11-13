@@ -18,6 +18,15 @@ class Status(Enum):
     DONE = 'done'
 
 
+class StageStatus(Enum):
+    NO_FREELANCER = 'no_freelancer'
+    PUBLIC = 'public'
+    READY = 'ready'
+    IN_PROGRESS = 'in_progress'
+    TESTING = 'testing'
+    DONE = 'done'
+
+
 class EmployeeStatus(Enum):
     AVAILABLE = 'available'
     BUSY = 'busy'
