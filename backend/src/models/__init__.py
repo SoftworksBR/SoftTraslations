@@ -3,6 +3,7 @@ from .company_model import CompanyEmployee as CompanyEmployee
 from .company_model import Person as Person
 from .employee_model import Employee as Employee
 from .employee_model import FreelancerProfile as FreelancerProfile
+from .invoice_model import PaymentInvoice as PaymentInvoice
 from .file_model import File as File
 from .file_model import RequestFile as RequestFile
 from .language_model import Language as Language
