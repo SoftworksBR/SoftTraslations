@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 
 from src.security import get_current_employee
 
+from .assistant_route import router as assistant_route
 from .auth_route import router as auth_route
 from .company_route import router as company_route
 from .employee_route import router as employee_route
@@ -33,6 +34,7 @@ protected_router.include_router(service_router)
 protected_router.include_router(translation_price_router)
 protected_router.include_router(path_route)
 protected_router.include_router(project_route)
+protected_router.include_router(assistant_route)
 protected_router.include_router(company_route)
 protected_router.include_router(stage_route)
 protected_router.include_router(stage_templates_route)

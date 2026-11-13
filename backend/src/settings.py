@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = 'uploads'
     MAX_UPLOAD_MB: int = 10
     MAX_FILES_PER_REQUEST: int = 10
+    GOOGLE_API_KEY: str = ''
     SMTP_HOST: str = ''
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ''
