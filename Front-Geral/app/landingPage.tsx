@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { PublicAssistant } from '@/components/public-assistant/PublicAssistant';
 import { Brand } from '@/components/Brand';
 import { PublicNavbar } from '@/components/PublicNavbar';
 import { useHydrated } from '@/hooks/use-hydrated';
@@ -234,6 +235,7 @@ export default function LandingPage() {
           <Text style={styles.footerCopyright}>© 2025 SoftTranslations</Text>
         </View>
       </ScrollView>
+      <PublicAssistant />
     </SafeAreaView>
   );
 }
