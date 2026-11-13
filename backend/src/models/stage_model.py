@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.enums.enums import StageStatus
+from src.enums.enums import StageCollaborationStatus, StageStatus
 
 from .base import table_registry
 
@@ -137,6 +137,25 @@ class ProjectStage:
     rejection_comment: Mapped[str | None] = mapped_column(
         String(1000), nullable=True, default=None
     )
+    # Tradutor adicional da etapa; sem ele (None), second_status é ignorado.
+    second_freelancer_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            'employees.id',
+            ondelete='SET NULL',
+            name='fk_project_stages_second_freelancer',
+        ),
+        nullable=True,
+        default=None,
+    )
+    second_status: Mapped[StageCollaborationStatus | None] = mapped_column(
+        SQLEnum(
+            StageCollaborationStatus,
+            name='stage_collaboration_status',
+            values_callable=lambda enum: [member.value for member in enum],
+        ),
+        nullable=True,
+        default=None,
+    )
 
     project_path: Mapped['ProjectPath'] = relationship(
         back_populates='executions',
@@ -152,6 +171,10 @@ class ProjectStage:
         back_populates='assigned_project_stages',
         init=False,
         foreign_keys=[freelancer_id],
+    )
+    second_freelancer: Mapped['Employee | None'] = relationship(
+        init=False,
+        foreign_keys=[second_freelancer_id],
     )
     files: Mapped[list['File']] = relationship(
         back_populates='project_stage', init=False
