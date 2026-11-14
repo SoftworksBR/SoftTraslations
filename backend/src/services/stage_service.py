@@ -16,6 +16,7 @@ from src.enums.enums import (
     AccountStatus,
     LanguageMatch,
     Roles,
+    StageCollaborationStatus,
     StageStatus,
 )
 from src.models.employee_model import Employee
@@ -293,6 +294,156 @@ class StageService:
         )
         stage.freelancer_id = None
         return await self.repository.update(stage)
+
+    async def invite_collaborator(
+        self,
+        stage_id: int,
+        freelancer_id: int,
+        current_employee: Employee,
+    ) -> ProjectStage:
+        self._require_projects_role(current_employee)
+        stage = await self.get_by_id(stage_id)
+        if stage.freelancer_id is None:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='The stage needs a main freelancer first',
+            )
+        self._require_stage_not_done(stage)
+        if stage.second_freelancer_id is not None:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This stage already has a second freelancer',
+            )
+        if freelancer_id == stage.freelancer_id:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='The main freelancer cannot be the second freelancer',
+            )
+        if freelancer_id in await self._get_declined_freelancer_ids(stage.id):
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This freelancer already declined this stage',
+            )
+        await self._validate_freelancer(freelancer_id)
+
+        stage.second_freelancer_id = freelancer_id
+        stage.second_status = StageCollaborationStatus.INVITED
+        self._collaborator_event(
+            stage,
+            'project_stage.collaborator_invited',
+            freelancer_id,
+            current_employee,
+        )
+        return await self._save_collaboration(stage)
+
+    async def remove_collaborator(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        self._require_projects_role(current_employee)
+        stage = await self.get_by_id(stage_id)
+        self._require_stage_not_done(stage)
+        if stage.second_freelancer_id is None:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This stage has no second freelancer',
+            )
+
+        self._collaborator_event(
+            stage,
+            'project_stage.collaborator_removed',
+            stage.second_freelancer_id,
+            current_employee,
+        )
+        stage.second_freelancer_id = None
+        stage.second_status = None
+        return await self._save_collaboration(stage)
+
+    async def accept_collaboration(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        stage = await self._get_invited_collaboration(
+            stage_id, current_employee
+        )
+        stage.second_status = StageCollaborationStatus.ACCEPTED
+        return await self.repository.update(stage)
+
+    async def decline_collaboration(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        stage = await self._get_invited_collaboration(
+            stage_id, current_employee
+        )
+        # Mesmo evento da recusa do principal: o filtro de recusas passa a
+        # excluir este tradutor dos candidatos da etapa.
+        enqueue_event(
+            self.repository.session,
+            event_type='project_stage.declined',
+            aggregate_type='project_stage',
+            aggregate_id=stage.id,
+            payload={
+                'actor': self._actor(current_employee),
+                'details': {
+                    'freelancer_id': current_employee.id,
+                    'role': 'collaborator',
+                    'status': stage.status.value,
+                },
+                'source': 'api',
+            },
+        )
+        stage.second_freelancer_id = None
+        stage.second_status = None
+        return await self._save_collaboration(stage)
+
+    async def _get_invited_collaboration(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage:
+        if current_employee.role != Roles.FREELANCER:
+            self._raise_stage_access_denied()
+
+        stage = await self.get_by_id(stage_id)
+        if stage.second_freelancer_id != current_employee.id:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Only the invited freelancer can answer this invite',
+            )
+        if stage.second_status != StageCollaborationStatus.INVITED:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This invite is not waiting for an answer',
+            )
+        return stage
+
+    async def _save_collaboration(self, stage: ProjectStage) -> ProjectStage:
+        # O id mudou; a relação já carregada precisa ser relida no get_by_id.
+        self.repository.session.expire(stage, ['second_freelancer'])
+        return await self.repository.update(stage)
+
+    def _collaborator_event(
+        self,
+        stage: ProjectStage,
+        event_type: str,
+        freelancer_id: int,
+        current_employee: Employee,
+    ) -> None:
+        enqueue_event(
+            self.repository.session,
+            event_type=event_type,
+            aggregate_type='project_stage',
+            aggregate_id=stage.id,
+            payload={
+                'actor': self._actor(current_employee),
+                'details': {'freelancer_id': freelancer_id},
+                'source': 'api',
+            },
+        )
+
+    @staticmethod
+    def _require_stage_not_done(stage: ProjectStage) -> None:
+        if stage.status == StageStatus.DONE:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='Completed stages cannot change collaborators',
+            )
 
     async def get_available_freelancers(
         self,
@@ -594,9 +745,7 @@ class StageService:
             and data.freelancer_id != stage.freelancer_id
         )
         if assignment_changed:
-            await self._validate_stage_assignment(
-                stage.id, data.freelancer_id
-            )
+            await self._validate_stage_assignment(stage, data.freelancer_id)
             stage.freelancer_id = data.freelancer_id
             if data.status is None:
                 stage.status = StageStatus.NO_FREELANCER
@@ -685,10 +834,18 @@ class StageService:
             stage.rejection_comment = None
 
     async def _validate_stage_assignment(
-        self, stage_id: int, freelancer_id: int | None
+        self, stage: ProjectStage, freelancer_id: int | None
     ) -> None:
         await self._validate_freelancer(freelancer_id)
-        declined_ids = await self._get_declined_freelancer_ids(stage_id)
+        if (
+            freelancer_id is not None
+            and freelancer_id == stage.second_freelancer_id
+        ):
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='This freelancer is already the second freelancer',
+            )
+        declined_ids = await self._get_declined_freelancer_ids(stage.id)
         if freelancer_id in declined_ids:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,

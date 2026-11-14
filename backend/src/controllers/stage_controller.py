@@ -115,6 +115,47 @@ class StageController:
         return await StageService(session).decline(stage_id, current_employee)
 
     @staticmethod
+    async def invite_collaborator(
+        stage_id: int,
+        freelancer_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).invite_collaborator(
+            stage_id, freelancer_id, current_employee
+        )
+
+    @staticmethod
+    async def remove_collaborator(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).remove_collaborator(
+            stage_id, current_employee
+        )
+
+    @staticmethod
+    async def accept_collaboration(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).accept_collaboration(
+            stage_id, current_employee
+        )
+
+    @staticmethod
+    async def decline_collaboration(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).decline_collaboration(
+            stage_id, current_employee
+        )
+
+    @staticmethod
     async def get_available_freelancers(
         stage_id: int,
         session: AsyncSession,

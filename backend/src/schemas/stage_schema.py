@@ -2,7 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.enums.enums import LanguageMatch, StageStatus
+from src.enums.enums import (
+    LanguageMatch,
+    StageCollaborationStatus,
+    StageStatus,
+)
 from src.schemas.employee_schema import EmployeePublicSchema
 
 
@@ -65,7 +69,14 @@ class StageResponse(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     rejection_comment: str | None = None
+    second_freelancer_id: int | None = None
+    second_freelancer_name: str | None = None
+    second_status: StageCollaborationStatus | None = None
     files: list[StageFileResponse] = Field(default_factory=list)
+
+
+class StageCollaboratorInvite(BaseModel):
+    freelancer_id: int
 
 
 class AvailableFreelancerSchema(EmployeePublicSchema):

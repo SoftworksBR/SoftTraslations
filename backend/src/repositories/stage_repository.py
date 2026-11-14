@@ -61,6 +61,7 @@ class StageRepository:
                     ProjectPath.path
                 ),
                 selectinload(ProjectStage.files),
+                selectinload(ProjectStage.second_freelancer),
             )
             .where(ProjectStage.id == stage_id)
         )
@@ -79,6 +80,7 @@ class StageRepository:
                 ProjectPath.project
             ),
             selectinload(ProjectStage.files),
+            selectinload(ProjectStage.second_freelancer),
         )
 
         if freelancer_id is not None:
