@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.enums.enums import RequestStatus, Roles
+from src.enums.enums import QuoteStatus, RequestStatus, Roles
 from src.models.employee_model import Employee
 from src.models.file_model import RequestFile
 from src.models.language_model import Language
@@ -329,9 +329,98 @@ class RequestService:
 
         return file
 
+    async def add_file_internal(
+        self,
+        request_id: int,
+        upload: UploadFile,
+        current_employee: Employee,
+    ) -> RequestFile:
+        self._require_atendimento_role(current_employee)
+        request = await self.get_by_id(request_id)
+        await self._require_files_editable(request)
+
+        # Mesmas validações e armazenamento de add_file_public, que não pode
+        # ser alterado agora; muda só quem envia, registrado no evento.
+        settings = Settings()
+        current_files = await self.repository.list_files(request.id)
+        if len(current_files) >= settings.MAX_FILES_PER_REQUEST:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    'Limite de '
+                    f'{settings.MAX_FILES_PER_REQUEST} arquivos por '
+                    'solicitação atingido'
+                ),
+            )
+
+        original_name = self._clean_filename(upload.filename)
+        extension = Path(original_name).suffix.lower()
+        if extension not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Tipo de arquivo não permitido',
+            )
+
+        max_bytes = settings.MAX_UPLOAD_MB * 1024 * 1024
+        content = await upload.read(max_bytes + 1)
+        if len(content) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f'Arquivo maior que {settings.MAX_UPLOAD_MB} MB',
+            )
+        if not content:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='Arquivo vazio',
+            )
+
+        directory = Path(settings.UPLOAD_DIR) / 'requests' / str(request.id)
+        directory.mkdir(parents=True, exist_ok=True)
+        stored_path = directory / f'{secrets.token_hex(16)}{extension}'
+        stored_path.write_bytes(content)
+
+        uploaded_file = RequestFile(
+            file_path=str(stored_path),
+            original_name=original_name,
+            request_id=request.id,
+            mime_type=upload.content_type,
+            size_bytes=len(content),
+        )
+        self.repository.session.add(uploaded_file)
+        await self.repository.session.flush()
+        enqueue_event(
+            self.repository.session,
+            event_type='request.file_added',
+            aggregate_type='request',
+            aggregate_id=request.id,
+            payload={
+                'actor': {'employee_id': current_employee.id},
+                'details': {
+                    'file_id': uploaded_file.id,
+                    'original_name': original_name,
+                    'size_bytes': len(content),
+                },
+                'source': 'api',
+                'request_id': request.id,
+            },
+        )
+        return await self.repository.add_file(uploaded_file)
+
     # ------------------------------------------------------------------
     # Auxiliares
     # ------------------------------------------------------------------
+    async def _require_files_editable(self, request: Request) -> None:
+        # Pendente ou com orçamento ainda em análise pelo atendimento.
+        if request.status == RequestStatus.PENDING:
+            return
+        quote = await self.quote_repository.get_by_request_id(request.id)
+        if quote is not None and quote.status == QuoteStatus.IN_REVIEW:
+            return
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='Não é possível anexar arquivos a esta solicitação.',
+        )
+
     async def _get_by_token(self, token: str) -> Request:
         request = await self.repository.get_by_public_token(token)
 

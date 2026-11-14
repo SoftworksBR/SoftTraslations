@@ -142,6 +142,22 @@ async def list_request_files(
     )
 
 
+@protected_router.post(
+    '/{request_id}/files',
+    response_model=RequestFileResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_request_file(
+    request_id: int,
+    file: Annotated[UploadFile, File()],
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await RequestController.add_file_internal(
+        request_id, file, session, current_employee
+    )
+
+
 @protected_router.get('/{request_id}/files/{file_id}')
 async def download_request_file(
     request_id: int,
