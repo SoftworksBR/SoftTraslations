@@ -95,6 +95,15 @@ export function rejectQuote(quoteId: number) {
   return apiRequest<Quote>(`/quotes/${quoteId}/reject`, { method: 'PUT' });
 }
 
+export function sendQuoteEmail(quoteId: number) {
+  return apiRequest<{
+    message: string;
+    recipient: string;
+  }>(`/quotes/${quoteId}/send-email`, {
+    method: 'POST',
+  });
+}
+
 /** 850 -> "R$ 850,00" */
 export function formatMoney(value: number) {
   return `R$ ${value.toFixed(2).replace('.', ',')}`;
