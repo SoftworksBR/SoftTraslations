@@ -19,6 +19,7 @@ import {
   listQuotes,
   quoteStatusLabel,
   rejectQuote,
+  sendClientInvoiceEmail,
   sendQuoteEmail,
 } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
@@ -33,6 +34,7 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendingQuoteId, setSendingQuoteId] = useState<number | null>(null);
+  const [sendingInvoiceId, setSendingInvoiceId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +79,23 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     }
   }
 
+  async function sendInvoiceEmail(quote: Quote) {
+  setSendingInvoiceId(quote.id);
+
+  try {
+    const result = await sendClientInvoiceEmail(quote.id);
+
+    notify(
+      'Sucesso',
+      `Fatura ${result.invoice.invoice_number} enviada para ${result.recipient}.`,
+    );
+  } catch (cause) {
+    notify('Erro', errorMessage(cause));
+  } finally {
+    setSendingInvoiceId(null);
+  }
+}
+
   function askSendEmail(quote: Quote) {
     confirmAction(
       'Enviar orçamento por e-mail',
@@ -85,6 +104,15 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
       () => void sendEmail(quote),
     );
   }
+
+  function askSendInvoiceEmail(quote: Quote) {
+  confirmAction(
+    'Gerar e enviar fatura',
+    `Será gerada uma fatura para ${quote.client_name} e enviada para ${quote.client_email}. Deseja continuar?`,
+    'Gerar e enviar',
+    () => void sendInvoiceEmail(quote),
+  );
+}
 
   function askDecision(quote: Quote, action: 'approve' | 'reject') {
     confirmAction(
@@ -160,6 +188,22 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
                 </View>
               ) : null}
 
+              {isAtendimento && item.status === 'approved' ? (
+                <View style={styles.actions}>
+                  <Pressable
+                    style={styles.invoiceButton}
+                    onPress={() => askSendInvoiceEmail(item)}
+                    disabled={sendingInvoiceId === item.id}
+                  >
+                    <Text style={styles.buttonText}>
+                      {sendingInvoiceId === item.id
+                        ? 'ENVIANDO FATURA...'
+                        : 'GERAR E ENVIAR FATURA'}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
               {!isAtendimento && availableIds.has(item.id) ? (
                 <View style={styles.actions}>
                   <Pressable
@@ -212,5 +256,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: '#344B64',
+  },
+  invoiceButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#087F8C',
   },
 });

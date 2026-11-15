@@ -55,7 +55,13 @@ O administrador inicial é criado na inicialização somente quando o banco aind
 
 ## Configuração de e-mail (SMTP)
 
-O backend utiliza SMTP para enviar documentos por e-mail. Essa integração é utilizada tanto no envio de faturas de pagamento quanto no envio de orçamentos aos clientes.
+O backend utiliza SMTP para enviar documentos por e-mail. Essa integração é compartilhada pelos seguintes recursos:
+
+- Envio de orçamentos em PDF aos clientes;
+- Envio de faturas de clientes geradas a partir de orçamentos aprovados;
+- Envio de faturas de pagamento aos freelancers.
+
+Todos utilizam as mesmas configurações SMTP definidas no ambiente.
 
 As configurações são carregadas pelo módulo `src/settings.py` e devem ser definidas no arquivo `backend/.env`.
 
@@ -250,9 +256,92 @@ Caso ocorra uma falha durante a comunicação com o servidor SMTP, o backend ret
 
 Verifique as configurações SMTP e os logs do backend para identificar a causa.
 
+## Faturas de clientes
+
+O backend permite gerar faturas em PDF para clientes a partir de orçamentos aprovados e enviar esses documentos automaticamente por e-mail.
+
+Essa funcionalidade é independente das faturas de pagamento destinadas aos freelancers.
+
+### Implementação
+
+A funcionalidade está organizada nos seguintes módulos:
+
+- `src/models/client_invoice_model.py`: modelo e persistência das faturas de clientes;
+- `src/schemas/client_invoice_schema.py`: schemas de entrada e resposta;
+- `src/repositories/client_invoice_repository.py`: operações de acesso aos registros;
+- `src/controllers/client_invoice_controller.py`: intermediação entre a rota e o serviço;
+- `src/routes/client_invoice_route.py`: endpoint HTTP;
+- `src/services/client_invoice_service.py`: regras de negócio, geração e envio;
+- `src/services/client_invoice_pdf.py`: geração do documento PDF.
+
+O PDF é gerado em memória utilizando `BytesIO`, sem necessidade de armazenar arquivos temporários no servidor.
+
+### Endpoint
+
+A emissão e o envio são realizados pelo endpoint:
+
+**POST** `/client-invoices/{quote_id}/send-email`
+
+Exemplo:
+
+```http
+POST /client-invoices/1/send-email
+```
+
+A operação exige autenticação e permissão de um funcionário com perfil `atendimento`.
+
+### Fluxo de funcionamento
+
+1. O atendente aprova um orçamento.
+2. Na tela de orçamentos, solicita a geração e o envio da fatura.
+3. O backend verifica se o orçamento existe e está aprovado.
+4. O sistema verifica se já existe uma fatura vinculada ao orçamento.
+5. Os dados do cliente, serviço, valor e data de emissão são registrados na fatura.
+6. O sistema gera um PDF com os dados da fatura.
+7. O PDF é anexado a um e-mail enviado ao endereço cadastrado do cliente.
+8. Após o envio bem-sucedido, o campo `emailed_at` registra a data e hora do envio.
+
+### Dados registrados
+
+A tabela `client_invoices` armazena:
+
+- Número identificador da fatura;
+- Identificador do orçamento associado;
+- Funcionário responsável pela emissão;
+- Nome e e-mail do cliente;
+- Descrição do serviço;
+- Valor da fatura;
+- Data de emissão;
+- Data e hora do envio do e-mail, quando concluído;
+- Data de criação do registro.
+
+O número da fatura segue o padrão `FAT-AAAAMMDD-NNNNNN`.
+
+### Regras de negócio
+
+- Somente funcionários com perfil `atendimento` podem emitir faturas de clientes.
+- A emissão só é permitida para orçamentos com status `approved`.
+- Cada orçamento pode possuir apenas uma fatura de cliente.
+- O vínculo com o orçamento é protegido por uma restrição de unicidade no banco de dados.
+- Os dados do cliente e do orçamento são registrados na fatura no momento da emissão.
+- A emissão da fatura não altera o status do orçamento.
+- O envio utiliza as configurações SMTP compartilhadas pelo backend.
+
+**Importante:** se ocorrer uma falha no envio do e-mail, a fatura permanece registrada no banco, mas o campo `emailed_at` continua sem preenchimento. Atualmente, não existe um endpoint específico para reenviar uma fatura já criada.
+
+### Migração do banco de dados
+
+A tabela `client_invoices` é criada pela migração `1a2ad26eb7eb_create_client_invoices.py`.
+
+Para aplicar a migração, execute na pasta `backend`:
+
+```bash
+uv run alembic upgrade head
+```
+
 ## Faturas de pagamento
 
-O backend também permite criar e enviar faturas de pagamento aos freelancers.
+O backend permite criar e enviar faturas de pagamento destinadas aos freelancers. Esse fluxo é independente das faturas de clientes, que representam a cobrança pelos serviços contratados.
 
 A implementação está localizada em:
 
@@ -273,7 +362,11 @@ A migração `20261110_invoice` cria a tabela de faturas. Aplique as migrações
 alembic upgrade head
 ```
 
-As faturas de pagamento e os orçamentos possuem fluxos independentes, embora compartilhem as configurações SMTP do backend.
+As faturas de pagamento, as faturas de clientes e os orçamentos possuem fluxos independentes, embora compartilhem as configurações SMTP do backend.
+
+- `/payment-invoices/`: faturas de pagamento dos freelancers.
+- `/client-invoices/`: faturas emitidas para os clientes.
+- `/quotes/`: operações relacionadas aos orçamentos.
 
 ## Testes e qualidade
 
