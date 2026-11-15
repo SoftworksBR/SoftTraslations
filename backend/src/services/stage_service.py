@@ -438,6 +438,14 @@ class StageService:
         )
 
     @staticmethod
+    def _is_stage_member(stage: ProjectStage, employee: Employee) -> bool:
+        # Principal ou segundo tradutor que já aceitou o convite.
+        return employee.id == stage.freelancer_id or (
+            employee.id == stage.second_freelancer_id
+            and stage.second_status == StageCollaborationStatus.ACCEPTED
+        )
+
+    @staticmethod
     def _require_stage_not_done(stage: ProjectStage) -> None:
         if stage.status == StageStatus.DONE:
             raise HTTPException(
@@ -452,8 +460,10 @@ class StageService:
         include_all: bool = False,
     ) -> list[AvailableFreelancerSchema]:
         self._require_projects_role(current_employee)
-        await self.get_by_id(stage_id)
+        stage = await self.get_by_id(stage_id)
         declined_ids = await self._get_declined_freelancer_ids(stage_id)
+        # Quem já está na etapa (principal ou segundo) não é candidato.
+        current_ids = {stage.freelancer_id, stage.second_freelancer_id}
 
         employees = await self.repository.session.scalars(
             select(Employee)
@@ -466,7 +476,9 @@ class StageService:
         available = [
             employee
             for employee in employees
-            if employee.profile_completed and employee.id not in declined_ids
+            if employee.profile_completed
+            and employee.id not in declined_ids
+            and employee.id not in current_ids
         ]
 
         request = await self.repository.get_request_for_stage(stage_id)
@@ -527,7 +539,7 @@ class StageService:
     ) -> File:
         stage = await self.get_by_id(stage_id)
         if current_employee.role == Roles.FREELANCER:
-            if stage.freelancer_id != current_employee.id:
+            if not self._is_stage_member(stage, current_employee):
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
                     detail=(
@@ -621,7 +633,7 @@ class StageService:
     ) -> File:
         stage = await self.get_by_id(stage_id)
         if current_employee.role == Roles.FREELANCER:
-            if stage.freelancer_id != current_employee.id:
+            if not self._is_stage_member(stage, current_employee):
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
                     detail=(
@@ -650,7 +662,7 @@ class StageService:
             self._raise_stage_access_denied()
 
         stage = await self.get_by_id(stage_id)
-        if stage.freelancer_id != current_employee.id:
+        if not self._is_stage_member(stage, current_employee):
             raise HTTPException(
                 status_code=HTTPStatus.FORBIDDEN,
                 detail=(

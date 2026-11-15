@@ -1,12 +1,15 @@
 import asyncio
+import io
+import re
 from datetime import UTC, datetime
 from http import HTTPStatus
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from fastapi.testclient import TestClient
+from sqlalchemy.dialects import postgresql
 
 from src.database import get_session
 from src.enums.enums import (
@@ -19,8 +22,9 @@ from src.enums.enums import (
 from src.main import app
 from src.models.stage_model import ProjectStage
 from src.repositories.stage_repository import StageRepository
-from src.schemas.stage_schema import StageUpdate
+from src.schemas.stage_schema import StageSearchFilters, StageUpdate
 from src.security import get_current_employee
+from src.services import stage_service
 from src.services.stage_service import StageService
 
 
@@ -380,7 +384,9 @@ def test_declined_collaborator_is_not_a_candidate_again(monkeypatch, events):
         scalars=AsyncMock(side_effect=[[declined_payload], candidates])
     )
     service = StageService(session)
-    monkeypatch.setattr(service, 'get_by_id', AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        service, 'get_by_id', AsyncMock(return_value=make_stage())
+    )
     monkeypatch.setattr(
         StageRepository, 'get_request_for_stage', AsyncMock(return_value=None)
     )
@@ -465,3 +471,233 @@ def test_collaborator_routes_call_service(
     assert mock.await_args.args[0] == STAGE_ID
     if body:
         assert mock.await_args.args[1] == SECOND_ID
+
+
+# --- permissões do segundo tradutor ---------------------------------------
+
+
+def accepted_stage(**overrides):
+    values = {
+        'second_freelancer_id': SECOND_ID,
+        'second_status': StageCollaborationStatus.ACCEPTED,
+    }
+    values.update(overrides)
+    return make_stage(**values)
+
+
+def make_file(path, uploaded_by_id=SECOND_ID):
+    return SimpleNamespace(
+        id=12,
+        file_path=str(path),
+        original_name='entrega.pdf',
+        uploaded_by_id=uploaded_by_id,
+    )
+
+
+def file_service(monkeypatch, stage, file=None):
+    session = SimpleNamespace(
+        add=lambda instance: setattr(instance, 'id', 12),
+        flush=AsyncMock(),
+        commit=AsyncMock(),
+        refresh=AsyncMock(),
+        rollback=AsyncMock(),
+        delete=AsyncMock(),
+    )
+    service = StageService(session)
+    monkeypatch.setattr(service, 'get_by_id', AsyncMock(return_value=stage))
+    monkeypatch.setattr(
+        StageRepository, 'get_file', AsyncMock(return_value=file)
+    )
+    return service, session
+
+
+def pdf_upload():
+    return UploadFile(file=io.BytesIO(b'%PDF-1.4 entrega'), filename='a.pdf')
+
+
+def test_accepted_second_freelancer_uploads_file(
+    monkeypatch, tmp_path, events
+):
+    monkeypatch.setattr(stage_service.settings, 'UPLOAD_DIR', str(tmp_path))
+    service, _ = file_service(monkeypatch, accepted_stage())
+
+    saved = asyncio.run(
+        service.upload_file(STAGE_ID, pdf_upload(), freelancer(SECOND_ID))
+    )
+
+    assert saved.uploaded_by_id == SECOND_ID
+    assert saved.project_stage_id == STAGE_ID
+    assert events[0]['event_type'] == 'project_stage.file_added'
+
+
+def test_accepted_second_freelancer_downloads_file(monkeypatch, tmp_path):
+    path = tmp_path / 'entrega.pdf'
+    path.write_text('entrega')
+    file = make_file(path, uploaded_by_id=MAIN_ID)
+    service, _ = file_service(monkeypatch, accepted_stage(), file)
+
+    result = asyncio.run(
+        service.get_file(STAGE_ID, file.id, freelancer(SECOND_ID))
+    )
+
+    assert result is file
+
+
+def test_accepted_second_freelancer_removes_own_file(
+    monkeypatch, tmp_path, events
+):
+    path = tmp_path / 'entrega.pdf'
+    path.write_text('entrega')
+    stage = accepted_stage(status=StageStatus.TESTING)
+    service, session = file_service(monkeypatch, stage, make_file(path))
+
+    asyncio.run(service.delete_file(STAGE_ID, 12, freelancer(SECOND_ID)))
+
+    session.delete.assert_awaited_once()
+    assert not path.exists()
+    assert stage.status == StageStatus.IN_PROGRESS
+
+
+def test_second_freelancer_cannot_remove_others_file(monkeypatch, tmp_path):
+    path = tmp_path / 'entrega.pdf'
+    path.write_text('entrega')
+    file = make_file(path, uploaded_by_id=MAIN_ID)
+    service, _ = file_service(monkeypatch, accepted_stage(), file)
+
+    status = expect_error(
+        service.delete_file(STAGE_ID, file.id, freelancer(SECOND_ID))
+    )
+
+    assert status == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.parametrize('action', ['upload', 'download', 'delete'])
+def test_invited_second_freelancer_has_no_file_access(
+    monkeypatch, tmp_path, action
+):
+    path = tmp_path / 'entrega.pdf'
+    path.write_text('entrega')
+    stage = make_stage(
+        second_freelancer_id=SECOND_ID,
+        second_status=StageCollaborationStatus.INVITED,
+    )
+    service, _ = file_service(monkeypatch, stage, make_file(path))
+    calls = {
+        'upload': lambda: service.upload_file(
+            STAGE_ID, pdf_upload(), freelancer(SECOND_ID)
+        ),
+        'download': lambda: service.get_file(
+            STAGE_ID, 12, freelancer(SECOND_ID)
+        ),
+        'delete': lambda: service.delete_file(
+            STAGE_ID, 12, freelancer(SECOND_ID)
+        ),
+    }
+
+    assert expect_error(calls[action]()) == HTTPStatus.FORBIDDEN
+
+
+@pytest.mark.parametrize('new_status', [StageStatus.TESTING, StageStatus.DONE])
+def test_accepted_second_freelancer_cannot_advance_stage(
+    monkeypatch, new_status
+):
+    service = make_service(monkeypatch, accepted_stage())
+
+    status = expect_error(
+        service.update(
+            STAGE_ID, StageUpdate(status=new_status), freelancer(SECOND_ID)
+        )
+    )
+
+    assert status == HTTPStatus.FORBIDDEN
+
+
+def test_second_cannot_upload_after_main_freelancer_declines(
+    monkeypatch, events
+):
+    stage = accepted_stage()
+    service = make_service(monkeypatch, stage)
+    stage.status = StageStatus.NO_FREELANCER
+    asyncio.run(service.decline(STAGE_ID, freelancer(MAIN_ID)))
+    upload_service, _ = file_service(monkeypatch, stage)
+
+    status = expect_error(
+        upload_service.upload_file(
+            STAGE_ID, pdf_upload(), freelancer(SECOND_ID)
+        )
+    )
+
+    assert stage.freelancer_id is None
+    assert status == HTTPStatus.CONFLICT
+
+
+def test_freelancer_stage_list_includes_second_freelancer_stages():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(
+            scalars=lambda: SimpleNamespace(all=lambda: [])
+        )
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+
+    asyncio.run(StageRepository(session).get_all(freelancer_id=SECOND_ID))
+
+    compiled = session.execute.await_args.args[0].compile(
+        dialect=postgresql.dialect()
+    )
+    query = ' '.join(str(compiled).lower().split())
+    match = re.search(
+        r'where \(?project_stages\.freelancer_id = %\((\w+)\)s '
+        r'or project_stages\.second_freelancer_id = %\((\w+)\)s',
+        query,
+    )
+    assert match is not None
+    assert compiled.params[match.group(1)] == SECOND_ID
+    assert compiled.params[match.group(2)] == SECOND_ID
+
+
+def test_freelancer_service_lists_only_own_stages(monkeypatch):
+    get_all = AsyncMock(return_value=[])
+    monkeypatch.setattr(StageRepository, 'get_all', get_all)
+
+    asyncio.run(
+        StageService(SimpleNamespace()).get_all(
+            freelancer(SECOND_ID), StageSearchFilters()
+        )
+    )
+
+    assert get_all.await_args.kwargs['freelancer_id'] == SECOND_ID
+
+
+def test_candidates_exclude_current_main_and_second(monkeypatch):
+    candidates = [
+        SimpleNamespace(
+            id=employee_id,
+            username=f'freelancer{employee_id}',
+            email=f'freelancer{employee_id}@example.com',
+            role=Roles.FREELANCER,
+            status=EmployeeStatus.AVAILABLE,
+            account_status=AccountStatus.ACTIVE,
+            profile_completed=True,
+            source_language_ids=[],
+            target_language_ids=[],
+        )
+        for employee_id in (MAIN_ID, SECOND_ID, OTHER_ID)
+    ]
+    service = StageService(
+        SimpleNamespace(scalars=AsyncMock(return_value=candidates))
+    )
+    monkeypatch.setattr(
+        service, 'get_by_id', AsyncMock(return_value=accepted_stage())
+    )
+    monkeypatch.setattr(
+        service, '_get_declined_freelancer_ids', AsyncMock(return_value=set())
+    )
+    monkeypatch.setattr(
+        StageRepository, 'get_request_for_stage', AsyncMock(return_value=None)
+    )
+
+    available = asyncio.run(
+        service.get_available_freelancers(STAGE_ID, MANAGER)
+    )
+
+    assert [item.id for item in available] == [OTHER_ID]

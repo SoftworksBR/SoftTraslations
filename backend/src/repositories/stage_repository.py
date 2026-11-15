@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -84,7 +84,14 @@ class StageRepository:
         )
 
         if freelancer_id is not None:
-            query = query.where(ProjectStage.freelancer_id == freelancer_id)
+            # Inclui as etapas em que ele é o segundo tradutor (convidado
+            # ou aceito).
+            query = query.where(
+                or_(
+                    ProjectStage.freelancer_id == freelancer_id,
+                    ProjectStage.second_freelancer_id == freelancer_id,
+                )
+            )
 
         if filters is not None:
             if filters.name is not None:
