@@ -18,6 +18,12 @@ const areas = [
     route: '/gestor/projetos',
   },
   {
+    title: 'Entregas',
+    description: 'Aprove ou reprove entregas dos freelancers.',
+    icon: 'clipboard-outline' as const,
+    route: '/gestor/entregas',
+  },
+  {
     title: 'Solicitações disponíveis',
     description: 'Consulte solicitações e orçamentos recebidos.',
     icon: 'documents-outline' as const,
