@@ -61,6 +61,24 @@ async def download_stage_file(
     return FileResponse(file.file_path, filename=file.original_name)
 
 
+@router.delete(
+    '/{stage_id}/files/{file_id}',
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def delete_stage_file(
+    stage_id: int,
+    file_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+) -> None:
+    await StageController.delete_file(
+        stage_id,
+        file_id,
+        session,
+        current_employee,
+    )
+
+
 @router.post(
     '/', response_model=StageResponse, status_code=status.HTTP_201_CREATED
 )
