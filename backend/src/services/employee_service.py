@@ -10,6 +10,7 @@ from src.schemas.employee_schema import (
     EmployeeSchema,
     EmployeeSelfUpdateSchema,
     EmployeeSearchFilters,
+    FreelancerLanguagesSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -227,6 +228,40 @@ class EmployeeService:
         )
         profile.profile_completed = True
 
+        return await EmployeeRepository.update(session, employee)
+
+    @staticmethod
+    async def update_freelancer_languages(
+        session: AsyncSession,
+        data: FreelancerLanguagesSchema,
+        current_employee: Employee,
+    ) -> Employee:
+        if current_employee.role != Roles.FREELANCER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Only freelancers can update their languages',
+            )
+        employee = await EmployeeRepository.get_by_id(
+            session, current_employee.id
+        )
+        if employee is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Employee not found',
+            )
+        profile = getattr(employee, 'freelancer_profile', None)
+        if profile is None or not profile.profile_completed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='Freelancers must complete their own profile first',
+            )
+
+        await EmployeeService._set_profile_languages(
+            session,
+            profile,
+            data.source_language_ids,
+            data.target_language_ids,
+        )
         return await EmployeeRepository.update(session, employee)
 
     @staticmethod

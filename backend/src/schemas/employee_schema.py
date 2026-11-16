@@ -89,3 +89,8 @@ class FreelancerProfileSchema(BaseModel):
     hourly_rate: float | None = Field(default=None, ge=0)
     source_language_ids: list[int] | None = None
     target_language_ids: list[int] | None = None
+
+
+class FreelancerLanguagesSchema(BaseModel):
+    source_language_ids: list[int] | None = None
+    target_language_ids: list[int] | None = None
