@@ -2,13 +2,22 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, func
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Numeric,
+    Table,
+    func,
+)
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.enums.enums import AccountStatus, EmployeeStatus, Roles
 
 from .base import table_registry
+from .language_model import Language
 
 if TYPE_CHECKING:
     from src.models.project_model import Project
@@ -137,3 +146,38 @@ class FreelancerProfile:
     employee: Mapped[Employee] = relationship(
         back_populates='freelancer_profile', init=False
     )
+    source_languages: Mapped[list[Language]] = relationship(
+        secondary='freelancer_source_languages',
+        lazy='selectin',
+        order_by=Language.id,
+        default_factory=list,
+    )
+    target_languages: Mapped[list[Language]] = relationship(
+        secondary='freelancer_target_languages',
+        lazy='selectin',
+        order_by=Language.id,
+        default_factory=list,
+    )
+
+
+freelancer_source_languages = Table(
+    'freelancer_source_languages',
+    table_registry.metadata,
+    Column(
+        'employee_id',
+        ForeignKey('freelancer_profiles.employee_id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
+    Column('language_id', ForeignKey('languages.id'), primary_key=True),
+)
+
+freelancer_target_languages = Table(
+    'freelancer_target_languages',
+    table_registry.metadata,
+    Column(
+        'employee_id',
+        ForeignKey('freelancer_profiles.employee_id', ondelete='CASCADE'),
+        primary_key=True,
+    ),
+    Column('language_id', ForeignKey('languages.id'), primary_key=True),
+)
