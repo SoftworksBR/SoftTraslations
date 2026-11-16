@@ -18,11 +18,13 @@ import { API_URL } from '@/services/api';
 import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
   acceptStage,
+  deleteStageFile,
   declineStage,
   getStages,
+  updateStage,
   uploadStageFile,
 } from '@/services/stages';
-import type { TranslationStage } from '@/services/stages';
+import type { StageFile, TranslationStage } from '@/services/stages';
 
 const stageStatus: Record<TranslationStage['status'], string> = {
   no_freelancer: 'Aguardando aceite',
@@ -33,6 +35,10 @@ const stageStatus: Record<TranslationStage['status'], string> = {
   done: 'Concluída',
 };
 
+function isRejectedDelivery(stage: TranslationStage) {
+  return stage.status === 'in_progress' && Boolean(stage.rejection_comment);
+}
+
 export default function Servicos() {
   const { employee } = useAuth();
   const [activeTab, setActiveTab] = useState<'services' | 'pending'>('services');
@@ -42,6 +48,10 @@ export default function Servicos() {
   const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
   const [uploadingStageId, setUploadingStageId] = useState<number | null>(null);
   const [respondingStageId, setRespondingStageId] = useState<number | null>(null);
+  const [removingFile, setRemovingFile] = useState<{
+    stageId: number;
+    fileId: number;
+  } | null>(null);
 
   const loadStages = useCallback(async () => {
     setLoading(true);
@@ -90,17 +100,51 @@ export default function Servicos() {
     }
 
     setUploadingStageId(stage.id);
+    let uploadedCount = 0;
     try {
       for (const file of files) {
         await uploadStageFile(stage.id, file);
+        uploadedCount += 1;
       }
+      await updateStage(stage.id, { status: 'testing' });
       setSelectedFiles((current) => ({ ...current, [stage.id]: [] }));
-      await loadStages();
-      notify('Sucesso', files.length === 1 ? 'Documento anexado.' : 'Documentos anexados.');
+      const refreshed = await loadStages();
+      notify(
+        refreshed ? 'Documentos enviados' : 'Envio concluído',
+        refreshed
+          ? 'A etapa foi encaminhada para revisão do gestor.'
+          : 'Os documentos foram enviados para revisão, mas não foi possível atualizar sua lista.',
+      );
     } catch (cause) {
-      notify('Não foi possível anexar', errorMessage(cause));
+      const message = errorMessage(cause);
+      notify(
+        uploadedCount === files.length
+          ? 'Documentos anexados, mas não enviados para revisão'
+          : 'Não foi possível enviar documentos',
+        uploadedCount > 0 && uploadedCount < files.length
+          ? `${uploadedCount} de ${files.length} documentos foram anexados. ${message}`
+          : message,
+      );
     } finally {
       setUploadingStageId(null);
+    }
+  }
+
+  async function removeDocument(stage: TranslationStage, file: StageFile) {
+    setRemovingFile({ stageId: stage.id, fileId: file.id });
+    try {
+      await deleteStageFile(stage.id, file.id);
+      const refreshed = await loadStages();
+      notify(
+        refreshed ? 'Documento removido' : 'Remoção concluída',
+        refreshed
+          ? 'O arquivo foi removido da etapa.'
+          : 'O arquivo foi removido, mas não foi possível atualizar sua lista.',
+      );
+    } catch (cause) {
+      notify('Não foi possível remover o documento', errorMessage(cause));
+    } finally {
+      setRemovingFile(null);
     }
   }
 
@@ -189,13 +233,33 @@ export default function Servicos() {
             <View style={styles.stageCard}>
               <View style={styles.stageHeading}>
                 <Text style={styles.stageName}>{item.name}</Text>
-                <View style={[styles.statusPill, activeTab === 'pending' ? styles.pendingPill : styles.completePill]}>
-                  <Text style={[styles.stageStatus, activeTab === 'pending' ? styles.pendingText : styles.completeText]}>
+                <View
+                  style={[
+                    styles.statusPill,
+                    activeTab === 'pending'
+                      ? styles.pendingPill
+                      : isRejectedDelivery(item)
+                        ? styles.rejectedPill
+                        : styles.completePill,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stageStatus,
+                      activeTab === 'pending'
+                        ? styles.pendingText
+                        : isRejectedDelivery(item)
+                          ? styles.rejectedText
+                          : styles.completeText,
+                    ]}
+                  >
                     {activeTab === 'pending'
                       ? 'Aguardando aceite'
-                      : item.files.length === 0
-                        ? 'Pendente'
-                        : stageStatus[item.status]}
+                      : isRejectedDelivery(item)
+                        ? 'Negada'
+                        : item.files.length === 0
+                          ? 'Pendente'
+                          : stageStatus[item.status]}
                   </Text>
                 </View>
               </View>
@@ -236,22 +300,70 @@ export default function Servicos() {
                 </>
               ) : (
                 <>
+                  {isRejectedDelivery(item) && item.rejection_comment ? (
+                    <View style={styles.rejectionNotice}>
+                      <Ionicons
+                        name="alert-circle-outline"
+                        size={18}
+                        color="#B42318"
+                      />
+                      <View style={styles.rejectionCopy}>
+                        <Text style={styles.rejectionTitle}>
+                          Entrega recusada pelo gestor
+                        </Text>
+                        <Text style={styles.rejectionText}>
+                          {item.rejection_comment}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : null}
                   <Text style={styles.documentHint}>
                     {item.files.length
                       ? 'Documento(s) anexado(s):'
                       : 'Anexe o documento desta etapa para atualizar o status.'}
                   </Text>
                   {item.files.map((file) => (
-                    <Pressable
-                      key={file.id}
-                      accessibilityRole="link"
-                      onPress={() => void Linking.openURL(`${API_URL}/stages/${item.id}/files/${file.id}`)}
-                      style={styles.fileLink}
-                    >
-                      <Ionicons name="document-outline" size={16} color="#087F8C" />
-                      <Text numberOfLines={1} style={styles.fileName}>{file.original_name}</Text>
-                      <Ionicons name="download-outline" size={15} color="#627485" />
-                    </Pressable>
+                    <View key={file.id} style={styles.fileRow}>
+                      <Pressable
+                        accessibilityRole="link"
+                        onPress={() => void Linking.openURL(`${API_URL}/stages/${item.id}/files/${file.id}`)}
+                        style={[styles.fileLink, styles.fileLinkInRow]}
+                      >
+                        <Ionicons name="document-outline" size={16} color="#087F8C" />
+                        <Text numberOfLines={1} style={styles.fileName}>{file.original_name}</Text>
+                        <Ionicons name="download-outline" size={15} color="#627485" />
+                      </Pressable>
+                      {item.status !== 'done' &&
+                        file.uploaded_by_id === employee?.id ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remover ${file.original_name}`}
+                          disabled={
+                            removingFile?.fileId === file.id ||
+                            uploadingStageId === item.id
+                          }
+                          onPress={() => confirmAction(
+                            'Remover documento',
+                            `O arquivo "${file.original_name}" será removido da etapa.`,
+                            'Remover',
+                            () => void removeDocument(item, file),
+                          )}
+                          style={[
+                            styles.removeFileButton,
+                            (removingFile?.fileId === file.id ||
+                              uploadingStageId === item.id) &&
+                              styles.disabled,
+                          ]}
+                        >
+                          {removingFile?.fileId === file.id ? (
+                            <ActivityIndicator size="small" color="#B42318" />
+                          ) : (
+                            <Ionicons name="trash-outline" size={16} color="#B42318" />
+                          )}
+                          <Text style={styles.removeFileText}>REMOVER</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
                   ))}
                   <WebFilePicker
                     files={selectedFiles[item.id] ?? []}
@@ -260,18 +372,25 @@ export default function Servicos() {
                   {Platform.OS === 'web' ? (
                     <Pressable
                       accessibilityRole="button"
-                      disabled={uploadingStageId === item.id || !(selectedFiles[item.id]?.length)}
+                      disabled={
+                        uploadingStageId === item.id ||
+                        removingFile?.stageId === item.id ||
+                        !(selectedFiles[item.id]?.length)
+                      }
                       onPress={() => void uploadDocument(item)}
                       style={[
                         styles.uploadButton,
-                        (uploadingStageId === item.id || !(selectedFiles[item.id]?.length)) && styles.disabled,
+                        (uploadingStageId === item.id ||
+                          removingFile?.stageId === item.id ||
+                          !(selectedFiles[item.id]?.length)) &&
+                          styles.disabled,
                       ]}
                     >
                       {uploadingStageId === item.id
                         ? <ActivityIndicator size="small" color="#FFFFFF" />
                         : <Ionicons name="cloud-upload-outline" size={16} color="#FFFFFF" />}
                       <Text style={styles.buttonText}>
-                        {uploadingStageId === item.id ? 'ENVIANDO...' : 'ANEXAR DOCUMENTO'}
+                        {uploadingStageId === item.id ? 'ENVIANDO...' : 'ENVIAR DOCUMENTOS'}
                       </Text>
                     </Pressable>
                   ) : null}
@@ -313,10 +432,37 @@ const styles = StyleSheet.create({
   statusPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 15 },
   pendingPill: { backgroundColor: '#FFF5E3' },
   completePill: { backgroundColor: '#E8F5EE' },
+  rejectedPill: { backgroundColor: '#FCECEC' },
   pendingText: { marginTop: 0, color: '#A46B12', fontSize: 10, fontWeight: '700' },
   completeText: { marginTop: 0, color: '#20845A', fontSize: 10, fontWeight: '700' },
+  rejectedText: { marginTop: 0, color: '#B42318', fontSize: 10, fontWeight: '700' },
+  rejectionNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    padding: 11,
+    borderRadius: 8,
+    backgroundColor: '#FCECEC',
+  },
+  rejectionCopy: { flex: 1, gap: 3 },
+  rejectionTitle: { color: '#B42318', fontSize: 12, fontWeight: '700' },
+  rejectionText: { color: '#7A271A', fontSize: 12, lineHeight: 18 },
   documentHint: { marginTop: 10, marginBottom: 8, color: '#627485', fontSize: 11 },
+  fileRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  fileLinkInRow: { flex: 1 },
   fileLink: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 6, paddingHorizontal: 9, borderRadius: 7, backgroundColor: '#F5F8FA' },
+  removeFileButton: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 6,
+    paddingHorizontal: 8,
+    borderRadius: 7,
+    backgroundColor: '#FCECEC',
+  },
+  removeFileText: { color: '#B42318', fontSize: 10, fontWeight: '700' },
   fileName: { flex: 1, color: '#087F8C', fontSize: 11 },
   uploadButton: { minHeight: 38, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 5, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#087F8C' },
   disabled: { opacity: 0.55 },

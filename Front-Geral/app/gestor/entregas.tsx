@@ -141,7 +141,10 @@ export default function Entregas() {
     setActingStageId(rejectTarget.stageId);
     setRejectError(null);
     try {
-      await updateStage(rejectTarget.stageId, { status: 'in_progress' });
+      await updateStage(rejectTarget.stageId, {
+        status: 'in_progress',
+        rejection_comment: comment,
+      });
       saveDeliveryReview({
         stageId: rejectTarget.stageId,
         projectId: rejectTarget.projectId,
@@ -408,6 +411,7 @@ export default function Entregas() {
               }}
               placeholder="Comentário obrigatório"
               placeholderTextColor="#98A7B1"
+              maxLength={1000}
               multiline
               textAlignVertical="top"
               accessibilityLabel="Comentário da reprovação"
