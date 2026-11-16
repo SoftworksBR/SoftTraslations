@@ -87,3 +87,5 @@ class FreelancerProfileSchema(BaseModel):
     specialization: str | None = None
     bio: str | None = None
     hourly_rate: float | None = Field(default=None, ge=0)
+    source_language_ids: list[int] | None = None
+    target_language_ids: list[int] | None = None

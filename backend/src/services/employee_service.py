@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.enums.enums import EmployeeStatus, Roles
 from src.models.employee_model import Employee, FreelancerProfile
 from src.repositories.employee_repository import EmployeeRepository
+from src.repositories.language_repository import LanguageRepository
 from src.schemas.employee_schema import (
     EmployeeSchema,
     EmployeeSelfUpdateSchema,
@@ -218,9 +219,40 @@ class EmployeeService:
         profile.specialization = data.specialization
         profile.bio = data.bio
         profile.hourly_rate = data.hourly_rate
+        await EmployeeService._set_profile_languages(
+            session,
+            profile,
+            data.source_language_ids,
+            data.target_language_ids,
+        )
         profile.profile_completed = True
 
         return await EmployeeRepository.update(session, employee)
+
+    @staticmethod
+    async def _set_profile_languages(
+        session: AsyncSession,
+        profile: FreelancerProfile,
+        source_language_ids: list[int] | None,
+        target_language_ids: list[int] | None,
+    ) -> None:
+        # None mantém os idiomas atuais; lista vazia remove todos.
+        for attribute, language_ids in (
+            ('source_languages', source_language_ids),
+            ('target_languages', target_language_ids),
+        ):
+            if language_ids is None:
+                continue
+            unique_ids = list(dict.fromkeys(language_ids))
+            languages = await LanguageRepository(session).get_by_ids(
+                unique_ids
+            )
+            if len(languages) != len(unique_ids):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail='Idioma inexistente',
+                )
+            setattr(profile, attribute, languages)
 
     @staticmethod
     async def _create_employee_record(
