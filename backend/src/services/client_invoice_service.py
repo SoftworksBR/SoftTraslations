@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.enums.enums import QuoteStatus, Roles
 from src.models.client_invoice_model import ClientInvoice
 from src.models.employee_model import Employee
+from src.models.quote_model import Quote
 from src.repositories.client_invoice_repository import (
     ClientInvoiceRepository,
 )
@@ -41,13 +42,29 @@ class ClientInvoiceService:
         self._require_atendimento_access(current_employee)
 
         quote = await self.quote_repository.get_by_id(quote_id)
-
         if quote is None:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND,
                 detail='Orçamento não encontrado',
             )
 
+        return await self._create_and_email(quote, current_employee.id)
+
+    async def create_and_email_for_approval(
+        self, quote_id: int
+    ) -> ClientInvoiceEmailResponse:
+        quote = await self.quote_repository.get_by_id(quote_id)
+        if quote is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail='Orçamento não encontrado',
+            )
+
+        return await self._create_and_email(quote, quote.created_by_id)
+
+    async def _create_and_email(
+        self, quote: Quote, created_by_id: int
+    ) -> ClientInvoiceEmailResponse:
         if quote.status != QuoteStatus.APPROVED:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
@@ -75,7 +92,7 @@ class ClientInvoiceService:
         invoice = ClientInvoice(
             invoice_number='PENDING',
             quote_id=quote.id,
-            created_by_id=current_employee.id,
+            created_by_id=created_by_id,
             client_name=quote.client_name,
             client_email=quote.client_email,
             description=description,

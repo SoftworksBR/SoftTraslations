@@ -12,6 +12,7 @@ from .language_route import router as language_router
 from .path_route import router as path_route
 from .project_route import router as project_route
 from .public_assistant_route import router as public_assistant_route
+from .public_quote_route import router as public_quote_route
 from .quote_route import router as quote_route
 from .request_route import (
     protected_router as request_protected_route,
@@ -30,6 +31,7 @@ protected_router = APIRouter(
 public_router.include_router(auth_route)
 public_router.include_router(request_public_route)
 public_router.include_router(public_assistant_route)
+public_router.include_router(public_quote_route)
 protected_router.include_router(employee_route)
 protected_router.include_router(language_router)
 protected_router.include_router(invoice_router)
