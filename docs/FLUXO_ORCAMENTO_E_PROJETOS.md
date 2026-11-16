@@ -41,6 +41,7 @@ Públicos (cliente identificado pelo `public_token` devolvido na criação):
 Atendimento (`atendimento`; `projetos` só lê):
 
 - `GET /requests/` (filtros: username, email, phone, company, source_language_id, target_language_id, service_id, status), `PUT|DELETE /requests/{id}`, `GET /requests/{id}/files[/{file_id}]`
+- `POST /requests/{id}/files` – o atendimento anexa documento (mesmos limites do envio público) enquanto a solicitação está `pending` ou o orçamento está `in_review`; nos demais casos responde `409`
 - `GET /quotes/suggestion?request_id=&word_count=` – preço por palavra × palavras
 - `POST /quotes/` cria e envia o orçamento por e-mail; `GET /quotes/` (filtros: status, request_id, client_name, available_for_project), `GET|PUT|DELETE /quotes/{id}`.
 
@@ -53,6 +54,7 @@ Gestor (`projetos`):
 - Um orçamento por solicitação. Criar orçamento move a solicitação para `quoted` e a atribui ao atendente.
 - Orçamento só pode ser editado/decidido/excluído enquanto `in_review`. Recusar marca a solicitação como `rejected`; excluir devolve a solicitação para `pending`.
 - Solicitação com orçamento não pode ser excluída nem editada pelo cliente.
+- Na edição do orçamento (`in_review`), o atendente pode anexar documentos à solicitação. Alterar o orçamento ou anexar documentos não reenvia o e-mail: se o cliente já recebeu o orçamento, o atendente deve reenviá-lo (`POST /quotes/{id}/send-email`) depois de salvar.
 - Todo projeto continua exigindo ao menos uma trilha (`path_ids`).
 
 ## Front (`Front-Geral`)
@@ -62,7 +64,7 @@ Gestor (`projetos`):
   `orcamentos/MinhasSolicitacoes` atualmente redireciona para o formulário.
   Portanto, a interface ainda não persiste o token público nem oferece
   acompanhamento, edição ou exclusão da solicitação pelo cliente.
-- Atendente: `atendente/requisicoes`, `atendente/novo-orcamento`, `atendente/orcamentos`
+- Atendente: `atendente/requisicoes`, `atendente/novo-orcamento`, `atendente/orcamentos`. Em `novo-orcamento`, no modo edição (`quoteId`), aparecem os documentos da solicitação, o botão **Anexar documento** e o aviso para reenviar o e-mail ao cliente.
 - Gestor: `gestor/orcamentos` (aprovados sem projeto), `gestor/novo-projeto`, `gestor/projetos`
 - Login real (`/auth/` + `/auth/me`) com redirecionamento por cargo; logout nos três menus
 
