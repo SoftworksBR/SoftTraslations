@@ -1,5 +1,5 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from http import HTTPStatus
 from smtplib import SMTPException
@@ -61,6 +61,7 @@ def run(coro):
 def make_quote(status=QuoteStatus.APPROVED):
     return SimpleNamespace(
         id=3,
+        created_by_id=ATENDENTE.id,
         status=status,
         value=Decimal('150.00'),
         client_name='Cliente Teste',
@@ -142,7 +143,9 @@ def test_invoice_is_created_and_email_is_sent(monkeypatch):
     result = run(service.create_and_email(3, ATENDENTE))
 
     assert result.invoice.id == EXPECTED_INVOICE_ID
-    assert result.invoice.invoice_number == 'FAT-20261115-000015'
+    assert result.invoice.invoice_number == (
+        f'FAT-{date.today():%Y%m%d}-000015'
+    )
     assert result.invoice.client_name == 'Cliente Teste'
     assert result.invoice.client_email == 'cliente@email.com'
     assert result.invoice.amount == Decimal('150.00')
@@ -153,6 +156,22 @@ def test_invoice_is_created_and_email_is_sent(monkeypatch):
     assert result.invoice.emailed_at is not None
     assert len(sent_invoices) == 1
     assert session.commit_count == EXPECTED_COMMIT_COUNT
+
+
+def test_approval_invoice_uses_quote_creator_and_sends(monkeypatch):
+    service, _ = make_service(make_quote())
+    sent_invoices = []
+
+    def fake_send_email(invoice):
+        sent_invoices.append(invoice)
+
+    monkeypatch.setattr(service, '_send_email', fake_send_email)
+
+    result = run(service.create_and_email_for_approval(3))
+
+    assert result.invoice.created_by_id == ATENDENTE.id
+    assert result.invoice.emailed_at is not None
+    assert len(sent_invoices) == 1
 
 
 def test_smtp_failure_keeps_invoice_without_email_confirmation(
