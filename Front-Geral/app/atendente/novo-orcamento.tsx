@@ -1,7 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { API_URL } from '@/services/api';
 import { errorMessage, notify } from '@/services/dialog';
 import {
   createQuote,
@@ -21,6 +25,13 @@ import {
   updateQuote,
 } from '@/services/quotes';
 import type { Quote, QuoteSuggestion } from '@/services/quotes';
+import { getRequestFiles, uploadRequestFileAsEmployee } from '@/services/requests';
+import type { RequestFile } from '@/services/requests';
+
+const RESEND_EMAIL_WARNING =
+  'Se este orçamento já foi enviado por e-mail ao cliente, reenvie o e-mail depois '
+  + 'de salvar as alterações.';
+const ACCEPTED_FILES = '.pdf,.doc,.docx,.odt,.txt,.rtf,.xls,.xlsx,.png,.jpg,.jpeg';
 
 export default function NovoOrcamento() {
   const params = useLocalSearchParams<{ requisicaoId?: string; quoteId?: string }>();
@@ -88,8 +99,12 @@ export default function NovoOrcamento() {
       } else {
         await createQuote({ request_id: requestId, ...payload });
       }
-      notify('Sucesso', editing ? 'Orçamento atualizado com sucesso.' : 'Orçamento criado com sucesso.', () =>
-        router.replace('/atendente/orcamentos'),
+      notify(
+        'Sucesso',
+        editing
+          ? `Orçamento atualizado com sucesso. ${RESEND_EMAIL_WARNING}`
+          : 'Orçamento criado com sucesso.',
+        () => router.replace('/atendente/orcamentos'),
       );
     } catch (cause) {
       notify('Erro', errorMessage(cause));
@@ -122,6 +137,12 @@ export default function NovoOrcamento() {
       <Text style={styles.title}>{editing ? 'Atualizar orçamento' : 'Novo orçamento'}</Text>
       <Text style={styles.description}>Solicitação #{requestId}</Text>
       {quote ? <Text style={styles.hint}>Orçamento #{quote.id}</Text> : null}
+      {editing ? (
+        <View style={styles.warning}>
+          <Ionicons name="mail-outline" size={18} color="#8A5A0B" />
+          <Text style={styles.warningText}>{RESEND_EMAIL_WARNING}</Text>
+        </View>
+      ) : null}
       {suggestion?.suggested_value ? (
         <Text style={styles.hint}>
           Sugestão: {formatMoney(suggestion.suggested_value)}
@@ -154,7 +175,118 @@ export default function NovoOrcamento() {
       <Pressable onPress={() => router.back()} style={styles.link}>
         <Text style={styles.linkText}>Cancelar</Text>
       </Pressable>
+
+      {editing ? <RequestDocuments requestId={requestId} /> : null}
     </ScrollView>
+  );
+}
+
+function RequestDocuments({ requestId }: { requestId: number }) {
+  const [files, setFiles] = useState<RequestFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const loadFiles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setFiles(await getRequestFiles(requestId));
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, [requestId]);
+
+  useEffect(() => {
+    void loadFiles();
+  }, [loadFiles]);
+
+  async function upload(file: File) {
+    setUploading(true);
+    try {
+      await uploadRequestFileAsEmployee(requestId, file);
+      await loadFiles();
+    } catch (cause) {
+      notify('Erro', errorMessage(cause));
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
+  return (
+    <View style={styles.documents}>
+      <Text style={styles.sectionTitle}>Documentos da solicitação</Text>
+      <Text style={styles.sectionHint}>
+        O documento é anexado na hora, sem precisar salvar o orçamento.
+      </Text>
+      {loading ? (
+        <ActivityIndicator color="#087F8C" style={styles.documentsLoading} />
+      ) : error ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>
+          Não foi possível carregar os documentos: {error}
+        </Text>
+      ) : files.length === 0 ? (
+        <Text style={styles.emptyText}>Nenhum documento anexado.</Text>
+      ) : (
+        files.map((file) => (
+          <Pressable
+            key={file.id}
+            accessibilityRole="link"
+            accessibilityLabel={`Baixar ${file.original_name}`}
+            onPress={() =>
+              void Linking.openURL(`${API_URL}/requests/${requestId}/files/${file.id}`)
+            }
+            style={styles.fileRow}
+          >
+            <Ionicons name="document-outline" size={16} color="#087F8C" />
+            <Text style={styles.fileName} numberOfLines={1}>
+              {file.original_name}
+            </Text>
+            <Ionicons name="download-outline" size={15} color="#627485" />
+          </Pressable>
+        ))
+      )}
+      {Platform.OS === 'web' ? (
+        <>
+          {createElement('input', {
+            ref: inputRef,
+            type: 'file',
+            accept: ACCEPTED_FILES,
+            style: { display: 'none' },
+            onChange: (event: { target: { files: FileList | null } }) => {
+              const file = event.target.files?.[0];
+              if (file) void upload(file);
+            },
+          })}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Anexar documento à solicitação"
+            aria-disabled={uploading}
+            aria-busy={uploading}
+            disabled={uploading}
+            onPress={() => inputRef.current?.click()}
+            style={[styles.attachButton, uploading && { opacity: 0.6 }]}
+          >
+            {uploading ? (
+              <ActivityIndicator color="#087F8C" />
+            ) : (
+              <Ionicons name="attach-outline" size={16} color="#087F8C" />
+            )}
+            <Text style={styles.attachText}>
+              {uploading ? 'Enviando...' : 'Anexar documento'}
+            </Text>
+          </Pressable>
+        </>
+      ) : (
+        <Text style={styles.emptyText}>
+          O envio de anexos está disponível na versão web.
+        </Text>
+      )}
+    </View>
   );
 }
 
@@ -186,4 +318,50 @@ const styles = StyleSheet.create({
   buttonText: { color: '#FFFFFF', fontWeight: '700' },
   link: { marginTop: 14 },
   linkText: { color: '#087F8C', fontWeight: '600' },
+  warning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#FFF5E3',
+  },
+  warningText: { flex: 1, color: '#8A5A0B', fontSize: 13, lineHeight: 19 },
+  documents: {
+    marginTop: 26,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+  },
+  sectionTitle: { color: '#172B3A', fontSize: 15, fontWeight: '700' },
+  sectionHint: { marginTop: 4, marginBottom: 10, color: '#627485', fontSize: 12 },
+  documentsLoading: { alignSelf: 'flex-start', marginVertical: 8 },
+  errorText: { color: '#B42318', fontSize: 13, lineHeight: 19 },
+  emptyText: { color: '#8293A0', fontSize: 13 },
+  fileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF1F3',
+  },
+  fileName: { flex: 1, minWidth: 0, color: '#087F8C', fontSize: 13 },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#087F8C',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  attachText: { color: '#087F8C', fontWeight: '700' },
 });
