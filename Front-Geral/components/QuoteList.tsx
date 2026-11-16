@@ -13,19 +13,16 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
-  approveQuote,
   formatDate,
   formatMoney,
   listQuotes,
   quoteStatusLabel,
-  rejectQuote,
-  sendClientInvoiceEmail,
   sendQuoteEmail,
 } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
 
-// Tela compartilhada: atendimento decide os orçamentos; projetos os
-// consulta e cria projetos a partir dos aprovados.
+// Tela compartilhada: atendimento acompanha os orçamentos; projetos cria
+// projetos a partir dos aprovados.
 export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const { employee } = useAuth();
   const isAtendimento = employee?.role === 'atendimento';
@@ -34,7 +31,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendingQuoteId, setSendingQuoteId] = useState<number | null>(null);
-  const [sendingInvoiceId, setSendingInvoiceId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,15 +53,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     void load();
   }, [load]));
 
-  async function decide(quote: Quote, action: 'approve' | 'reject') {
-    try {
-      await (action === 'approve' ? approveQuote(quote.id) : rejectQuote(quote.id));
-      await load();
-    } catch (cause) {
-      notify('Erro', errorMessage(cause));
-    }
-  }
-
   async function sendEmail(quote: Quote) {
     setSendingQuoteId(quote.id);
 
@@ -79,49 +66,12 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     }
   }
 
-  async function sendInvoiceEmail(quote: Quote) {
-  setSendingInvoiceId(quote.id);
-
-  try {
-    const result = await sendClientInvoiceEmail(quote.id);
-
-    notify(
-      'Sucesso',
-      `Fatura ${result.invoice.invoice_number} enviada para ${result.recipient}.`,
-    );
-  } catch (cause) {
-    notify('Erro', errorMessage(cause));
-  } finally {
-    setSendingInvoiceId(null);
-  }
-}
-
   function askSendEmail(quote: Quote) {
     confirmAction(
       'Enviar orçamento por e-mail',
       `O PDF será enviado para ${quote.client_email}. Deseja continuar?`,
       'Enviar',
       () => void sendEmail(quote),
-    );
-  }
-
-  function askSendInvoiceEmail(quote: Quote) {
-  confirmAction(
-    'Gerar e enviar fatura',
-    `Será gerada uma fatura para ${quote.client_name} e enviada para ${quote.client_email}. Deseja continuar?`,
-    'Gerar e enviar',
-    () => void sendInvoiceEmail(quote),
-  );
-}
-
-  function askDecision(quote: Quote, action: 'approve' | 'reject') {
-    confirmAction(
-      action === 'approve' ? 'Aprovar orçamento' : 'Recusar orçamento',
-      action === 'approve'
-        ? 'O orçamento ficará disponível para a criação de um projeto.'
-        : 'A solicitação também será marcada como recusada.',
-      action === 'approve' ? 'Aprovar' : 'Recusar',
-      () => void decide(quote, action),
     );
   }
 
@@ -170,12 +120,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
 
               {isAtendimento && item.status === 'in_review' ? (
                 <View style={styles.actions}>
-                  <Pressable style={styles.button} onPress={() => askDecision(item, 'approve')}>
-                    <Text style={styles.buttonText}>APROVAR</Text>
-                  </Pressable>
-                  <Pressable style={styles.dangerButton} onPress={() => askDecision(item, 'reject')}>
-                    <Text style={styles.buttonText}>RECUSAR</Text>
-                  </Pressable>
                   <Pressable
                     style={styles.emailButton}
                     onPress={() => askSendEmail(item)}
@@ -183,22 +127,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
                   >
                     <Text style={styles.buttonText}>
                       {sendingQuoteId === item.id ? 'ENVIANDO...' : 'ENVIAR POR E-MAIL'}
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
-
-              {isAtendimento && item.status === 'approved' ? (
-                <View style={styles.actions}>
-                  <Pressable
-                    style={styles.invoiceButton}
-                    onPress={() => askSendInvoiceEmail(item)}
-                    disabled={sendingInvoiceId === item.id}
-                  >
-                    <Text style={styles.buttonText}>
-                      {sendingInvoiceId === item.id
-                        ? 'ENVIANDO FATURA...'
-                        : 'GERAR E ENVIAR FATURA'}
                     </Text>
                   </Pressable>
                 </View>
@@ -249,18 +177,11 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   button: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#087F8C' },
-  dangerButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#B42318' },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
   emailButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     backgroundColor: '#344B64',
-  },
-  invoiceButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#087F8C',
   },
 });
