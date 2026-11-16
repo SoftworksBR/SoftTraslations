@@ -23,6 +23,8 @@ class EmployeePublicSchema(BaseModel):
     status: EmployeeStatus
     account_status: AccountStatus
     profile_completed: bool = False
+    source_language_ids: list[int] = Field(default_factory=list)
+    target_language_ids: list[int] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

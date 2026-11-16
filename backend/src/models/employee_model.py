@@ -116,6 +116,24 @@ class Employee:
             and self.freelancer_profile.profile_completed
         )
 
+    @property
+    def source_language_ids(self) -> list[int]:
+        if self.freelancer_profile is None:
+            return []
+        return [
+            language.id
+            for language in self.freelancer_profile.source_languages
+        ]
+
+    @property
+    def target_language_ids(self) -> list[int]:
+        if self.freelancer_profile is None:
+            return []
+        return [
+            language.id
+            for language in self.freelancer_profile.target_languages
+        ]
+
 
 @table_registry.mapped_as_dataclass
 class FreelancerProfile:
