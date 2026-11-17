@@ -9,6 +9,9 @@ export type StageStatus =
   | 'testing'
   | 'done';
 
+// Situação do tradutor adicional (segundo tradutor) da etapa.
+export type CollaborationStatus = 'invited' | 'accepted';
+
 export type StageFile = {
   id: number;
   original_name: string;
@@ -27,6 +30,9 @@ export type TranslationStage = {
   started_at: string | null;
   completed_at: string | null;
   rejection_comment: string | null;
+  second_freelancer_id: number | null;
+  second_freelancer_name: string | null;
+  second_status: CollaborationStatus | null;
   files: StageFile[];
 };
 
@@ -61,6 +67,33 @@ export function declineStage(id: number) {
   return apiRequest<TranslationStage>(`/stages/${id}/decline`, {
     method: 'POST',
   });
+}
+
+export function inviteCollaborator(stageId: number, freelancerId: number) {
+  return apiRequest<TranslationStage>(`/stages/${stageId}/collaborator`, {
+    method: 'POST',
+    body: JSON.stringify({ freelancer_id: freelancerId }),
+  });
+}
+
+export function removeCollaborator(stageId: number) {
+  return apiRequest<TranslationStage>(`/stages/${stageId}/collaborator`, {
+    method: 'DELETE',
+  });
+}
+
+export function acceptCollaboration(stageId: number) {
+  return apiRequest<TranslationStage>(
+    `/stages/${stageId}/collaborator/accept`,
+    { method: 'POST' },
+  );
+}
+
+export function declineCollaboration(stageId: number) {
+  return apiRequest<TranslationStage>(
+    `/stages/${stageId}/collaborator/decline`,
+    { method: 'POST' },
+  );
 }
 
 export function updateStage(
