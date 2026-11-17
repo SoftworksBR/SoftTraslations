@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 
+import { MultiLanguageField } from '@/components/MultiLanguageField';
 import { PublicNavbar } from '@/components/PublicNavbar';
 import { WebFilePicker } from '@/components/WebFilePicker';
 import {
@@ -617,99 +618,6 @@ function LanguageField({
     </View>
   );
 }
-
-function MultiLanguageField({
-  label,
-  placeholder,
-  options,
-  value,
-  onSelect,
-  required,
-  error,
-}: {
-  label: string;
-  placeholder: string;
-  options: Option[];
-  value: number[];
-  onSelect: (value: number) => void;
-  required: boolean;
-  error?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const selectedNames = optionNames(options, value);
-  const normalizedSearch = normalizeSearch(search);
-  const filteredOptions = options.filter((option) =>
-    normalizeSearch(option.label).includes(normalizedSearch),
-  );
-
-  return (
-    <View style={[styles.field, open && styles.fieldOpen]}>
-      <Text style={styles.fieldLabel}>
-        {label}{required ? <Text style={styles.required}> *</Text> : null}
-      </Text>
-      <View style={styles.selectAnchor}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${label}: ${value.length ? selectedNames : placeholder}`}
-          accessibilityState={{ expanded: open }}
-          onPress={() => {
-            setOpen((current) => !current);
-            setSearch('');
-          }}
-          style={[styles.select, error && styles.inputError]}
-        >
-          <Text style={[styles.selectText, !value.length && styles.selectPlaceholder]}>
-            {value.length ? selectedNames : placeholder}
-          </Text>
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
-        </Pressable>
-        {open ? (
-          <View style={styles.selectOptions}>
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Pesquisar idioma..."
-              placeholderTextColor="#9AA8B2"
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.searchInput}
-            />
-            <ScrollView
-              style={styles.optionsList}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-            >
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => {
-                  const selected = value.includes(option.value);
-                  return (
-                    <Pressable
-                      key={option.value}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                      onPress={() => onSelect(option.value)}
-                      style={styles.selectOption}
-                    >
-                      <Text style={styles.selectOptionText}>{option.label}</Text>
-                      {selected ? (
-                        <Ionicons name="checkmark" size={16} color="#087F8C" />
-                      ) : null}
-                    </Pressable>
-                  );
-                })
-              ) : (
-                <Text style={styles.noOptionsText}>Nenhum idioma encontrado.</Text>
-              )}
-            </ScrollView>
-          </View>
-        ) : null}
-      </View>
-      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
-    </View>
-  );
-}
-
 
 function ReviewValue({ label, value }: { label: string; value: string }) {
   return (
