@@ -40,6 +40,9 @@ class ProjectRepository:
                 .selectinload(ProjectStage.freelancer),
                 selectinload(Project.project_paths)
                 .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.second_freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
                 .selectinload(ProjectStage.files),
                 selectinload(Project.creator),
             )
@@ -63,6 +66,9 @@ class ProjectRepository:
                 selectinload(Project.project_paths)
                 .selectinload(ProjectPath.executions)
                 .selectinload(ProjectStage.freelancer),
+                selectinload(Project.project_paths)
+                .selectinload(ProjectPath.executions)
+                .selectinload(ProjectStage.second_freelancer),
                 selectinload(Project.project_paths)
                 .selectinload(ProjectPath.executions)
                 .selectinload(ProjectStage.files),
