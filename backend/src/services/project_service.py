@@ -312,6 +312,9 @@ class ProjectService:
             return 'completed'
         if stage_statuses & IN_PROGRESS_STAGE_STATUSES:
             return 'in_progress'
+        # Etapa concluída junto com pendentes: o trabalho já começou.
+        if StageStatus.DONE in stage_statuses:
+            return 'in_progress'
         return 'awaiting'
 
     @staticmethod
