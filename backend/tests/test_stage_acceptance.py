@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 
-from src.enums.enums import Roles, StageStatus
+from src.enums.enums import (
+    AccountStatus,
+    EmployeeStatus,
+    Roles,
+    StageStatus,
+)
 from src.models.stage_model import ProjectStage
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import StageUpdate
@@ -41,6 +46,20 @@ def make_service(monkeypatch, stage):
     monkeypatch.setattr(StageService, 'get_by_id', get_by_id)
     monkeypatch.setattr(StageRepository, 'update', update)
     return StageService(SimpleNamespace())
+
+
+def available_freelancer(employee_id):
+    return SimpleNamespace(
+        id=employee_id,
+        username=f'freelancer{employee_id}',
+        email=f'freelancer{employee_id}@example.com',
+        role=Roles.FREELANCER,
+        status=EmployeeStatus.AVAILABLE,
+        account_status=AccountStatus.ACTIVE,
+        profile_completed=True,
+        source_language_ids=[],
+        target_language_ids=[],
+    )
 
 
 def freelancer(employee_id=7):
@@ -124,12 +143,9 @@ def test_available_freelancers_excludes_ids_in_mongo_and_pending_outbox(
         async def close(self):
             pass
 
-    declined_employee = SimpleNamespace(
-        id=ASSIGNED_FREELANCER_ID,
-        profile_completed=True,
-    )
-    remaining_employee = SimpleNamespace(id=9, profile_completed=True)
-    pending_employee = SimpleNamespace(id=11, profile_completed=True)
+    declined_employee = available_freelancer(ASSIGNED_FREELANCER_ID)
+    remaining_employee = available_freelancer(9)
+    pending_employee = available_freelancer(11)
     session = SimpleNamespace(
         scalars=AsyncMock(
             side_effect=[
@@ -152,6 +168,11 @@ def test_available_freelancers_excludes_ids_in_mongo_and_pending_outbox(
         service,
         'get_by_id',
         AsyncMock(return_value=make_stage()),
+    )
+    monkeypatch.setattr(
+        StageRepository,
+        'get_request_for_stage',
+        AsyncMock(return_value=None),
     )
 
     available = asyncio.run(
