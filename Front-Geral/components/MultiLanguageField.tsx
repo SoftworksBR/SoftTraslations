@@ -103,6 +103,10 @@ export function MultiLanguageField({
   );
 }
 
+export function toggleLanguageId(ids: number[], id: number) {
+  return ids.includes(id) ? ids.filter((current) => current !== id) : [...ids, id];
+}
+
 function optionNames(options: LanguageOption[], values: number[]) {
   return values
     .map((value) => options.find((option) => option.value === value)?.label ?? '—')
