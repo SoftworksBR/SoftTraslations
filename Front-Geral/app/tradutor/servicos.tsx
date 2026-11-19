@@ -17,7 +17,9 @@ import { useAuth } from '@/context/AuthContext';
 import { API_URL } from '@/services/api';
 import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
+  acceptCollaboration,
   acceptStage,
+  declineCollaboration,
   deleteStageFile,
   declineStage,
   getStages,
@@ -39,6 +41,8 @@ function isRejectedDelivery(stage: TranslationStage) {
   return stage.status === 'in_progress' && Boolean(stage.rejection_comment);
 }
 
+const collaborationLabels = { invited: 'Convidado', accepted: 'Aceito' } as const;
+
 export default function Servicos() {
   const { employee } = useAuth();
   const [activeTab, setActiveTab] = useState<'services' | 'pending'>('services');
@@ -52,6 +56,14 @@ export default function Servicos() {
     stageId: number;
     fileId: number;
   } | null>(null);
+
+  // Papel do tradutor logado na etapa: principal, convidado ou colaborador.
+  const isInvited = (stage: TranslationStage) =>
+    stage.second_freelancer_id === employee?.id && stage.second_status === 'invited';
+  const isCollaborator = (stage: TranslationStage) =>
+    stage.second_freelancer_id === employee?.id && stage.second_status === 'accepted';
+  const isPending = (stage: TranslationStage) =>
+    isInvited(stage) || (!isCollaborator(stage) && stage.status === 'no_freelancer');
 
   const loadStages = useCallback(async () => {
     setLoading(true);
@@ -92,6 +104,34 @@ export default function Servicos() {
     }
   }
 
+  async function respondToCollaboration(
+    stage: TranslationStage,
+    action: 'accept' | 'decline',
+  ) {
+    setRespondingStageId(stage.id);
+    try {
+      if (action === 'accept') {
+        await acceptCollaboration(stage.id);
+      } else {
+        await declineCollaboration(stage.id);
+      }
+
+      const refreshed = await loadStages();
+      notify(
+        refreshed ? 'Sucesso' : 'Resposta registrada',
+        refreshed
+          ? action === 'accept'
+            ? 'Convite aceito. A etapa está em Meus serviços.'
+            : 'Convite recusado.'
+          : 'Sua resposta foi registrada, mas não foi possível atualizar a lista.',
+      );
+    } catch (cause) {
+      notify('Não foi possível responder', errorMessage(cause));
+    } finally {
+      setRespondingStageId(null);
+    }
+  }
+
   async function uploadDocument(stage: TranslationStage) {
     const files = selectedFiles[stage.id] ?? [];
     if (!files.length) {
@@ -106,14 +146,20 @@ export default function Servicos() {
         await uploadStageFile(stage.id, file);
         uploadedCount += 1;
       }
-      await updateStage(stage.id, { status: 'testing' });
+      // Só o tradutor principal encaminha a etapa para revisão.
+      const collaborator = isCollaborator(stage);
+      if (!collaborator) {
+        await updateStage(stage.id, { status: 'testing' });
+      }
       setSelectedFiles((current) => ({ ...current, [stage.id]: [] }));
       const refreshed = await loadStages();
       notify(
         refreshed ? 'Documentos enviados' : 'Envio concluído',
-        refreshed
-          ? 'A etapa foi encaminhada para revisão do gestor.'
-          : 'Os documentos foram enviados para revisão, mas não foi possível atualizar sua lista.',
+        collaborator
+          ? 'Os documentos foram anexados à etapa. O tradutor principal encaminha a etapa para revisão.'
+          : refreshed
+            ? 'A etapa foi encaminhada para revisão do gestor.'
+            : 'Os documentos foram enviados para revisão, mas não foi possível atualizar sua lista.',
       );
     } catch (cause) {
       const message = errorMessage(cause);
@@ -206,9 +252,7 @@ export default function Servicos() {
       ) : (
         <FlatList
           data={stages.filter((stage) =>
-            activeTab === 'pending'
-              ? stage.status === 'no_freelancer'
-              : stage.status !== 'no_freelancer',
+            activeTab === 'pending' ? isPending(stage) : !isPending(stage),
           )}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
@@ -232,7 +276,16 @@ export default function Servicos() {
           renderItem={({ item }) => (
             <View style={styles.stageCard}>
               <View style={styles.stageHeading}>
-                <Text style={styles.stageName}>{item.name}</Text>
+                <View style={styles.stageTitle}>
+                  <Text style={styles.stageName}>{item.name}</Text>
+                  {isCollaborator(item) ? (
+                    <View style={[styles.statusPill, styles.collaboratorPill]}>
+                      <Text style={[styles.stageStatus, styles.collaboratorText]}>
+                        Colaborador
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <View
                   style={[
                     styles.statusPill,
@@ -254,7 +307,9 @@ export default function Servicos() {
                     ]}
                   >
                     {activeTab === 'pending'
-                      ? 'Aguardando aceite'
+                      ? isInvited(item)
+                        ? 'Convite para colaborar'
+                        : 'Aguardando aceite'
                       : isRejectedDelivery(item)
                         ? 'Negada'
                         : item.files.length === 0
@@ -263,7 +318,51 @@ export default function Servicos() {
                   </Text>
                 </View>
               </View>
-              {activeTab === 'pending' ? (
+              {!isInvited(item) && !isCollaborator(item) && item.second_freelancer_id !== null ? (
+                <Text style={styles.documentHint}>
+                  Tradutor adicional: {item.second_freelancer_name ?? 'convidado'}
+                  {item.second_status ? ` (${collaborationLabels[item.second_status]})` : ''}
+                </Text>
+              ) : null}
+              {activeTab === 'pending' && isInvited(item) ? (
+                <>
+                  <Text style={styles.documentHint}>
+                    Convite para colaborar: o gestor convidou você como tradutor adicional desta etapa.
+                  </Text>
+                  <View style={styles.responseActions}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Aceitar convite para colaborar em ${item.name}`}
+                      aria-busy={respondingStageId === item.id}
+                      disabled={respondingStageId === item.id}
+                      onPress={() => void respondToCollaboration(item, 'accept')}
+                      style={[styles.acceptButton, respondingStageId === item.id && styles.disabled]}
+                    >
+                      {respondingStageId === item.id ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Ionicons name="checkmark" size={17} color="#FFFFFF" />
+                      )}
+                      <Text style={styles.buttonText}>ACEITAR</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Recusar convite para colaborar em ${item.name}`}
+                      disabled={respondingStageId === item.id}
+                      onPress={() => confirmAction(
+                        'Recusar convite',
+                        'O gestor poderá convidar outro tradutor para esta etapa.',
+                        'Recusar',
+                        () => void respondToCollaboration(item, 'decline'),
+                      )}
+                      style={[styles.declineButton, respondingStageId === item.id && styles.disabled]}
+                    >
+                      <Ionicons name="close" size={17} color="#A46B12" />
+                      <Text style={styles.declineButtonText}>RECUSAR</Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : activeTab === 'pending' ? (
                 <>
                   <Text style={styles.documentHint}>
                     O gestor atribuiu esta etapa a você. Aceite para iniciar ou recuse para devolvê-la.
@@ -320,7 +419,9 @@ export default function Servicos() {
                   <Text style={styles.documentHint}>
                     {item.files.length
                       ? 'Documento(s) anexado(s):'
-                      : 'Anexe o documento desta etapa para atualizar o status.'}
+                      : isCollaborator(item)
+                        ? 'Anexe seus documentos; o tradutor principal encaminha a etapa para revisão.'
+                        : 'Anexe o documento desta etapa para atualizar o status.'}
                   </Text>
                   {item.files.map((file) => (
                     <View key={file.id} style={styles.fileRow}>
@@ -418,6 +519,9 @@ const styles = StyleSheet.create({
   error: { color: '#B42318', textAlign: 'center', lineHeight: 21 },
   button: { marginTop: 16, padding: 12, borderRadius: 8, backgroundColor: '#087F8C' },
   buttonText: { color: '#FFFFFF', fontWeight: '700' },
+  stageTitle: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  collaboratorPill: { backgroundColor: '#E8F6F7' },
+  collaboratorText: { color: '#087F8C' },
   list: { paddingTop: 20, gap: 12, flexGrow: 1 },
   stageCard: {
     padding: 18,
