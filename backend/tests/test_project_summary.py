@@ -69,11 +69,24 @@ def test_project_with_all_stages_done_is_completed(monkeypatch):
     )
 
 
-def test_project_with_done_and_pending_stages_is_not_completed(monkeypatch):
+def test_project_with_done_and_pending_stages_is_in_progress(monkeypatch):
     summary = summarize(monkeypatch, [(['done', 'ready'], 1)])
 
-    assert summary.completed == 0
-    assert summary.awaiting == 1
+    assert (summary.awaiting, summary.in_progress, summary.completed) == (
+        0,
+        1,
+        0,
+    )
+
+
+def test_project_with_only_unstarted_stages_is_awaiting(monkeypatch):
+    summary = summarize(monkeypatch, [(['no_freelancer', 'ready'], 1)])
+
+    assert (summary.awaiting, summary.in_progress, summary.completed) == (
+        1,
+        0,
+        0,
+    )
 
 
 @pytest.mark.parametrize('role', [Roles.ADMIN, Roles.PROJETOS])
