@@ -13,29 +13,46 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
+import { getProjectsSummary } from '@/services/projects';
+import type { ProjectsSummary } from '@/services/projects';
+
+function errorMessage(cause: unknown, fallback: string) {
+  return cause instanceof Error ? cause.message : fallback;
+}
 
 export default function AdminDashboard() {
   const { employee } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<ProjectsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
 
-  const loadEmployees = useCallback(async () => {
+  const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
-    try {
-      const result = await getEmployees();
-      setEmployees(result.employees);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Falha ao carregar funcionários.');
-    } finally {
-      setLoading(false);
+    setProjectsError(null);
+    const [employeesResult, projectsResult] = await Promise.allSettled([
+      getEmployees(),
+      getProjectsSummary(),
+    ]);
+    if (employeesResult.status === 'fulfilled') {
+      setEmployees(employeesResult.value.employees);
+    } else {
+      setError(errorMessage(employeesResult.reason, 'Falha ao carregar funcionários.'));
     }
+    if (projectsResult.status === 'fulfilled') {
+      setProjects(projectsResult.value);
+    } else {
+      setProjects(null);
+      setProjectsError(errorMessage(projectsResult.reason, 'Falha ao carregar projetos.'));
+    }
+    setLoading(false);
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void loadEmployees();
-  }, [loadEmployees]));
+    void loadDashboard();
+  }, [loadDashboard]));
 
   const counts = {
     admin: employees.filter((item) => item.role === 'admin').length,
@@ -55,7 +72,7 @@ export default function AdminDashboard() {
         <Text style={styles.eyebrow}>VISÃO GERAL</Text>
         <Text style={styles.title}>Olá, {greeting}. Aqui está sua visão administrativa.</Text>
         <Text style={styles.description}>
-          Resumo dos funcionários cadastrados na plataforma.
+          Resumo dos funcionários e projetos cadastrados na plataforma.
         </Text>
       </View>
 
@@ -142,7 +159,83 @@ export default function AdminDashboard() {
           </View>
         </>
       )}
+
+      {loading ? null : <ProjectsSection summary={projects} error={projectsError} />}
     </ScrollView>
+  );
+}
+
+function ProjectsSection({
+  summary,
+  error,
+}: {
+  summary: ProjectsSummary | null;
+  error: string | null;
+}) {
+  return (
+    <View style={styles.projectsSection}>
+      <Text style={styles.sectionTitle}>Projetos</Text>
+      <Text style={styles.sectionDescription}>
+        Situação calculada a partir das etapas de cada projeto.
+      </Text>
+      {error || !summary ? (
+        <View style={styles.errorCard}>
+          <Ionicons name="alert-circle-outline" size={22} color="#B33A3A" />
+          <Text style={styles.errorText}>
+            Não foi possível carregar os indicadores de projetos: {error ?? 'resposta vazia.'}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.stats}>
+            <StatCard
+              icon="folder-outline"
+              label="Total"
+              value={String(summary.total)}
+              note="Projetos cadastrados na plataforma"
+              tint="teal"
+            />
+            <StatCard
+              icon="hourglass-outline"
+              label="Aguardando"
+              value={String(summary.awaiting)}
+              note="Sem etapas iniciadas"
+              tint="purple"
+            />
+            <StatCard
+              icon="time-outline"
+              label="Em andamento"
+              value={String(summary.in_progress)}
+              note="Com etapas iniciadas ou concluídas"
+              tint="amber"
+            />
+            <StatCard
+              icon="checkmark-circle-outline"
+              label="Concluídos"
+              value={String(summary.completed)}
+              note="Todas as etapas concluídas"
+              tint="green"
+            />
+          </View>
+          <View style={styles.dashboardGrid}>
+            <View style={styles.dashboardCard}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.cardTitle}>Andamento dos projetos</Text>
+                  <Text style={styles.cardDescription}>Proporção sobre o total de projetos.</Text>
+                </View>
+              </View>
+              <StatusBar label="Aguardando" count={summary.awaiting} total={summary.total} color="#7357A8" />
+              <StatusBar label="Em andamento" count={summary.in_progress} total={summary.total} color="#C58B26" />
+              <StatusBar label="Concluídos" count={summary.completed} total={summary.total} color="#20845A" />
+              {summary.total === 0 ? (
+                <Text style={styles.noEmployees}>Nenhum projeto cadastrado.</Text>
+              ) : null}
+            </View>
+          </View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -271,4 +364,7 @@ const styles = StyleSheet.create({
   linkTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
   linkDetail: { marginTop: 3, color: '#8293A0', fontSize: 9 },
   roleTotal: { marginTop: 10, color: '#8293A0', fontSize: 10, lineHeight: 15 },
+  projectsSection: { marginTop: 28 },
+  sectionTitle: { color: '#0B2239', fontSize: 18, fontWeight: '800' },
+  sectionDescription: { marginTop: 4, marginBottom: 14, color: '#627485', fontSize: 12 },
 });
