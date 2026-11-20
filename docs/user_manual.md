@@ -238,6 +238,22 @@ originou o projeto:
 Em projetos criados sem orçamento, a lista aparece sem selos e sem a opção
 **Mostrar todos**. Tradutores que recusaram a etapa não aparecem.
 
+### Convidar um tradutor adicional
+
+Cada etapa pode ter um tradutor adicional, que colabora com o responsável. Na
+etapa selecionada, o bloco **Tradutor adicional** mostra quem foi convidado e
+a situação do convite (**Convidado** ou **Aceito**).
+
+1. Selecione **Convidar tradutor adicional**. A opção só fica disponível
+   quando a etapa já tem um responsável e não está concluída.
+2. Escolha o tradutor na lista de candidatos. A lista é a mesma da atribuição,
+   com os selos de idioma e a opção **Mostrar todos**; o responsável atual não
+   aparece nela. Use **Cancelar** para desistir.
+3. Para retirar o tradutor adicional, selecione **Remover** e confirme.
+
+O tradutor adicional pode enviar e remover os próprios documentos, mas não
+encaminha a etapa para revisão: isso continua com o responsável.
+
 ### Gerenciar tradutores
 
 Em **Tradutores**, pesquise por nome ou e-mail e filtre por situação. Use
@@ -279,6 +295,25 @@ Abra **Meus serviços**. A tela possui duas abas:
 
 Se uma aba estiver vazia, não há etapas correspondentes atribuídas à sua conta
 no momento. Após aceitar, a etapa passa para **Em andamento**.
+
+### Colaborar em uma etapa
+
+Quando o gestor convida você como tradutor adicional, a etapa aparece em
+**Aguardando aceite** como **Convite para colaborar**. Selecione **Aceitar**
+para participar ou **Recusar** para devolver o convite; quem recusa não é
+convidado de novo para a mesma etapa.
+
+Depois de aceitar, a etapa aparece em **Meus serviços** com o selo
+**Colaborador**. Como colaborador, você pode:
+
+- baixar os documentos da etapa;
+- enviar seus documentos e remover os que você enviou.
+
+Você não encaminha a etapa para revisão: o envio de documentos do colaborador
+não muda a situação da etapa, e o tradutor responsável segue cuidando do
+andamento. Se o responsável recusar a etapa, não é possível enviar documentos
+até o gestor atribuir outro responsável. O responsável vê, na própria etapa, o
+nome do tradutor adicional e a situação do convite.
 
 ## Situações e regras do fluxo
 

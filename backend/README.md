@@ -466,6 +466,54 @@ há filtro nem reordenação e `language_match` é `null`. A exclusão de quem
 recusou a etapa continua valendo em qualquer modo e depende do MongoDB: sem
 ele, a rota responde `503`.
 
+## Tradutor adicional da etapa
+
+Cada etapa pode ter, além do tradutor principal (`freelancer_id`), **um**
+tradutor adicional (`second_freelancer_id`), com a situação `second_status`
+(`invited` ou `accepted`). As colunas foram criadas pela migração
+`d8e2f4a6b1c3`; sem tradutor adicional, as duas ficam nulas. As respostas de
+etapa e os detalhes do projeto trazem `second_freelancer_id`,
+`second_freelancer_name` e `second_status`.
+
+### Endpoints
+
+| Método | Rota | Perfis | Descrição |
+|---|---|---|---|
+| POST | `/stages/{stage_id}/collaborator` | `projetos` | Convida o tradutor do corpo `{"freelancer_id": …}`. |
+| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. |
+| POST | `/stages/{stage_id}/collaborator/accept` | o tradutor convidado | Aceita o convite. |
+| POST | `/stages/{stage_id}/collaborator/decline` | o tradutor convidado | Recusa o convite. |
+
+### Regras de negócio
+
+- O convite exige uma etapa com tradutor principal e não concluída; o
+  convidado não pode ser o principal, não pode ter recusado a etapa e precisa
+  ser um freelancer ativo com perfil completo.
+- Recusar o convite registra o mesmo evento `project_stage.declined` da recusa
+  do principal, com `details.role = "collaborator"`; por isso o tradutor deixa
+  de aparecer em `GET /stages/{stage_id}/available-freelancers`, que também não
+  lista o principal nem o tradutor adicional atuais.
+- O tradutor adicional **aceito** vê a etapa em `GET /stages/`, baixa os
+  arquivos, envia entregas e remove as que ele mesmo enviou. Envio e remoção
+  seguem as regras do principal: não há envio com a etapa aguardando aceite e
+  não há remoção em etapa concluída. Quem foi apenas convidado vê a etapa na
+  lista, mas não acessa os arquivos.
+- Só o tradutor principal e o gestor alteram a etapa (`PUT /stages/{id}`); o
+  tradutor adicional recebe `403` ao tentar avançar a situação.
+- Um tradutor que já é o adicional não pode ser atribuído como principal da
+  mesma etapa.
+- Eventos registrados: `project_stage.collaborator_invited`,
+  `project_stage.collaborator_removed` e `project_stage.declined`.
+
+### Tratamento de erros
+
+| Status | Quando |
+|---|---|
+| `403` | Convidar ou remover sem perfil `projetos`; aceitar ou recusar sem ser o tradutor convidado. |
+| `404` | Etapa inexistente. |
+| `409` | Etapa sem tradutor principal ou concluída; etapa que já tem tradutor adicional (ou não tem, ao remover); convidado igual ao principal ou que já recusou; resposta a convite que não está pendente; atribuir como principal quem já é o adicional. |
+| `422` | Convidado que não é freelancer ativo com perfil completo. |
+
 ## Resumo de projetos (dashboard)
 
 O painel do administrador usa um resumo com a quantidade de projetos por
