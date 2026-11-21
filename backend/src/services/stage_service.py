@@ -312,7 +312,9 @@ class StageService:
             if stage.freelancer_id != current_employee.id:
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
-                    detail='Freelancers can only upload files to their own stages',
+                    detail=(
+                        'Freelancers can only upload files to their own stages'
+                    ),
                 )
             if stage.status == StageStatus.NO_FREELANCER:
                 raise HTTPException(
@@ -326,7 +328,10 @@ class StageService:
         if len(current_files) >= settings.MAX_FILES_PER_REQUEST:
             raise HTTPException(
                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail=f'Limite de {settings.MAX_FILES_PER_REQUEST} arquivos por etapa atingido',
+                detail=(
+                    f'Limite de {settings.MAX_FILES_PER_REQUEST} arquivos '
+                    'por etapa atingido'
+                ),
             )
 
         original_name = self._clean_filename(upload.filename)
@@ -350,7 +355,9 @@ class StageService:
                 detail='Arquivo vazio',
             )
 
-        directory = StoragePath(settings.UPLOAD_DIR) / 'project-stages' / str(stage.id)
+        directory = (
+            StoragePath(settings.UPLOAD_DIR) / 'project-stages' / str(stage.id)
+        )
         directory.mkdir(parents=True, exist_ok=True)
         stored_path = directory / f'{secrets.token_hex(16)}{extension}'
         stored_path.write_bytes(content)
@@ -399,7 +406,10 @@ class StageService:
             if stage.freelancer_id != current_employee.id:
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
-                    detail='Freelancers can only access files from their own stages',
+                    detail=(
+                        'Freelancers can only access files '
+                        'from their own stages'
+                    ),
                 )
         elif current_employee.role not in {Roles.PROJETOS, Roles.ADMIN}:
             self._raise_stage_access_denied()

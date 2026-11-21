@@ -229,12 +229,10 @@ export default function Entregas() {
           </Pressable>
         </View>
       ) : (
-        <FlatList
+        <FlatList<PendingDelivery | DeliveryReview>
           data={tab === 'pending' ? deliveries : history}
           keyExtractor={(item) =>
-            tab === 'pending'
-              ? `pending-${(item as PendingDelivery).stageId}`
-              : (item as DeliveryReview).id
+            'decision' in item ? item.id : `pending-${item.stageId}`
           }
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -251,8 +249,8 @@ export default function Entregas() {
             </View>
           }
           renderItem={({ item }) => {
-            if (tab === 'history') {
-              const review = item as DeliveryReview;
+            if ('decision' in item) {
+              const review = item;
               const approved = review.decision === 'approved';
               return (
                 <View style={styles.card}>
@@ -294,7 +292,7 @@ export default function Entregas() {
               );
             }
 
-            const delivery = item as PendingDelivery;
+            const delivery = item;
             const busy = actingStageId === delivery.stageId;
             return (
               <View style={styles.card}>
