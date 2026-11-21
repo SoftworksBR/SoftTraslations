@@ -33,7 +33,7 @@ type RequestForm = {
   phone: string;
   company: string;
   from: number | null;
-  to: number | null;
+  to: number[];
   service: number | null;
   description: string;
 };
@@ -47,7 +47,7 @@ const initialForm: RequestForm = {
   phone: '',
   company: '',
   from: null,
-  to: null,
+  to: [],
   service: null,
   description: '',
 };
@@ -109,14 +109,16 @@ export default function FazerSolicitacao() {
     }
     if (!form.phone.trim()) nextErrors.phone = 'Informe seu telefone.';
     if (!form.from) nextErrors.from = 'Selecione o idioma de origem.';
-    if (!form.to) nextErrors.to = 'Selecione o idioma de destino.';
+    if (form.to.length === 0) {
+      nextErrors.to = 'Selecione pelo menos um idioma de destino.';
+    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
 
   async function submitRequest() {
-    if (!form.from || !form.to) return;
+    if (!form.from || form.to.length === 0) return;
 
     setSending(true);
     try {
@@ -126,7 +128,7 @@ export default function FazerSolicitacao() {
         phone: form.phone.trim(),
         company: form.company.trim() || null,
         source_language_id: form.from,
-        target_language_id: form.to,
+        target_language_ids: form.to,
         service_id: form.service,
         observations: form.description.trim() || null,
       });
@@ -239,10 +241,12 @@ export default function FazerSolicitacao() {
                         <InputField
                           label="Telefone"
                           value={form.phone}
-                          onChangeText={(value) => update('phone', value)}
-                          placeholder="(00) 00000-0000"
+                          onChangeText={(value) => update('phone', value.replace(/\D/g, '').slice(0, 11))}
+                          placeholder="DDD + número"
                           required
                           keyboardType="phone-pad"
+                          maxLength={11}
+                          hint="Digite apenas números, incluindo o DDD (até 11 dígitos)."
                           error={errors.phone}
                         />
                         <InputField
@@ -258,31 +262,47 @@ export default function FazerSolicitacao() {
                       <SectionHeading
                         number="02"
                         title="Necessidade de tradução"
-                        description="Informe o par de idiomas e o contexto do material."
+                        description="Informe o idioma de origem, um ou mais destinos e o contexto do material."
                       />
                       <View style={[styles.formGrid, wide && styles.formGridWide]}>
-                        <LanguageField
+                        <SearchableSelectField
                           label="Idioma de origem"
-                          options={languages}
+                          options={languages.filter(
+                            (language) => !form.to.includes(language.value),
+                          )}
                           value={form.from}
                           onSelect={(value) => update('from', value)}
+                          searchPlaceholder="Pesquisar idioma..."
+                          emptyMessage="Nenhum idioma encontrado."
                           required
                           error={errors.from}
                         />
-                        <LanguageField
+                        <MultiLanguageField
                           label="Idioma de destino"
-                          options={languages}
+                          placeholder="Selecione um ou mais idiomas"
+                          options={languages.filter(
+                            (language) => language.value !== form.from,
+                          )}
                           value={form.to}
-                          onSelect={(value) => update('to', value)}
+                          onSelect={(value) => {
+                            const next = form.to.includes(value)
+                              ? form.to.filter((id) => id !== value)
+                              : [...form.to, value];
+                            update('to', next);
+                          }}
+                          searchPlaceholder="Pesquisar idioma..."
+                          emptyMessage="Nenhum idioma encontrado."
                           required
                           error={errors.to}
                         />
-                        <LanguageField
+                        <SearchableSelectField
                           label="Tipo de serviço"
                           placeholder="Selecione o serviço (opcional)"
                           options={services}
                           value={form.service}
                           onSelect={(value) => update('service', value)}
+                          searchPlaceholder="Pesquisar serviço..."
+                          emptyMessage="Nenhum serviço encontrado."
                           required={false}
                         />
                         <View style={styles.field}>
@@ -344,7 +364,10 @@ export default function FazerSolicitacao() {
                     </View>
                     <View style={[styles.reviewGrid, wide && styles.formGridWide]}>
                       <ReviewValue label="Idioma de origem" value={optionName(languages, form.from)} />
-                      <ReviewValue label="Idioma de destino" value={optionName(languages, form.to)} />
+                      <ReviewValue
+                        label="Idiomas de destino"
+                        value={optionNames(languages, form.to)}
+                      />
                       <ReviewValue label="Serviço" value={optionName(services, form.service)} />
                       <ReviewValue
                         label="Anexos"
@@ -457,6 +480,7 @@ function InputField({
   multiline = false,
   hint,
   keyboardType,
+  maxLength,
   autoCapitalize,
   autoComplete,
   error,
@@ -469,6 +493,7 @@ function InputField({
   multiline?: boolean;
   hint?: string;
   keyboardType?: 'default' | 'email-address' | 'phone-pad';
+  maxLength?: number;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   autoComplete?: 'name' | 'email';
   error?: string;
@@ -484,6 +509,7 @@ function InputField({
         placeholder={placeholder}
         placeholderTextColor="#9AA8B2"
         keyboardType={keyboardType}
+        maxLength={maxLength}
         autoCapitalize={autoCapitalize}
         autoComplete={autoComplete}
         multiline={multiline}
@@ -498,12 +524,14 @@ function InputField({
 }
 
 
-function LanguageField({
+function SearchableSelectField({
   label,
-  placeholder = 'Selecione o idioma',
+  placeholder = 'Selecione uma opção',
   options,
   value,
   onSelect,
+  searchPlaceholder,
+  emptyMessage,
   required,
   error,
 }: {
@@ -512,103 +540,172 @@ function LanguageField({
   options: Option[];
   value: number | null;
   onSelect: (value: number) => void;
+  searchPlaceholder: string;
+  emptyMessage: string;
   required: boolean;
   error?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-
-  const filteredOptions = options.filter((option) =>
-    option.label
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .startsWith(
-        search
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .trim()
-          .toLowerCase(),
-      ),
-  );
+  const filteredOptions = filterOptions(options, search);
 
   return (
-    <View style={styles.field}>
+    <View style={[styles.field, open && styles.fieldOpen]}>
       <Text style={styles.fieldLabel}>
         {label}{required ? <Text style={styles.required}> *</Text> : null}
       </Text>
+      <View style={styles.selectAnchor}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${value ? optionName(options, value) : placeholder}`}
+          accessibilityState={{ expanded: open }}
+          onPress={() => {
+            setOpen((current) => !current);
+            setSearch('');
+          }}
+          style={[styles.select, error && styles.inputError]}
+        >
+          <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
+            {value ? optionName(options, value) : placeholder}
+          </Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
+        </Pressable>
+        {open ? (
+          <View style={styles.selectOptions}>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={searchPlaceholder}
+              accessibilityLabel={searchPlaceholder}
+              placeholderTextColor="#9AA8B2"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
+            <ScrollView
+              style={styles.optionsList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => {
+                      onSelect(option.value);
+                      setOpen(false);
+                      setSearch('');
+                    }}
+                    style={styles.selectOption}
+                  >
+                    <Text style={styles.selectOptionText}>{option.label}</Text>
+                    {value === option.value ? (
+                      <Ionicons name="checkmark" size={16} color="#087F8C" />
+                    ) : null}
+                  </Pressable>
+                ))
+              ) : (
+                <Text style={styles.noOptionsText}>{emptyMessage}</Text>
+              )}
+            </ScrollView>
+          </View>
+        ) : null}
+      </View>
+      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
+    </View>
+  );
+}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value ? optionName(options, value) : placeholder}`}
-        accessibilityState={{ expanded: open }}
-        onPress={() => {
-          setOpen((current) => !current);
-          setSearch('');
-        }}
-        style={[styles.select, error && styles.inputError]}
-      >
-        <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
-          {value ? optionName(options, value) : placeholder}
-        </Text>
-        <Ionicons
-          name={open ? 'chevron-up' : 'chevron-down'}
-          size={16}
-          color="#627485"
-        />
-      </Pressable>
+function MultiLanguageField({
+  label,
+  placeholder,
+  options,
+  value,
+  onSelect,
+  searchPlaceholder,
+  emptyMessage,
+  required,
+  error,
+}: {
+  label: string;
+  placeholder: string;
+  options: Option[];
+  value: number[];
+  onSelect: (value: number) => void;
+  searchPlaceholder: string;
+  emptyMessage: string;
+  required: boolean;
+  error?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const filteredOptions = filterOptions(options, search);
+  const selectedNames = optionNames(options, value);
 
-      {error ? (
-        <Text accessibilityRole="alert" style={styles.fieldError}>
-          {error}
-        </Text>
-      ) : null}
-
-      {open ? (
-        <View style={styles.selectOptions}>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Pesquisar idioma..."
-            placeholderTextColor="#9AA8B2"
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.searchInput}
-          />
-
-          <ScrollView
-            style={styles.optionsList}
-            nestedScrollEnabled
-            keyboardShouldPersistTaps="handled"
-          >
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((language) => (
-                <Pressable
-                  key={language.value}
-                  onPress={() => {
-                    onSelect(language.value);
-                    setOpen(false);
-                    setSearch('');
-                  }}
-                  style={styles.selectOption}
-                >
-                  <Text style={styles.selectOptionText}>
-                    {language.label}
-                  </Text>
-
-                  {value === language.value ? (
-                    <Ionicons name="checkmark" size={16} color="#087F8C" />
-                  ) : null}
-                </Pressable>
-              ))
-            ) : (
-              <Text style={styles.noOptionsText}>
-                Nenhum idioma encontrado.
-              </Text>
-            )}
-          </ScrollView>
-        </View>
-      ) : null}
+  return (
+    <View style={[styles.field, open && styles.fieldOpen]}>
+      <Text style={styles.fieldLabel}>
+        {label}{required ? <Text style={styles.required}> *</Text> : null}
+      </Text>
+      <View style={styles.selectAnchor}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label}: ${value.length ? selectedNames : placeholder}`}
+          accessibilityState={{ expanded: open }}
+          onPress={() => {
+            setOpen((current) => !current);
+            setSearch('');
+          }}
+          style={[styles.select, error && styles.inputError]}
+        >
+          <Text style={[styles.selectText, !value.length && styles.selectPlaceholder]}>
+            {value.length ? selectedNames : placeholder}
+          </Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
+        </Pressable>
+        {open ? (
+          <View style={styles.selectOptions}>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={searchPlaceholder}
+              accessibilityLabel={searchPlaceholder}
+              placeholderTextColor="#9AA8B2"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
+            <ScrollView
+              style={styles.optionsList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((language) => {
+                  const selected = value.includes(language.value);
+                  return (
+                    <Pressable
+                      key={language.value}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => onSelect(language.value)}
+                      style={styles.selectOption}
+                    >
+                      <Text style={styles.selectOptionText}>{language.label}</Text>
+                      {selected ? (
+                        <Ionicons name="checkmark" size={16} color="#087F8C" />
+                      ) : null}
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <Text style={styles.noOptionsText}>{emptyMessage}</Text>
+              )}
+            </ScrollView>
+          </View>
+        ) : null}
+      </View>
+      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
@@ -625,6 +722,27 @@ function ReviewValue({ label, value }: { label: string; value: string }) {
 
 function optionName(options: Option[], value: number | null) {
   return options.find((option) => option.value === value)?.label ?? '—';
+}
+
+function optionNames(options: Option[], values: number[]) {
+  return values
+    .map((value) => optionName(options, value))
+    .join(', ');
+}
+
+function filterOptions(options: Option[], search: string) {
+  const normalizedSearch = normalizeSearch(search);
+  return options.filter((option) =>
+    normalizeSearch(option.label).includes(normalizedSearch),
+  );
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 const styles = StyleSheet.create({
@@ -659,6 +777,7 @@ const styles = StyleSheet.create({
   formGridWide: { flexDirection: 'row', flexWrap: 'wrap' },
   spanTwo: { width: '100%' },
   field: { flex: 1, minWidth: 200, marginBottom: 2 },
+  fieldOpen: { zIndex: 10, elevation: 10 },
   fieldLabel: { marginBottom: 7, color: '#172B3A', fontSize: 12, fontWeight: '700' },
   required: { color: '#B33A3A' },
   input: { minHeight: 44, paddingHorizontal: 12, borderWidth: 1, borderColor: '#CAD6DD', borderRadius: 9, backgroundColor: '#FFFFFF', color: '#172B3A', fontSize: 13 },
@@ -669,24 +788,25 @@ const styles = StyleSheet.create({
   select: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderWidth: 1, borderColor: '#CAD6DD', borderRadius: 9, backgroundColor: '#FFFFFF' },
   selectText: { color: '#172B3A', fontSize: 13 },
   selectPlaceholder: { color: '#9AA8B2' },
-  selectOptions: { marginTop: 5, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 9, backgroundColor: '#FFFFFF' },
+  selectAnchor: { position: 'relative', zIndex: 1 },
+  selectOptions: { position: 'absolute', top: 49, left: 0, right: 0, zIndex: 20, maxHeight: 240, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 9, backgroundColor: '#FFFFFF', elevation: 12, shadowColor: '#0B2239', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.16, shadowRadius: 12 },
   searchInput: {
-  minHeight: 42,
-  paddingHorizontal: 11,
-  borderBottomWidth: 1,
-  borderBottomColor: '#DFE7EC',
-  color: '#172B3A',
-  fontSize: 12,
-},
-optionsList: {
-  maxHeight: 220,
-},
-noOptionsText: {
-  padding: 12,
-  color: '#627485',
-  fontSize: 12,
-  textAlign: 'center',
-},
+    minHeight: 42,
+    paddingHorizontal: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DFE7EC',
+    color: '#172B3A',
+    fontSize: 12,
+  },
+  optionsList: {
+    maxHeight: 190,
+  },
+  noOptionsText: {
+    padding: 12,
+    color: '#627485',
+    fontSize: 12,
+    textAlign: 'center',
+  },
   selectOption: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#EDF1F3' },
   selectOptionText: { color: '#172B3A', fontSize: 12 },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 2 },

@@ -39,6 +39,19 @@ class StageController:
         )
 
     @staticmethod
+    async def delete_file(
+        stage_id: int,
+        file_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).delete_file(
+            stage_id,
+            file_id,
+            current_employee,
+        )
+
+    @staticmethod
     async def create(
         data: ProjectStageCreate,
         session: AsyncSession,

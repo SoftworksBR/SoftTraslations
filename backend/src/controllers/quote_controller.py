@@ -6,6 +6,7 @@ from src.schemas.quote_schema import (
     QuoteSearchFilters,
     QuoteUpdate,
 )
+from src.services.client_invoice_service import ClientInvoiceService
 from src.services.quote_service import QuoteService
 
 
@@ -64,7 +65,11 @@ class QuoteController:
         session: AsyncSession,
         current_employee: Employee,
     ):
-        return await QuoteService(session).approve(quote_id, current_employee)
+        quote = await QuoteService(session).approve(quote_id, current_employee)
+        await ClientInvoiceService(session).create_and_email(
+            quote_id, current_employee
+        )
+        return quote
 
     @staticmethod
     async def reject(
@@ -73,6 +78,17 @@ class QuoteController:
         current_employee: Employee,
     ):
         return await QuoteService(session).reject(quote_id, current_employee)
+
+    @staticmethod
+    async def send_email(
+        quote_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await QuoteService(session).send_email(
+            quote_id,
+            current_employee,
+        )
 
     @staticmethod
     async def delete(

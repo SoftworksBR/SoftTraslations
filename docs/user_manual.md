@@ -1,4 +1,4 @@
-# Manual do Usuário — SoftTranslations
+a\# Manual do Usuário — SoftTranslations
 
 Este manual descreve como usar as funções atualmente disponíveis no
 SoftTranslations. As telas são responsivas e podem ser abertas em um navegador;
@@ -26,8 +26,8 @@ trabalho interno da equipe. O fluxo principal é:
 
 1. O cliente envia uma solicitação com seus dados, idiomas e serviço desejado.
 2. O atendimento analisa a solicitação e prepara um orçamento.
-3. O atendimento registra a aprovação ou a recusa do orçamento, após a decisão
-   do cliente.
+3. O orçamento é enviado ao cliente por e-mail; o cliente usa os botões para
+   aprovar ou recusar.
 4. Com um orçamento aprovado, o gestor cria um projeto e escolhe uma ou mais
    trilhas de trabalho.
 5. As etapas criadas para o projeto podem ser acompanhadas e atribuídas a
@@ -39,7 +39,7 @@ trabalho interno da equipe. O fluxo principal é:
 | --- | --- |
 | Cliente sem conta | Enviar uma solicitação pública pelo formulário inicial. |
 | Administrador | Gerenciar contas da equipe e consultar o painel administrativo. |
-| Atendimento | Consultar solicitações, criar orçamentos e registrar decisões. |
+| Atendimento | Consultar solicitações, criar orçamentos e acompanhar decisões. |
 | Gestor de projetos | Organizar projetos, trilhas, etapas e tradutores. |
 | Tradutor freelancer | Completar o perfil pendente e consultar etapas atribuídas. |
 
@@ -50,8 +50,9 @@ Não é necessário entrar na plataforma para enviar uma solicitação.
 1. Abra a página inicial e selecione **Fazer uma solicitação**.
 2. Na etapa **Dados da solicitação**, informe nome completo, e-mail e telefone.
    A empresa é opcional.
-3. Escolha o idioma de origem, o idioma de destino e, se disponível, o serviço.
-   Os idiomas e serviços são carregados das opções ativas no sistema.
+3. Escolha um idioma de origem e um ou mais idiomas de destino. Se disponível,
+   selecione também o serviço. Os idiomas e serviços são carregados das opções
+   ativas no sistema.
 4. Escreva uma descrição ou observação que ajude a equipe a entender o pedido.
 5. Se necessário, anexe arquivos de referência. São aceitos PDF, DOC, DOCX,
    ODT, TXT, RTF, XLS, XLSX, PNG, JPG e JPEG. O limite é de 10 MB por arquivo e
@@ -130,20 +131,25 @@ se persistir, confira a conexão com a API.
 5. Adicione observações se forem importantes para a proposta e selecione
    **Criar orçamento**.
 
-O orçamento recém-criado fica em análise. Há apenas um orçamento por
-solicitação. Para acompanhar a proposta, abra **Orçamentos**.
+O orçamento recém-criado fica em análise e é enviado automaticamente para o
+e-mail do cliente. Há apenas um orçamento por solicitação. Para acompanhar a
+proposta, abra **Orçamentos**. Se necessário, use **Enviar por e-mail** para
+reenviá-la enquanto estiver em análise.
 
 ### Registrar a decisão do cliente
 
 Na lista de orçamentos, confira cliente, serviço, idiomas, valor, prazo,
-observações e situação. Para um orçamento **Em análise**, use **Aprovar** ou
-**Recusar** depois de obter a decisão do cliente:
+observações e situação. O cliente recebe no e-mail do orçamento os botões
+**Aprovar orçamento** e **Recusar orçamento**. Ao abrir um botão, ele confirma
+a ação na página exibida:
 
-- **Aprovar** libera o orçamento para que o gestor crie um projeto.
-- **Recusar** também marca a solicitação relacionada como recusada.
+- **Aprovar** registra a decisão e envia automaticamente a fatura ao cliente.
+- **Recusar** registra a decisão e marca a solicitação relacionada como
+  recusada.
 
-Essas ações registram uma decisão no sistema; o envio de uma proposta ou a
-coleta da resposta do cliente não é feito automaticamente por essa tela.
+Depois da aprovação, não é necessário gerar ou enviar a fatura pela tela de
+orçamentos. O orçamento aprovado fica disponível para o gestor criar um
+projeto.
 
 ## Gestor de projetos
 

@@ -6,15 +6,15 @@ consulte o [Manual do Usuário](./user_manual.md). Os endpoints públicos com
 token existem na API, mas nem todos têm uma tela correspondente no frontend.
 
 ```
-Cliente (sem login)         Atendimento                    Gestor (projetos)
-────────────────────        ───────────────────            ──────────────────
-POST /requests/        ──►  GET  /requests/?status=pending
-(recebe public_token)       GET  /quotes/suggestion
-                            POST /quotes/            (request → quoted)
-GET  /requests/public/{t}   PUT  /quotes/{id}        (enquanto em análise)
-                            PUT  /quotes/{id}/approve ──► GET /quotes/?available_for_project=true
-                            PUT  /quotes/{id}/reject                POST /projects/ {quote_id, path_ids}
-                            (request → rejected)
+Cliente (sem login)             Atendimento                    Gestor (projetos)
+────────────────────            ───────────────────            ──────────────────
+POST /requests/            ──►  GET  /requests/?status=pending
+(recebe public_token)           GET  /quotes/suggestion
+                                POST /quotes/ (envia orçamento)
+GET /requests/public/{t}        PUT  /quotes/{id} (em análise)
+E-mail: aprovar/recusar ─────►  decisão do cliente
+aprovação envia fatura ─────►  GET /quotes/?available_for_project=true
+                                                              POST /projects/ {quote_id, path_ids}
 ```
 
 ## Entidades
@@ -36,12 +36,13 @@ Públicos (cliente identificado pelo `public_token` devolvido na criação):
 - `POST /requests/` – cria solicitação (retorna `public_token`)
 - `GET|PUT|DELETE /requests/public/{token}` – acompanhar / editar / excluir (só enquanto `pending`)
 - `POST /requests/public/{token}/files` – anexar arquivo (pdf, doc(x), odt, txt, rtf, xls(x), png, jpg; até 10 MB; máx. 10)
+- `GET /public/quotes/{id}/decision` – confirma a decisão com o token assinado; a confirmação é enviada por `POST`.
 
 Atendimento (`atendimento`; `projetos` só lê):
 
 - `GET /requests/` (filtros: username, email, phone, company, source_language_id, target_language_id, service_id, status), `PUT|DELETE /requests/{id}`, `GET /requests/{id}/files[/{file_id}]`
 - `GET /quotes/suggestion?request_id=&word_count=` – preço por palavra × palavras
-- `POST /quotes/`, `GET /quotes/` (filtros: status, request_id, client_name, available_for_project), `GET|PUT|DELETE /quotes/{id}`, `PUT /quotes/{id}/approve`, `PUT /quotes/{id}/reject`
+- `POST /quotes/` cria e envia o orçamento por e-mail; `GET /quotes/` (filtros: status, request_id, client_name, available_for_project), `GET|PUT|DELETE /quotes/{id}`.
 
 Gestor (`projetos`):
 
@@ -50,7 +51,7 @@ Gestor (`projetos`):
 ## Regras
 
 - Um orçamento por solicitação. Criar orçamento move a solicitação para `quoted` e a atribui ao atendente.
-- Orçamento só pode ser editado/aprovado/recusado/excluído enquanto `in_review`. Recusar marca a solicitação como `rejected`; excluir devolve a solicitação para `pending`.
+- Orçamento só pode ser editado/decidido/excluído enquanto `in_review`. Recusar marca a solicitação como `rejected`; excluir devolve a solicitação para `pending`.
 - Solicitação com orçamento não pode ser excluída nem editada pelo cliente.
 - Todo projeto continua exigindo ao menos uma trilha (`path_ids`).
 

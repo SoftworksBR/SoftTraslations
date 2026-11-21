@@ -187,3 +187,53 @@ def test_manager_cannot_reassign_declined_freelancer(monkeypatch):
         )
 
     assert error.value.status_code == HTTPStatus.CONFLICT
+
+
+def test_manager_rejection_comment_is_saved_on_stage(monkeypatch):
+    stage = make_stage(status=StageStatus.TESTING)
+    service = make_service(monkeypatch, stage)
+    events = []
+    monkeypatch.setattr(
+        'src.services.stage_service.enqueue_event',
+        lambda session, **event: events.append(event),
+    )
+
+    result = asyncio.run(
+        service.update(
+            stage.id,
+            StageUpdate(
+                status=StageStatus.IN_PROGRESS,
+                rejection_comment='Revise a formatação.',
+            ),
+            SimpleNamespace(id=1, role=Roles.PROJETOS),
+        )
+    )
+
+    assert result.status == StageStatus.IN_PROGRESS
+    assert result.rejection_comment == 'Revise a formatação.'
+    assert events[0]['payload']['details']['rejection_comment'] == (
+        'Revise a formatação.'
+    )
+
+
+def test_freelancer_resubmission_clears_previous_rejection(monkeypatch):
+    stage = make_stage(
+        status=StageStatus.IN_PROGRESS,
+        rejection_comment='Revise a formatação.',
+    )
+    service = make_service(monkeypatch, stage)
+    monkeypatch.setattr(
+        'src.services.stage_service.enqueue_event',
+        lambda session, **event: None,
+    )
+
+    result = asyncio.run(
+        service.update(
+            stage.id,
+            StageUpdate(status=StageStatus.TESTING),
+            freelancer(),
+        )
+    )
+
+    assert result.status == StageStatus.TESTING
+    assert result.rejection_comment is None

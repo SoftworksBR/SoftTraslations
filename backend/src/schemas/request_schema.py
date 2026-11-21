@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from src.enums.enums import QuoteStatus, RequestStatus
 
@@ -11,10 +11,24 @@ class RequestCreate(BaseModel):
     phone: str = Field(min_length=1, max_length=30)
     company: str | None = Field(default=None, max_length=120)
     source_language_id: int
-    target_language_id: int
+    target_language_ids: list[int] = Field(min_length=1)
     service_id: int | None = None
     observations: str | None = Field(default=None, max_length=2000)
     word_count: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode='before')
+    @classmethod
+    def accept_single_target_language(cls, value):
+        if (
+            isinstance(value, dict)
+            and 'target_language_ids' not in value
+            and 'target_language_id' in value
+        ):
+            value = {
+                **value,
+                'target_language_ids': [value['target_language_id']],
+            }
+        return value
 
 
 class RequestPublicUpdate(BaseModel):
@@ -25,10 +39,26 @@ class RequestPublicUpdate(BaseModel):
     phone: str | None = Field(default=None, min_length=1, max_length=30)
     company: str | None = Field(default=None, max_length=120)
     source_language_id: int | None = None
-    target_language_id: int | None = None
+    target_language_ids: list[int] | None = Field(
+        default=None, min_length=1
+    )
     service_id: int | None = None
     observations: str | None = Field(default=None, max_length=2000)
     word_count: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode='before')
+    @classmethod
+    def accept_single_target_language(cls, value):
+        if (
+            isinstance(value, dict)
+            and 'target_language_ids' not in value
+            and 'target_language_id' in value
+        ):
+            value = {
+                **value,
+                'target_language_ids': [value['target_language_id']],
+            }
+        return value
 
 
 class RequestUpdate(RequestPublicUpdate):
@@ -65,6 +95,8 @@ class RequestResponse(BaseModel):
     phone: str
     company: str | None
     source_language_id: int
+    target_language_ids: list[int]
+    target_language_names: list[str]
     target_language_id: int
     source_language_name: str
     target_language_name: str
