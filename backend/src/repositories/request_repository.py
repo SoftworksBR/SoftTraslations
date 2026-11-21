@@ -2,6 +2,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.file_model import RequestFile
+from src.models.language_model import Language
 from src.models.request_model import Request
 from src.schemas.request_schema import RequestSearchFilters
 
@@ -75,7 +76,9 @@ class RequestRepository:
 
             if filters.target_language_id is not None:
                 statement = statement.where(
-                    Request.target_language_id == filters.target_language_id
+                    Request.target_languages.any(
+                        Language.id == filters.target_language_id
+                    )
                 )
 
             if filters.service_id is not None:

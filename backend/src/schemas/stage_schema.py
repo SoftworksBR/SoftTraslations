@@ -33,6 +33,7 @@ class ProjectStageCreate(BaseModel):
 class StageUpdate(BaseModel):
     freelancer_id: int | None = None
     status: StageStatus | None = None
+    rejection_comment: str | None = Field(default=None, max_length=1000)
 
 
 class StageSearchFilters(BaseModel):
@@ -47,6 +48,7 @@ class StageFileResponse(BaseModel):
 
     id: int
     original_name: str
+    uploaded_by_id: int | None
 
 
 class StageResponse(BaseModel):
@@ -61,4 +63,5 @@ class StageResponse(BaseModel):
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
+    rejection_comment: str | None = None
     files: list[StageFileResponse] = Field(default_factory=list)

@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    String,
     UniqueConstraint,
     func,
 )
@@ -132,6 +133,9 @@ class ProjectStage:
     )
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
+    )
+    rejection_comment: Mapped[str | None] = mapped_column(
+        String(1000), nullable=True, default=None
     )
 
     project_path: Mapped['ProjectPath'] = relationship(

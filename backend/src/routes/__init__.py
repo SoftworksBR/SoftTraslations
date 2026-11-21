@@ -4,13 +4,15 @@ from src.security import get_current_employee
 
 from .assistant_route import router as assistant_route
 from .auth_route import router as auth_route
+from .client_invoice_route import router as client_invoice_router
 from .company_route import router as company_route
 from .employee_route import router as employee_route
-from .language_route import router as language_router
 from .invoice_route import router as invoice_router
+from .language_route import router as language_router
 from .path_route import router as path_route
 from .project_route import router as project_route
 from .public_assistant_route import router as public_assistant_route
+from .public_quote_route import router as public_quote_route
 from .quote_route import router as quote_route
 from .request_route import (
     protected_router as request_protected_route,
@@ -29,10 +31,12 @@ protected_router = APIRouter(
 public_router.include_router(auth_route)
 public_router.include_router(request_public_route)
 public_router.include_router(public_assistant_route)
+public_router.include_router(public_quote_route)
 protected_router.include_router(employee_route)
 protected_router.include_router(language_router)
 protected_router.include_router(invoice_router)
 protected_router.include_router(service_router)
+protected_router.include_router(client_invoice_router)
 protected_router.include_router(translation_price_router)
 protected_router.include_router(path_route)
 protected_router.include_router(project_route)
