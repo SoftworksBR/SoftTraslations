@@ -73,7 +73,7 @@ export default function FazerSolicitacao() {
       .then(setOptions)
       .catch((cause) =>
         notify(
-          'Não foi possível carregar os idiomas',
+          'Não foi possível carregar idiomas e serviços',
           cause instanceof Error ? cause.message : 'Tente novamente.',
         ),
       );
@@ -294,6 +294,8 @@ export default function FazerSolicitacao() {
                         <LanguageField
                           label="Tipo de serviço"
                           placeholder="Selecione o serviço (opcional)"
+                          emptyMessage="Nenhum serviço encontrado."
+                          searchPlaceholder="Pesquisar serviço..."
                           options={services}
                           value={form.service}
                           onSelect={(value) => update('service', value)}
@@ -517,9 +519,12 @@ function InputField({
   );
 }
 
+
 function LanguageField({
   label,
   placeholder = 'Selecione o idioma',
+  emptyMessage = 'Nenhum idioma encontrado.',
+  searchPlaceholder = 'Pesquisar idioma...',
   options,
   value,
   onSelect,
@@ -528,6 +533,8 @@ function LanguageField({
 }: {
   label: string;
   placeholder?: string;
+  emptyMessage?: string;
+  searchPlaceholder?: string;
   options: Option[];
   value: number | null;
   onSelect: (value: number) => void;
@@ -535,6 +542,12 @@ function LanguageField({
   error?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const normalizedSearch = normalizeSearch(search);
+  const filteredOptions = options.filter((option) =>
+    normalizeSearch(option.label).includes(normalizedSearch),
+  );
+
   return (
     <View style={[styles.field, open && styles.fieldOpen]}>
       <Text style={styles.fieldLabel}>
@@ -545,7 +558,10 @@ function LanguageField({
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${value ? optionName(options, value) : placeholder}`}
           accessibilityState={{ expanded: open }}
-          onPress={() => setOpen((current) => !current)}
+          onPress={() => {
+            setOpen((current) => !current);
+            setSearch('');
+          }}
           style={[styles.select, error && styles.inputError]}
         >
           <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
@@ -554,29 +570,50 @@ function LanguageField({
           <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
         </Pressable>
         {open ? (
-          <ScrollView
-            keyboardShouldPersistTaps="always"
-            style={styles.selectOptions}
-          >
-            {options.map((language) => (
-              <Pressable
-                key={language.value}
-                onPress={() => {
-                  onSelect(language.value);
-                  setOpen(false);
-                }}
-                style={styles.selectOption}
-              >
-                <Text style={styles.selectOptionText}>{language.label}</Text>
-                {value === language.value ? (
-                  <Ionicons name="checkmark" size={16} color="#087F8C" />
-                ) : null}
-              </Pressable>
-            ))}
-          </ScrollView>
+          <View style={styles.selectOptions}>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={searchPlaceholder}
+              placeholderTextColor="#9AA8B2"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
+            <ScrollView
+              style={styles.optionsList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => {
+                      onSelect(option.value);
+                      setOpen(false);
+                      setSearch('');
+                    }}
+                    style={styles.selectOption}
+                  >
+                    <Text style={styles.selectOptionText}>{option.label}</Text>
+                    {value === option.value ? (
+                      <Ionicons name="checkmark" size={16} color="#087F8C" />
+                    ) : null}
+                  </Pressable>
+                ))
+              ) : (
+                <Text style={styles.noOptionsText}>{emptyMessage}</Text>
+              )}
+            </ScrollView>
+          </View>
         ) : null}
       </View>
-      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.fieldError}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -599,7 +636,12 @@ function MultiLanguageField({
   error?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const selectedNames = optionNames(options, value);
+  const normalizedSearch = normalizeSearch(search);
+  const filteredOptions = options.filter((option) =>
+    normalizeSearch(option.label).includes(normalizedSearch),
+  );
 
   return (
     <View style={[styles.field, open && styles.fieldOpen]}>
@@ -611,7 +653,10 @@ function MultiLanguageField({
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${value.length ? selectedNames : placeholder}`}
           accessibilityState={{ expanded: open }}
-          onPress={() => setOpen((current) => !current)}
+          onPress={() => {
+            setOpen((current) => !current);
+            setSearch('');
+          }}
           style={[styles.select, error && styles.inputError]}
         >
           <Text style={[styles.selectText, !value.length && styles.selectPlaceholder]}>
@@ -620,34 +665,51 @@ function MultiLanguageField({
           <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
         </Pressable>
         {open ? (
-          <ScrollView
-            keyboardShouldPersistTaps="always"
-            style={styles.selectOptions}
-          >
-            {options.map((language) => {
-              const selected = value.includes(language.value);
-              return (
-                <Pressable
-                  key={language.value}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => onSelect(language.value)}
-                  style={styles.selectOption}
-                >
-                  <Text style={styles.selectOptionText}>{language.label}</Text>
-                  {selected ? (
-                    <Ionicons name="checkmark" size={16} color="#087F8C" />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.selectOptions}>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Pesquisar idioma..."
+              placeholderTextColor="#9AA8B2"
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.searchInput}
+            />
+            <ScrollView
+              style={styles.optionsList}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {filteredOptions.length > 0 ? (
+                filteredOptions.map((option) => {
+                  const selected = value.includes(option.value);
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
+                      onPress={() => onSelect(option.value)}
+                      style={styles.selectOption}
+                    >
+                      <Text style={styles.selectOptionText}>{option.label}</Text>
+                      {selected ? (
+                        <Ionicons name="checkmark" size={16} color="#087F8C" />
+                      ) : null}
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <Text style={styles.noOptionsText}>Nenhum idioma encontrado.</Text>
+              )}
+            </ScrollView>
+          </View>
         ) : null}
       </View>
       {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
 }
+
 
 function ReviewValue({ label, value }: { label: string; value: string }) {
   return (
@@ -666,6 +728,14 @@ function optionNames(options: Option[], values: number[]) {
   return values
     .map((value) => optionName(options, value))
     .join(', ');
+}
+
+function normalizeSearch(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
 }
 
 const styles = StyleSheet.create({
@@ -713,6 +783,21 @@ const styles = StyleSheet.create({
   selectPlaceholder: { color: '#9AA8B2' },
   selectAnchor: { position: 'relative', zIndex: 1 },
   selectOptions: { position: 'absolute', top: 49, left: 0, right: 0, zIndex: 20, maxHeight: 240, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 9, backgroundColor: '#FFFFFF', elevation: 12, shadowColor: '#0B2239', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.16, shadowRadius: 12 },
+  searchInput: {
+    minHeight: 42,
+    paddingHorizontal: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DFE7EC',
+    color: '#172B3A',
+    fontSize: 12,
+  },
+  optionsList: { maxHeight: 190 },
+  noOptionsText: {
+    padding: 12,
+    color: '#627485',
+    fontSize: 12,
+    textAlign: 'center',
+  },
   selectOption: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#EDF1F3' },
   selectOptionText: { color: '#172B3A', fontSize: 12 },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 2 },
