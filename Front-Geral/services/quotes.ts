@@ -34,6 +34,23 @@ export type QuoteSuggestion = {
   suggested_value: number | null;
 };
 
+export type ClientInvoiceEmailResponse = {
+  invoice: {
+    id: number;
+    invoice_number: string;
+    quote_id: number;
+    created_by_id: number;
+    client_name: string;
+    client_email: string;
+    description: string;
+    amount: number;
+    issued_on: string;
+    emailed_at: string | null;
+    created_at: string;
+  };
+  recipient: string;
+};
+
 export const quoteStatusLabel: Record<QuoteStatus, string> = {
   in_review: 'em análise',
   approved: 'aprovado',
@@ -93,6 +110,24 @@ export function approveQuote(quoteId: number) {
 
 export function rejectQuote(quoteId: number) {
   return apiRequest<Quote>(`/quotes/${quoteId}/reject`, { method: 'PUT' });
+}
+
+export function sendQuoteEmail(quoteId: number) {
+  return apiRequest<{
+    message: string;
+    recipient: string;
+  }>(`/quotes/${quoteId}/send-email`, {
+    method: 'POST',
+  });
+}
+
+export function sendClientInvoiceEmail(quoteId: number) {
+  return apiRequest<ClientInvoiceEmailResponse>(
+    `/client-invoices/${quoteId}/send-email`,
+    {
+      method: 'POST',
+    },
+  );
 }
 
 /** 850 -> "R$ 850,00" */

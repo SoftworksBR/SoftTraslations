@@ -103,3 +103,29 @@ export function completeFreelancerProfile(profile: FreelancerProfileInput) {
     body: JSON.stringify(profile),
   });
 }
+
+export type PaymentInvoiceInput = {
+  freelancer_id: number;
+  amount: number;
+  description: string;
+  issued_on?: string;
+  project_id?: number | null;
+  stage_id?: number | null;
+};
+
+export type PaymentInvoice = {
+  id: number;
+  invoice_number: string;
+  freelancer_id: number;
+  amount: string;
+  description: string;
+  issued_on: string;
+  emailed_at?: string | null;
+};
+
+export function createPaymentInvoice(data: PaymentInvoiceInput) {
+  return apiRequest<PaymentInvoice>('/payment-invoices/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

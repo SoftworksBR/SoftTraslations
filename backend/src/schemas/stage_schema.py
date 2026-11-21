@@ -2,13 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.enums.enums import Status
+from src.enums.enums import StageStatus
 
 
 class StageCreate(BaseModel):
     name: str
     freelancer_id: int
-    status: Status = Status.READY
+    status: StageStatus = StageStatus.NO_FREELANCER
 
 
 class StageTemplateCreate(BaseModel):
@@ -32,12 +32,13 @@ class ProjectStageCreate(BaseModel):
 
 class StageUpdate(BaseModel):
     freelancer_id: int | None = None
-    status: Status | None = None
+    status: StageStatus | None = None
+    rejection_comment: str | None = Field(default=None, max_length=1000)
 
 
 class StageSearchFilters(BaseModel):
     name: str | None = None
-    status: Status | None = None
+    status: StageStatus | None = None
     project_name: str | None = None
     freelancer_name: str | None = None
 
@@ -47,6 +48,7 @@ class StageFileResponse(BaseModel):
 
     id: int
     original_name: str
+    uploaded_by_id: int | None
 
 
 class StageResponse(BaseModel):
@@ -57,8 +59,9 @@ class StageResponse(BaseModel):
     project_path_id: int
     path_stage_id: int
     freelancer_id: int | None
-    status: Status
+    status: StageStatus
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
+    rejection_comment: str | None = None
     files: list[StageFileResponse] = Field(default_factory=list)

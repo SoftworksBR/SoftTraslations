@@ -1,10 +1,18 @@
 import { apiRequest } from './api';
+import type { Employee } from './employees';
 
-export type StageStatus = 'ready' | 'in_progress' | 'testing' | 'done';
+export type StageStatus =
+  | 'no_freelancer'
+  | 'public'
+  | 'ready'
+  | 'in_progress'
+  | 'testing'
+  | 'done';
 
 export type StageFile = {
   id: number;
   original_name: string;
+  uploaded_by_id: number | null;
 };
 
 // Etapa de um projeto, criada a partir de uma etapa modelo da trilha.
@@ -18,6 +26,7 @@ export type TranslationStage = {
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  rejection_comment: string | null;
   files: StageFile[];
 };
 
@@ -32,9 +41,29 @@ export function getStages() {
   return apiRequest<TranslationStage[]>('/stages/');
 }
 
+export function getAvailableStageFreelancers(stageId: number) {
+  return apiRequest<Employee[]>(`/stages/${stageId}/available-freelancers`);
+}
+
+export function acceptStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/accept`, {
+    method: 'POST',
+  });
+}
+
+export function declineStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/decline`, {
+    method: 'POST',
+  });
+}
+
 export function updateStage(
   id: number,
-  data: { freelancer_id?: number | null; status?: StageStatus },
+  data: {
+    freelancer_id?: number | null;
+    status?: StageStatus;
+    rejection_comment?: string | null;
+  },
 ) {
   return apiRequest<TranslationStage>(`/stages/${id}`, {
     method: 'PUT',
@@ -48,6 +77,12 @@ export function uploadStageFile(stageId: number, file: File) {
   return apiRequest<StageFile>(`/stages/${stageId}/files`, {
     method: 'POST',
     body,
+  });
+}
+
+export function deleteStageFile(stageId: number, fileId: number) {
+  return apiRequest<void>(`/stages/${stageId}/files/${fileId}`, {
+    method: 'DELETE',
   });
 }
 

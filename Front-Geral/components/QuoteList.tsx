@@ -13,17 +13,16 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
-  approveQuote,
   formatDate,
   formatMoney,
   listQuotes,
   quoteStatusLabel,
-  rejectQuote,
+  sendQuoteEmail,
 } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
 
-// Tela compartilhada: atendimento decide os orçamentos; projetos os
-// consulta e cria projetos a partir dos aprovados.
+// Tela compartilhada: atendimento acompanha os orçamentos; projetos cria
+// projetos a partir dos aprovados.
 export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const { employee } = useAuth();
   const isAtendimento = employee?.role === 'atendimento';
@@ -31,6 +30,7 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const [availableIds, setAvailableIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendingQuoteId, setSendingQuoteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,23 +53,25 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     void load();
   }, [load]));
 
-  async function decide(quote: Quote, action: 'approve' | 'reject') {
+  async function sendEmail(quote: Quote) {
+    setSendingQuoteId(quote.id);
+
     try {
-      await (action === 'approve' ? approveQuote(quote.id) : rejectQuote(quote.id));
-      await load();
+      const result = await sendQuoteEmail(quote.id);
+      notify('Sucesso', result.message);
     } catch (cause) {
       notify('Erro', errorMessage(cause));
+    } finally {
+      setSendingQuoteId(null);
     }
   }
 
-  function askDecision(quote: Quote, action: 'approve' | 'reject') {
+  function askSendEmail(quote: Quote) {
     confirmAction(
-      action === 'approve' ? 'Aprovar orçamento' : 'Recusar orçamento',
-      action === 'approve'
-        ? 'O orçamento ficará disponível para a criação de um projeto.'
-        : 'A solicitação também será marcada como recusada.',
-      action === 'approve' ? 'Aprovar' : 'Recusar',
-      () => void decide(quote, action),
+      'Enviar orçamento por e-mail',
+      `O PDF será enviado para ${quote.client_email}. Deseja continuar?`,
+      'Enviar',
+      () => void sendEmail(quote),
     );
   }
 
@@ -118,11 +120,14 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
 
               {isAtendimento && item.status === 'in_review' ? (
                 <View style={styles.actions}>
-                  <Pressable style={styles.button} onPress={() => askDecision(item, 'approve')}>
-                    <Text style={styles.buttonText}>APROVAR</Text>
-                  </Pressable>
-                  <Pressable style={styles.dangerButton} onPress={() => askDecision(item, 'reject')}>
-                    <Text style={styles.buttonText}>RECUSAR</Text>
+                  <Pressable
+                    style={styles.emailButton}
+                    onPress={() => askSendEmail(item)}
+                    disabled={sendingQuoteId === item.id}
+                  >
+                    <Text style={styles.buttonText}>
+                      {sendingQuoteId === item.id ? 'ENVIANDO...' : 'ENVIAR POR E-MAIL'}
+                    </Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -165,8 +170,18 @@ const styles = StyleSheet.create({
   muted: { color: '#627485', fontSize: 13, lineHeight: 19 },
   status: { marginTop: 6, color: '#087F8C', fontWeight: '700', fontSize: 12 },
   error: { color: '#B42318', lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
   button: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#087F8C' },
-  dangerButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#B42318' },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+  emailButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#344B64',
+  },
 });

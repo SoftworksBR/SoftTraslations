@@ -3,7 +3,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Linking,
   Pressable,
@@ -18,6 +17,7 @@ import { listQuotes, quoteStatusLabel } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
 import { deleteRequest, getRequestFiles, getRequests } from '@/services/requests';
 import type { RequestFile, TranslationRequest } from '@/services/requests';
+import { confirmAction, notify } from '@/services/dialog';
 
 function RequestFiles({ requestId }: { requestId: number }) {
   const [files, setFiles] = useState<RequestFile[]>([]);
@@ -84,24 +84,22 @@ export default function Requisicoes() {
   );
 
   function confirmDelete(request: TranslationRequest) {
-    Alert.alert('Excluir solicitação', 'Tem certeza que deseja excluir esta solicitação?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteRequest(request.id);
-            await loadRequests();
-          } catch (cause) {
-            Alert.alert(
-              'Não foi possível excluir',
-              cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
-            );
-          }
-        },
+    confirmAction(
+      'Excluir solicitação',
+      'Tem certeza que deseja excluir esta solicitação?',
+      'Excluir',
+      async () => {
+        try {
+          await deleteRequest(request.id);
+          await loadRequests();
+        } catch (cause) {
+          notify(
+            'Não foi possível excluir',
+            cause instanceof Error ? cause.message : 'Ocorreu um erro inesperado.',
+          );
+        }
       },
-    ]);
+    );
   }
 
   return (

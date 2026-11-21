@@ -2,7 +2,6 @@ import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 
 import { useAuth } from '@/context/AuthContext';
 import { completeFreelancerProfile } from '@/services/employees';
+import { notify } from '@/services/dialog';
 
 export default function CompletarPerfil() {
   const { employee, refresh } = useAuth();
@@ -33,12 +33,12 @@ export default function CompletarPerfil() {
 
   async function submitProfile() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate.trim()) || !phone.trim()) {
-      Alert.alert('Campos obrigatórios', 'Informe a data de nascimento (AAAA-MM-DD) e o telefone.');
+      notify('Campos obrigatórios', 'Informe a data de nascimento (AAAA-MM-DD) e o telefone.');
       return;
     }
     const rate = hourlyRate.trim() ? Number(hourlyRate.replace(',', '.')) : null;
     if (rate !== null && (!Number.isFinite(rate) || rate < 0)) {
-      Alert.alert('Valor inválido', 'Informe um valor por hora válido.');
+      notify('Valor inválido', 'Informe um valor por hora válido.');
       return;
     }
 

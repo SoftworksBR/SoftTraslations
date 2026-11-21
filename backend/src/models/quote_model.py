@@ -25,8 +25,7 @@ class Quote:
         CheckConstraint(
             "(status = 'in_review' AND approved_by_id IS NULL "
             'AND approved_at IS NULL) OR '
-            "(status IN ('approved', 'rejected') AND "
-            'approved_by_id IS NOT NULL AND approved_at IS NOT NULL)',
+            "(status IN ('approved', 'rejected') AND approved_at IS NOT NULL)",
             name='ck_quotes_approval_consistency',
         ),
     )

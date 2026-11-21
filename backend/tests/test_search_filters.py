@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock
 
 from sqlalchemy.dialects import postgresql
 
-from src.enums.enums import RequestStatus, Roles, Status
+from src.enums.enums import RequestStatus, Roles, StageStatus, Status
 from src.repositories.employee_repository import EmployeeRepository
 from src.repositories.project_repository import ProjectRepository
+from src.repositories.quote_repository import QuoteRepository
 from src.repositories.request_repository import RequestRepository
 from src.repositories.stage_repository import StageRepository
 from src.schemas.employee_schema import EmployeeSearchFilters
@@ -32,6 +33,19 @@ class _Result:
 def _sql(statement):
     compiled = statement.compile(dialect=postgresql.dialect())
     return str(compiled).lower()
+
+
+def test_quote_lock_excludes_nullable_outer_joins():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+
+    asyncio.run(QuoteRepository(session).get_by_id_for_update(1))
+
+    query = _sql(session.execute.await_args.args[0])
+    assert 'left outer join' in query
+    assert query.endswith('for update of quotes')
 
 
 def test_employee_search_filters_build_case_insensitive_query():
@@ -125,7 +139,7 @@ def test_stage_search_filters_include_related_projects():
             freelancer_id=7,
             filters=StageSearchFilters(
                 name='review',
-                status=Status.READY,
+                status=StageStatus.READY,
                 project_name='project',
                 freelancer_name='ana',
             ),

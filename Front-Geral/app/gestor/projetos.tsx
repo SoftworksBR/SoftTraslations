@@ -16,14 +16,17 @@ import {
 } from 'react-native';
 
 import { API_URL } from '@/services/api';
-import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
 import {
   getProjectDetails,
   getProjects,
 } from '@/services/projects';
-import type { Project, ProjectDetails } from '@/services/projects';
-import { updateStage } from '@/services/stages';
+import type {
+  Project,
+  ProjectDetails,
+  ProjectStageDetails,
+} from '@/services/projects';
+import { getAvailableStageFreelancers, updateStage } from '@/services/stages';
 
 const statusNames: Record<Project['status'], string> = {
   ready: 'Pronto',
@@ -33,6 +36,24 @@ const statusNames: Record<Project['status'], string> = {
 };
 
 const statusColors: Record<Project['status'], string> = {
+  ready: '#8A99A5',
+  in_progress: '#397BC5',
+  testing: '#8064B5',
+  done: '#20845A',
+};
+
+const stageStatusNames: Record<ProjectStageDetails['status'], string> = {
+  no_freelancer: 'Sem freelancer',
+  public: 'Público',
+  ready: 'Pronto',
+  in_progress: 'Em andamento',
+  testing: 'Em revisão',
+  done: 'Concluído',
+};
+
+const stageStatusColors: Record<ProjectStageDetails['status'], string> = {
+  no_freelancer: '#A46B12',
+  public: '#7357A8',
   ready: '#8A99A5',
   in_progress: '#397BC5',
   testing: '#8064B5',
@@ -74,12 +95,11 @@ export default function Projetos() {
     }
   }, []);
 
-  const loadFreelancers = useCallback(async () => {
+  const loadFreelancers = useCallback(async (stageId: number) => {
     setFreelancersLoading(true);
     setFreelancersError(null);
     try {
-      const result = await getEmployees('freelancer');
-      setFreelancers(result.employees);
+      setFreelancers(await getAvailableStageFreelancers(stageId));
     } catch (cause) {
       setFreelancersError(
         cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
@@ -92,13 +112,13 @@ export default function Projetos() {
   useFocusEffect(
     useCallback(() => {
       void loadProjects();
-      void loadFreelancers();
-    }, [loadFreelancers, loadProjects]),
+    }, [loadProjects]),
   );
 
   async function openProject(project: Project) {
     setSelectedProject(project);
     setDetails(null);
+    setSelectedStageId(null);
     setDetailsError(null);
     setDetailsLoading(true);
     try {
@@ -106,6 +126,10 @@ export default function Projetos() {
       const firstStage = loadedDetails.paths.flatMap((path) => path.stages)[0];
       setSelectedStageId(firstStage?.id ?? null);
       setDetails(loadedDetails);
+      setFreelancers([]);
+      if (firstStage) {
+        await loadFreelancers(firstStage.id);
+      }
     } catch (cause) {
       setDetailsError(cause instanceof Error ? cause.message : 'Falha ao carregar detalhes do projeto.');
     } finally {
@@ -118,6 +142,7 @@ export default function Projetos() {
     setDetails(null);
     setDetailsError(null);
     setSelectedStageId(null);
+    setFreelancers([]);
   }
 
   async function openFile(projectId: number, fileId: number) {
@@ -145,6 +170,11 @@ export default function Projetos() {
         refreshedStageIds.includes(stageId)
           ? stageId
           : (refreshedStageIds[0] ?? null),
+      );
+      await loadFreelancers(
+        refreshedStageIds.includes(stageId)
+          ? stageId
+          : (refreshedStageIds[0] ?? stageId),
       );
     } catch (cause) {
       setDetailsError(
@@ -294,19 +324,24 @@ export default function Projetos() {
                             <Pressable
                               accessibilityRole="button"
                               accessibilityLabel={`Selecionar etapa ${stage.name}`}
-                              onPress={() => setSelectedStageId(stage.id)}
+                              onPress={() => {
+                                setSelectedStageId(stage.id);
+                                void loadFreelancers(stage.id);
+                              }}
                               style={[
                                 styles.stageBox,
                                 selectedStageId === stage.id && styles.stageBoxSelected,
                               ]}
                             >
-                              <View style={[styles.stageStatusDot, { backgroundColor: statusColors[stage.status] }]} />
+                              <View style={[styles.stageStatusDot, { backgroundColor: stageStatusColors[stage.status] }]} />
                               <Text style={styles.stageBoxName}>{stage.name}</Text>
                               <Text style={styles.stageBoxMeta}>
                                 {stage.freelancer_name ?? 'Sem responsável'}
                               </Text>
-                              <Text style={[styles.stageBoxStatus, { color: statusColors[stage.status] }]}>
-                                {statusNames[stage.status]}
+                              <Text style={[styles.stageBoxStatus, { color: stageStatusColors[stage.status] }]}>
+                                {stage.status === 'no_freelancer' && stage.freelancer_id !== null
+                                  ? 'Aguardando aceite'
+                                  : stageStatusNames[stage.status]}
                               </Text>
                             </Pressable>
                             {index < path.stages.length - 1 ? <View style={styles.connector} /> : null}
@@ -349,7 +384,9 @@ export default function Projetos() {
                           Trilha: {path.sequence}. {path.name}
                         </Text>
                         <Text style={styles.infoLine}>
-                          Situação: {statusNames[stage.status]}
+                          Situação: {stage.status === 'no_freelancer' && stage.freelancer_id !== null
+                            ? 'Aguardando aceite'
+                            : stageStatusNames[stage.status]}
                         </Text>
                         <Text style={styles.infoLine}>
                           Responsável atual: {stage.freelancer_name ?? 'Não atribuído'}
@@ -363,6 +400,11 @@ export default function Projetos() {
                           </Text>
                         ) : (
                           <View style={styles.employeePicker}>
+                            {freelancers.length === 0 ? (
+                              <Text style={styles.infoLine}>
+                                Não há freelancers disponíveis para esta etapa.
+                              </Text>
+                            ) : null}
                             <Pressable
                               accessibilityRole="button"
                               accessibilityLabel="Remover responsável da etapa"

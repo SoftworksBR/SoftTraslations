@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, router } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,6 +16,7 @@ import {
 import { useHydrated } from '@/hooks/use-hydrated';
 import { useAuth } from '@/context/AuthContext';
 import { Brand } from '@/components/Brand';
+import { notify } from '@/services/dialog';
 
 const colors = {
   navy: '#0B2239',
@@ -40,7 +40,7 @@ export default function Login() {
 
   async function fazerLogin() {
     if (!email.trim() || !senha) {
-      Alert.alert('Campos obrigatórios', 'Preencha seu e-mail e sua senha para continuar.');
+      notify('Campos obrigatórios', 'Preencha seu e-mail e sua senha para continuar.');
       return;
     }
 
@@ -64,7 +64,7 @@ export default function Login() {
           router.replace('/landingPage');
       }
     } catch (error) {
-      Alert.alert(
+      notify(
         'Não foi possível entrar',
         error instanceof Error
           ? error.message
