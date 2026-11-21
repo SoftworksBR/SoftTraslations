@@ -1,10 +1,13 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from email.message import EmailMessage
 from email.utils import formataddr
+from html import escape
 from smtplib import SMTP, SMTP_SSL, SMTPException
+from urllib.parse import urlencode
 
 from fastapi import HTTPException, status
+from jwt import InvalidTokenError, decode, encode
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.enums.enums import QuoteStatus, RequestStatus, Roles
@@ -24,6 +27,8 @@ from src.schemas.quote_schema import (
 from src.services.outbox import enqueue_event
 from src.services.quote_pdf import render_quote_pdf
 from src.settings import Settings
+
+DECISION_TOKEN_EXPIRE_DAYS = 30
 
 
 class QuoteService:
@@ -97,6 +102,14 @@ class QuoteService:
             },
         )
         quote = await self.repository.create(quote)
+
+        try:
+            self._send_quote_email(quote)
+        except (OSError, SMTPException) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail='Orçamento criado, mas o envio do e-mail falhou',
+            ) from error
 
         return quote
 
@@ -198,7 +211,7 @@ class QuoteService:
         self, quote_id: int, current_employee: Employee
     ) -> Quote:
         self._require_atendimento_role(current_employee)
-        quote = await self._get(quote_id)
+        quote = await self._get_for_update(quote_id)
         self._require_in_review(quote)
 
         quote.status = QuoteStatus.APPROVED
@@ -221,7 +234,7 @@ class QuoteService:
 
     async def reject(self, quote_id: int, current_employee: Employee) -> Quote:
         self._require_atendimento_role(current_employee)
-        quote = await self._get(quote_id)
+        quote = await self._get_for_update(quote_id)
         self._require_in_review(quote)
 
         quote.status = QuoteStatus.REJECTED
@@ -258,6 +271,110 @@ class QuoteService:
 
         return quote
 
+    async def decide_by_client(
+        self, quote_id: int, decision: str
+    ) -> Quote:
+        if decision not in {'approve', 'reject'}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Decisão inválida',
+            )
+
+        quote = await self.repository.get_by_id_for_update(quote_id)
+        if quote is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Orçamento não encontrado',
+            )
+        self._require_in_review(quote)
+
+        quote.status = (
+            QuoteStatus.APPROVED
+            if decision == 'approve'
+            else QuoteStatus.REJECTED
+        )
+        quote.approved_by_id = None
+        quote.approved_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        if decision == 'reject':
+            request = await self.request_repository.get_by_id(
+                quote.request_id
+            )
+            if request is not None:
+                request.status = RequestStatus.REJECTED
+                enqueue_event(
+                    self.repository.session,
+                    event_type='request.rejected',
+                    aggregate_type='request',
+                    aggregate_id=request.id,
+                    payload={
+                        'actor': {'type': 'client'},
+                        'details': {'status': request.status.value},
+                        'source': 'client_email',
+                        'request_id': request.id,
+                    },
+                )
+
+        enqueue_event(
+            self.repository.session,
+            event_type=(
+                'quote.approved' if decision == 'approve' else 'quote.rejected'
+            ),
+            aggregate_type='quote',
+            aggregate_id=quote.id,
+            payload={
+                'actor': {'type': 'client'},
+                'details': {'status': quote.status.value},
+                'source': 'client_email',
+                'request_id': quote.request_id,
+            },
+        )
+        return await self.repository.update(quote)
+
+    @staticmethod
+    def verify_decision_token(
+        token: str, quote_id: int, decision: str, settings: Settings
+    ) -> None:
+        try:
+            payload = decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[settings.ALGORITHM],
+            )
+        except InvalidTokenError as error:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Link de decisão inválido ou expirado',
+            ) from error
+
+        if (
+            payload.get('purpose') != 'quote_decision'
+            or payload.get('quote_id') != quote_id
+            or payload.get('decision') != decision
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Link de decisão inválido ou expirado',
+            )
+
+    def _create_decision_link(self, quote: Quote, decision: str) -> str:
+        token = encode(
+            {
+                'purpose': 'quote_decision',
+                'quote_id': quote.id,
+                'decision': decision,
+                'exp': datetime.now(timezone.utc)
+                + timedelta(days=DECISION_TOKEN_EXPIRE_DAYS),
+            },
+            self.settings.SECRET_KEY,
+            algorithm=self.settings.ALGORITHM,
+        )
+        query = urlencode({'token': token, 'decision': decision})
+        return (
+            f'{self.settings.PUBLIC_API_URL.rstrip("/")}'
+            f'/public/quotes/{quote.id}/decision?{query}'
+        )
+
     async def send_email(
         self,
         quote_id: int,
@@ -265,7 +382,7 @@ class QuoteService:
     ) -> dict[str, str]:
         self._require_atendimento_role(current_employee)
 
-        quote = await self._get(quote_id)
+        quote = await self._get_for_update(quote_id)
         self._require_in_review(quote)
 
         try:
@@ -297,16 +414,38 @@ class QuoteService:
         ))
         message['To'] = quote.client_email
 
+        approve_url = self._create_decision_link(quote, 'approve')
+        reject_url = self._create_decision_link(quote, 'reject')
         message.set_content(
             f'Olá, {quote.client_name}.\n\n'
             'Estamos encaminhando em anexo o orçamento solicitado.\n\n'
             f'Número do orçamento: {quote_number}\n'
             f'Valor: R$ {quote.value:.2f}\n'
             f'Prazo: {quote.deadline:%d/%m/%Y}\n\n'
-            'Para aprovar ou recusar o orçamento, responda a este e-mail.\n'
-            'Nossa equipe registrará sua decisão no sistema.\n\n'
+            'Para decidir, acesse um dos links abaixo:\n'
+            f'Aprovar: {approve_url}\n'
+            f'Recusar: {reject_url}\n\n'
             'Atenciosamente,\n'
             'Equipe SoftTranslations'
+        )
+        message.add_alternative(
+            f'<p>Olá, {escape(quote.client_name)}.</p>'
+            '<p>Estamos encaminhando em anexo o orçamento solicitado.</p>'
+            f'<p><strong>Número:</strong> {quote_number}<br>'
+            f'<strong>Valor:</strong> R$ {quote.value:.2f}<br>'
+            f'<strong>Prazo:</strong> {quote.deadline:%d/%m/%Y}</p>'
+            '<p>Escolha uma opção para registrar sua decisão:</p>'
+            '<p>'
+            f'<a href="{escape(approve_url, quote=True)}" '
+            'style="background:#087f8c;color:white;padding:12px 20px;'
+            'text-decoration:none;border-radius:6px">Aprovar orçamento</a>'
+            '&nbsp;'
+            f'<a href="{escape(reject_url, quote=True)}" '
+            'style="background:#b42318;color:white;padding:12px 20px;'
+            'text-decoration:none;border-radius:6px">Recusar orçamento</a>'
+            '</p>'
+            '<p>Atenciosamente,<br>Equipe SoftTranslations</p>',
+            subtype='html',
         )
 
         message.add_attachment(
@@ -370,6 +509,17 @@ class QuoteService:
 
     async def _get(self, quote_id: int) -> Quote:
         quote = await self.repository.get_by_id(quote_id)
+
+        if quote is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Orçamento não encontrado',
+            )
+
+        return quote
+
+    async def _get_for_update(self, quote_id: int) -> Quote:
+        quote = await self.repository.get_by_id_for_update(quote_id)
 
         if quote is None:
             raise HTTPException(

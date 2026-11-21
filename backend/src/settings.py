@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     SMTP_USE_TLS: bool = True
     SMTP_USE_SSL: bool = False
     SMTP_TIMEOUT_SECONDS: int = 20
+    PUBLIC_API_URL: str = 'http://localhost:8000'
 
     @model_validator(mode='after')
     def validate_cookie_settings(self):

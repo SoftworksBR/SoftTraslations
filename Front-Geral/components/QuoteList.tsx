@@ -13,18 +13,16 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { confirmAction, errorMessage, notify } from '@/services/dialog';
 import {
-  approveQuote,
   formatDate,
   formatMoney,
   listQuotes,
   quoteStatusLabel,
-  rejectQuote,
   sendQuoteEmail,
 } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
 
-// Tela compartilhada: atendimento decide os orçamentos; projetos os
-// consulta e cria projetos a partir dos aprovados.
+// Tela compartilhada: atendimento acompanha os orçamentos; projetos cria
+// projetos a partir dos aprovados.
 export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const { employee } = useAuth();
   const isAtendimento = employee?.role === 'atendimento';
@@ -55,15 +53,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     void load();
   }, [load]));
 
-  async function decide(quote: Quote, action: 'approve' | 'reject') {
-    try {
-      await (action === 'approve' ? approveQuote(quote.id) : rejectQuote(quote.id));
-      await load();
-    } catch (cause) {
-      notify('Erro', errorMessage(cause));
-    }
-  }
-
   async function sendEmail(quote: Quote) {
     setSendingQuoteId(quote.id);
 
@@ -83,17 +72,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
       `O PDF será enviado para ${quote.client_email}. Deseja continuar?`,
       'Enviar',
       () => void sendEmail(quote),
-    );
-  }
-
-  function askDecision(quote: Quote, action: 'approve' | 'reject') {
-    confirmAction(
-      action === 'approve' ? 'Aprovar orçamento' : 'Recusar orçamento',
-      action === 'approve'
-        ? 'O orçamento ficará disponível para a criação de um projeto.'
-        : 'A solicitação também será marcada como recusada.',
-      action === 'approve' ? 'Aprovar' : 'Recusar',
-      () => void decide(quote, action),
     );
   }
 
@@ -142,12 +120,6 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
 
               {isAtendimento && item.status === 'in_review' ? (
                 <View style={styles.actions}>
-                  <Pressable style={styles.button} onPress={() => askDecision(item, 'approve')}>
-                    <Text style={styles.buttonText}>APROVAR</Text>
-                  </Pressable>
-                  <Pressable style={styles.dangerButton} onPress={() => askDecision(item, 'reject')}>
-                    <Text style={styles.buttonText}>RECUSAR</Text>
-                  </Pressable>
                   <Pressable
                     style={styles.emailButton}
                     onPress={() => askSendEmail(item)}
@@ -205,7 +177,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   button: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#087F8C' },
-  dangerButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#B42318' },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
   emailButton: {
     paddingHorizontal: 16,

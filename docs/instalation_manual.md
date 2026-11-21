@@ -146,7 +146,13 @@ O Assistente Público utiliza o Google ADK para executar o agente e processar as
 
 ### 3. Configuração de e-mail (SMTP)
 
-O SoftTranslations utiliza SMTP para enviar documentos por e-mail, incluindo os orçamentos em PDF gerados pelo backend.
+O SoftTranslations utiliza SMTP para enviar documentos PDF por e-mail, incluindo:
+
+- Orçamentos enviados aos clientes durante a etapa de análise;
+- Faturas de clientes geradas a partir de orçamentos aprovados;
+- Faturas de pagamento destinadas aos freelancers.
+
+Todos esses recursos utilizam as mesmas configurações SMTP do backend.
 
 Para utilizar o Gmail como servidor SMTP, configure as seguintes variáveis no arquivo `backend/.env`:
 

@@ -225,12 +225,12 @@ def render_quote_pdf(quote: Quote) -> bytes:
         ),
         Spacer(1, 10 * mm),
         paragraph(
-            'Para aprovar ou recusar este orçamento, responda a este e-mail.',
+            'Use os botões no e-mail para aprovar ou recusar este orçamento.',
             styles['normal'],
         ),
         Spacer(1, 2 * mm),
         paragraph(
-            'A aprovação será registrada pela equipe SoftTranslations.',
+            'Após a aprovação, a fatura será enviada automaticamente.',
             styles['normal'],
         ),
         Spacer(1, 8 * mm),

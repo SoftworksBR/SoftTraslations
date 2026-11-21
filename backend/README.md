@@ -55,7 +55,13 @@ O administrador inicial é criado na inicialização somente quando o banco aind
 
 ## Configuração de e-mail (SMTP)
 
-O backend utiliza SMTP para enviar documentos por e-mail. Essa integração é utilizada tanto no envio de faturas de pagamento quanto no envio de orçamentos aos clientes.
+O backend utiliza SMTP para enviar documentos por e-mail. Essa integração é compartilhada pelos seguintes recursos:
+
+- Envio de orçamentos em PDF aos clientes;
+- Envio de faturas de clientes geradas a partir de orçamentos aprovados;
+- Envio de faturas de pagamento aos freelancers.
+
+Todos utilizam as mesmas configurações SMTP definidas no ambiente.
 
 As configurações são carregadas pelo módulo `src/settings.py` e devem ser definidas no arquivo `backend/.env`.
 
@@ -71,6 +77,7 @@ SMTP_FROM_NAME=SoftTranslations
 SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 SMTP_TIMEOUT_SECONDS=20
+PUBLIC_API_URL=https://api.seudominio.com
 ```
 
 As variáveis possuem as seguintes finalidades:
@@ -84,6 +91,7 @@ As variáveis possuem as seguintes finalidades:
 - `SMTP_USE_TLS`: habilita STARTTLS na conexão SMTP.
 - `SMTP_USE_SSL`: habilita conexão SMTP com SSL.
 - `SMTP_TIMEOUT_SECONDS`: tempo limite da conexão.
+- `PUBLIC_API_URL`: endereço público da API usado nos botões de decisão do orçamento.
 
 Para utilizar o Gmail, é necessário habilitar a verificação em duas etapas e gerar uma senha de aplicativo pela página de [Senhas de app do Google](https://myaccount.google.com/apppasswords).
 
@@ -176,7 +184,10 @@ Em caso de falha:
 
 ## Orçamentos em PDF e envio por e-mail
 
-O backend permite gerar documentos PDF com os dados dos orçamentos e enviá-los diretamente aos clientes por e-mail.
+O backend gera o PDF do orçamento e o envia automaticamente ao cliente quando
+o orçamento é criado. O e-mail contém botões de aprovação e recusa; cada botão
+abre uma confirmação pública protegida por token assinado. A decisão é
+registrada somente após o cliente confirmar no navegador.
 
 A funcionalidade utiliza o ReportLab para gerar os documentos e a configuração SMTP para realizar os envios.
 
@@ -207,12 +218,13 @@ A regra de negócio está implementada em:
 
 O fluxo de envio funciona da seguinte maneira:
 
-1. O atendente solicita o envio do orçamento.
-2. O backend verifica a permissão do funcionário.
-3. O sistema recupera os dados do orçamento e do cliente.
-4. O PDF é gerado utilizando o ReportLab.
-5. O documento é anexado ao e-mail.
-6. O e-mail é enviado ao endereço cadastrado na solicitação do cliente.
+1. O atendimento cria o orçamento.
+2. O sistema recupera os dados do orçamento e do cliente.
+3. O PDF é gerado utilizando o ReportLab.
+4. O e-mail inclui botões com links assinados para aprovar ou recusar.
+5. O documento é anexado e enviado ao endereço cadastrado na solicitação.
+6. Ao aprovar, o cliente confirma a ação na página pública e o sistema envia a
+   fatura automaticamente.
 
 O destinatário é obtido pelo e-mail associado à solicitação (`Request.email`).
 
@@ -234,15 +246,20 @@ Em caso de sucesso, o endpoint retorna uma mensagem de confirmação e o endere�
 
 ### Regras de negócio
 
-- O envio está disponível para orçamentos com status `in_review`.
+- O envio automático ocorre na criação; o botão de reenvio está disponível
+  enquanto o orçamento estiver `in_review`.
 - Apenas funcionários com perfil `atendimento` podem solicitar o envio.
 - O envio não altera o status do orçamento.
 - O envio não aprova nem recusa automaticamente a proposta.
-- O cliente pode responder ao e-mail informando sua decisão.
-- A equipe de atendimento registra manualmente a aprovação ou recusa utilizando as operações existentes.
-- É permitido reenviar o orçamento enquanto ele permanecer em análise.
+- A decisão só é registrada após a confirmação do cliente na página aberta
+  pelo link do e-mail.
+- Os links são assinados e expiram após 30 dias.
+- A aprovação cria e envia a fatura automaticamente; cada orçamento pode ter
+  apenas uma fatura.
 
-**Importante:** o sistema não realiza leitura automática das respostas recebidas por e-mail. A decisão do cliente continua sendo registrada manualmente pelo atendente.
+Defina `PUBLIC_API_URL` como o endereço público acessível pelos clientes. O
+valor padrão `http://localhost:8000` é destinado somente ao desenvolvimento
+local.
 
 ### Tratamento de erros
 
@@ -250,9 +267,91 @@ Caso ocorra uma falha durante a comunicação com o servidor SMTP, o backend ret
 
 Verifique as configurações SMTP e os logs do backend para identificar a causa.
 
+## Faturas de clientes
+
+O backend permite gerar faturas em PDF para clientes a partir de orçamentos aprovados e enviar esses documentos automaticamente por e-mail.
+
+Essa funcionalidade é independente das faturas de pagamento destinadas aos freelancers.
+
+### Implementação
+
+A funcionalidade está organizada nos seguintes módulos:
+
+- `src/models/client_invoice_model.py`: modelo e persistência das faturas de clientes;
+- `src/schemas/client_invoice_schema.py`: schemas de entrada e resposta;
+- `src/repositories/client_invoice_repository.py`: operações de acesso aos registros;
+- `src/controllers/client_invoice_controller.py`: intermediação entre a rota e o serviço;
+- `src/routes/client_invoice_route.py`: endpoint HTTP;
+- `src/services/client_invoice_service.py`: regras de negócio, geração e envio;
+- `src/services/client_invoice_pdf.py`: geração do documento PDF.
+
+O PDF é gerado em memória utilizando `BytesIO`, sem necessidade de armazenar arquivos temporários no servidor.
+
+### Endpoint
+
+A emissão e o envio são realizados pelo endpoint:
+
+**POST** `/client-invoices/{quote_id}/send-email`
+
+Exemplo:
+
+```http
+POST /client-invoices/1/send-email
+```
+
+A operação exige autenticação e permissão de um funcionário com perfil `atendimento`.
+
+### Fluxo de funcionamento
+
+1. O cliente aprova o orçamento pelo link assinado no e-mail.
+2. O sistema verifica se o orçamento está aprovado e se ainda não existe uma
+   fatura vinculada.
+3. Os dados do cliente, serviço, valor e data de emissão são registrados.
+4. O sistema gera um PDF, anexa o arquivo ao e-mail e o envia ao cliente.
+5. Após o envio bem-sucedido, `emailed_at` registra a data e hora do envio.
+
+### Dados registrados
+
+A tabela `client_invoices` armazena:
+
+- Número identificador da fatura;
+- Identificador do orçamento associado;
+- Funcionário responsável pela emissão;
+- Nome e e-mail do cliente;
+- Descrição do serviço;
+- Valor da fatura;
+- Data de emissão;
+- Data e hora do envio do e-mail, quando concluído;
+- Data de criação do registro.
+
+O número da fatura segue o padrão `FAT-AAAAMMDD-NNNNNN`.
+
+### Regras de negócio
+
+- A emissão ocorre automaticamente após a aprovação do cliente. O endpoint
+  autenticado permanece disponível para fluxos internos.
+- A emissão só é permitida para orçamentos com status `approved`.
+- Cada orçamento pode possuir apenas uma fatura de cliente.
+- O vínculo com o orçamento é protegido por uma restrição de unicidade no banco de dados.
+- Os dados do cliente e do orçamento são registrados na fatura no momento da emissão.
+- A emissão da fatura não altera o status do orçamento.
+- O envio utiliza as configurações SMTP compartilhadas pelo backend.
+
+**Importante:** se ocorrer uma falha no envio do e-mail, a fatura permanece registrada no banco, mas o campo `emailed_at` continua sem preenchimento. Atualmente, não existe um endpoint específico para reenviar uma fatura já criada.
+
+### Migração do banco de dados
+
+A tabela `client_invoices` é criada pela migração `1a2ad26eb7eb_create_client_invoices.py`.
+
+Para aplicar a migração, execute na pasta `backend`:
+
+```bash
+uv run alembic upgrade head
+```
+
 ## Faturas de pagamento
 
-O backend também permite criar e enviar faturas de pagamento aos freelancers.
+O backend permite criar e enviar faturas de pagamento destinadas aos freelancers. Esse fluxo é independente das faturas de clientes, que representam a cobrança pelos serviços contratados.
 
 A implementação está localizada em:
 
@@ -273,7 +372,11 @@ A migração `20261110_invoice` cria a tabela de faturas. Aplique as migrações
 alembic upgrade head
 ```
 
-As faturas de pagamento e os orçamentos possuem fluxos independentes, embora compartilhem as configurações SMTP do backend.
+As faturas de pagamento, as faturas de clientes e os orçamentos possuem fluxos independentes, embora compartilhem as configurações SMTP do backend.
+
+- `/payment-invoices/`: faturas de pagamento dos freelancers.
+- `/client-invoices/`: faturas emitidas para os clientes.
+- `/quotes/`: operações relacionadas aos orçamentos.
 
 ## Testes e qualidade
 
