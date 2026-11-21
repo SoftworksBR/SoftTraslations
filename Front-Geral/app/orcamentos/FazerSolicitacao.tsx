@@ -497,6 +497,7 @@ function InputField({
   );
 }
 
+
 function LanguageField({
   label,
   placeholder = 'Selecione o idioma',
@@ -515,46 +516,103 @@ function LanguageField({
   error?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredOptions = options.filter((option) =>
+    option.label
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .startsWith(
+        search
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .trim()
+          .toLowerCase(),
+      ),
+  );
+
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
         {label}{required ? <Text style={styles.required}> *</Text> : null}
       </Text>
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${value ? optionName(options, value) : placeholder}`}
         accessibilityState={{ expanded: open }}
-        onPress={() => setOpen((current) => !current)}
+        onPress={() => {
+          setOpen((current) => !current);
+          setSearch('');
+        }}
         style={[styles.select, error && styles.inputError]}
       >
         <Text style={[styles.selectText, !value && styles.selectPlaceholder]}>
           {value ? optionName(options, value) : placeholder}
         </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
+        <Ionicons
+          name={open ? 'chevron-up' : 'chevron-down'}
+          size={16}
+          color="#627485"
+        />
       </Pressable>
-      {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
+
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.fieldError}>
+          {error}
+        </Text>
+      ) : null}
+
       {open ? (
         <View style={styles.selectOptions}>
-          {options.map((language) => (
-            <Pressable
-              key={language.value}
-              onPress={() => {
-                onSelect(language.value);
-                setOpen(false);
-              }}
-              style={styles.selectOption}
-            >
-              <Text style={styles.selectOptionText}>{language.label}</Text>
-              {value === language.value ? (
-                <Ionicons name="checkmark" size={16} color="#087F8C" />
-              ) : null}
-            </Pressable>
-          ))}
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Pesquisar idioma..."
+            placeholderTextColor="#9AA8B2"
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.searchInput}
+          />
+
+          <ScrollView
+            style={styles.optionsList}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((language) => (
+                <Pressable
+                  key={language.value}
+                  onPress={() => {
+                    onSelect(language.value);
+                    setOpen(false);
+                    setSearch('');
+                  }}
+                  style={styles.selectOption}
+                >
+                  <Text style={styles.selectOptionText}>
+                    {language.label}
+                  </Text>
+
+                  {value === language.value ? (
+                    <Ionicons name="checkmark" size={16} color="#087F8C" />
+                  ) : null}
+                </Pressable>
+              ))
+            ) : (
+              <Text style={styles.noOptionsText}>
+                Nenhum idioma encontrado.
+              </Text>
+            )}
+          </ScrollView>
         </View>
       ) : null}
     </View>
   );
 }
+
 
 function ReviewValue({ label, value }: { label: string; value: string }) {
   return (
@@ -612,6 +670,23 @@ const styles = StyleSheet.create({
   selectText: { color: '#172B3A', fontSize: 13 },
   selectPlaceholder: { color: '#9AA8B2' },
   selectOptions: { marginTop: 5, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 9, backgroundColor: '#FFFFFF' },
+  searchInput: {
+  minHeight: 42,
+  paddingHorizontal: 11,
+  borderBottomWidth: 1,
+  borderBottomColor: '#DFE7EC',
+  color: '#172B3A',
+  fontSize: 12,
+},
+optionsList: {
+  maxHeight: 220,
+},
+noOptionsText: {
+  padding: 12,
+  color: '#627485',
+  fontSize: 12,
+  textAlign: 'center',
+},
   selectOption: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#EDF1F3' },
   selectOptionText: { color: '#172B3A', fontSize: 12 },
   formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 9, marginTop: 2 },
