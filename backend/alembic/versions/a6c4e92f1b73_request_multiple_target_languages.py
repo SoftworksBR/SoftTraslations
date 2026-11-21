@@ -1,7 +1,7 @@
 """Allow requests to have multiple target languages.
 
 Revision ID: a6c4e92f1b73
-Revises: e47c2a15d891
+Revises: 20261116_rejection_comment
 """
 
 from typing import Sequence
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = 'a6c4e92f1b73'
-down_revision: str | None = 'e47c2a15d891'
+down_revision: str | None = '20261116_rejection_comment'
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
