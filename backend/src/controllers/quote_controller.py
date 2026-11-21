@@ -75,6 +75,17 @@ class QuoteController:
         return await QuoteService(session).reject(quote_id, current_employee)
 
     @staticmethod
+    async def send_email(
+        quote_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await QuoteService(session).send_email(
+            quote_id,
+            current_employee,
+        )
+
+    @staticmethod
     async def delete(
         quote_id: int,
         session: AsyncSession,

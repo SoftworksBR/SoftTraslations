@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
+from email.message import EmailMessage
+from email.utils import formataddr
+from smtplib import SMTP, SMTP_SSL, SMTPException
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,13 +22,20 @@ from src.schemas.quote_schema import (
     QuoteUpdate,
 )
 from src.services.outbox import enqueue_event
+from src.services.quote_pdf import render_quote_pdf
+from src.settings import Settings
 
 
 class QuoteService:
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        settings: Settings | None = None,
+    ):
         self.repository = QuoteRepository(session)
         self.request_repository = RequestRepository(session)
         self.price_repository = TranslationPriceRepository(session)
+        self.settings = settings or Settings()
 
     async def create(
         self, data: QuoteCreate, current_employee: Employee
@@ -247,6 +257,82 @@ class QuoteService:
         quote = await self.repository.update(quote)
 
         return quote
+
+    async def send_email(
+        self,
+        quote_id: int,
+        current_employee: Employee,
+    ) -> dict[str, str]:
+        self._require_atendimento_role(current_employee)
+
+        quote = await self._get(quote_id)
+        self._require_in_review(quote)
+
+        try:
+            self._send_quote_email(quote)
+        except (OSError, SMTPException) as error:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail='Orçamento criado, mas o envio do e-mail falhou',
+            ) from error
+
+        return {
+            'message': 'Orçamento enviado com sucesso.',
+            'recipient': quote.client_email,
+        }
+
+    def _send_quote_email(self, quote: Quote) -> None:
+        if not self.settings.SMTP_HOST or not self.settings.SMTP_FROM_EMAIL:
+            raise SMTPException('SMTP email settings are not configured')
+
+        quote_number = f'ORC-{quote.created_at:%Y%m%d}-{quote.id:06d}'
+
+        pdf = render_quote_pdf(quote)
+
+        message = EmailMessage()
+        message['Subject'] = f'Orçamento SoftTranslations - {quote_number}'
+        message['From'] = formataddr((
+            self.settings.SMTP_FROM_NAME,
+            self.settings.SMTP_FROM_EMAIL,
+        ))
+        message['To'] = quote.client_email
+
+        message.set_content(
+            f'Olá, {quote.client_name}.\n\n'
+            'Estamos encaminhando em anexo o orçamento solicitado.\n\n'
+            f'Número do orçamento: {quote_number}\n'
+            f'Valor: R$ {quote.value:.2f}\n'
+            f'Prazo: {quote.deadline:%d/%m/%Y}\n\n'
+            'Para aprovar ou recusar o orçamento, responda a este e-mail.\n'
+            'Nossa equipe registrará sua decisão no sistema.\n\n'
+            'Atenciosamente,\n'
+            'Equipe SoftTranslations'
+        )
+
+        message.add_attachment(
+            pdf,
+            maintype='application',
+            subtype='pdf',
+            filename=f'{quote_number}.pdf',
+        )
+
+        smtp_type = SMTP_SSL if self.settings.SMTP_USE_SSL else SMTP
+
+        with smtp_type(
+            self.settings.SMTP_HOST,
+            self.settings.SMTP_PORT,
+            timeout=self.settings.SMTP_TIMEOUT_SECONDS,
+        ) as smtp:
+            if not self.settings.SMTP_USE_SSL and self.settings.SMTP_USE_TLS:
+                smtp.starttls()
+
+            if self.settings.SMTP_USERNAME:
+                smtp.login(
+                    self.settings.SMTP_USERNAME,
+                    self.settings.SMTP_PASSWORD,
+                )
+
+            smtp.send_message(message)
 
     async def delete(self, quote_id: int, current_employee: Employee) -> None:
         self._require_atendimento_role(current_employee)

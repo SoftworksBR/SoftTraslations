@@ -2,7 +2,7 @@
 
 Este manual prepara o ambiente local do SoftTranslations no Windows ou Linux.
 
-Ele cobre o backend Python/FastAPI, o banco PostgreSQL e o frontend Expo, incluindo a configuração do Assistente Público integrado ao Google Gemini.
+Ele cobre o backend Python/FastAPI, o banco PostgreSQL e o frontend Expo, incluindo a configuração do Assistente Público integrado ao Google Gemini e do envio de documentos PDF por e-mail.
 
 Para orientações de uso das telas, consulte o [Manual do Usuário](./user_manual.md).
 
@@ -28,11 +28,13 @@ Instale:
 - PostgreSQL;
 - Node.js e npm, em versões compatíveis com a versão do Expo definida em `Front-Geral/package.json`;
 - Chave de API do Google Gemini para utilizar o Assistente Público;
+- Conta de e-mail com suporte a SMTP para envio de documentos;
+- ReportLab, instalado automaticamente como dependência do backend;
 - (Opcional) MongoDB, para persistência dos logs e processamento da outbox.
 
 Confira se os comandos estão disponíveis:
 
-```text
+```bash
 git --version
 node --version
 npm --version
@@ -53,6 +55,8 @@ python3.13 --version
 ```
 
 O MongoDB não é necessário para iniciar a API: sem ele, a aplicação continua funcionando, mas os logs não são persistidos e os eventos da outbox permanecem pendentes. Para habilitar esses recursos, inicie um MongoDB local ou configure uma instância acessível.
+
+O ReportLab é instalado automaticamente durante a sincronização das dependências do backend, por meio do comando `uv sync`.
 
 ## Obter o código
 
@@ -119,7 +123,7 @@ Edite `backend/.env`. Configure, no mínimo:
 
 Na primeira inicialização, o backend cria o administrador quando ainda não existem funcionários no banco. As credenciais iniciais só são utilizadas nesse caso; elas não alteram contas já existentes. Guarde-as em local seguro.
 
-### Configuração do Google Gemini
+### 2. Configuração do Google Gemini
 
 Para habilitar o Assistente Público, obtenha uma chave de API pelo [Google AI Studio](https://aistudio.google.com/apikey).
 
@@ -140,7 +144,47 @@ A chave é utilizada exclusivamente pelo backend para autenticar as chamadas ao 
 
 O Assistente Público utiliza o Google ADK para executar o agente e processar as mensagens dos usuários por meio do Gemini.
 
-### Configuração do MongoDB (opcional)
+### 3. Configuração de e-mail (SMTP)
+
+O SoftTranslations utiliza SMTP para enviar documentos por e-mail, incluindo os orçamentos em PDF gerados pelo backend.
+
+Para utilizar o Gmail como servidor SMTP, configure as seguintes variáveis no arquivo `backend/.env`:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=seuemail@gmail.com
+SMTP_PASSWORD=sua_senha_de_aplicativo
+SMTP_FROM_EMAIL=seuemail@gmail.com
+SMTP_FROM_NAME=SoftTranslations
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
+SMTP_TIMEOUT_SECONDS=20
+```
+
+Substitua `seuemail@gmail.com` pelo endereço da conta Gmail que será utilizada para enviar as mensagens.
+
+**Como obter uma senha de aplicativo do Gmail:**
+
+1. Acesse sua [Conta Google](https://myaccount.google.com/).
+2. Ative a verificação em duas etapas, caso ainda não esteja habilitada.
+3. Acesse a página de [Senhas de app](https://myaccount.google.com/apppasswords).
+4. Gere uma senha de aplicativo.
+5. Utilize a senha gerada na variável `SMTP_PASSWORD`.
+
+A senha de aplicativo é diferente da senha normal da conta Google.
+
+**Importante:**
+
+- Não utilize a senha normal do Gmail na variável `SMTP_PASSWORD`.
+- Não compartilhe a senha de aplicativo.
+- Não versione o arquivo `backend/.env`.
+- Utilize uma conta de e-mail autorizada para realizar os envios.
+- Após alterar as configurações SMTP, reinicie o backend.
+
+As variáveis SMTP são utilizadas pelo backend para estabelecer a conexão com o servidor de e-mail, autenticar a conta e enviar mensagens com documentos anexados.
+
+### 4. Configuração do MongoDB (opcional)
 
 MongoDB é opcional para a inicialização. Para habilitar logs e entrega dos eventos de auditoria, configure também `MONGODB_URI` e `MONGODB_DATABASE` e confirme que o serviço pode ser acessado.
 
@@ -150,7 +194,7 @@ Outras opções do ambiente incluem `ACCESS_TOKEN_COOKIE_NAME`, duração do tok
 
 Em desenvolvimento web, mantenha a origem do Expo (por padrão, `http://localhost:8081` e `http://127.0.0.1:8081`) entre as origens permitidas. Para uma publicação, ajuste as configurações de cookie e CORS para os domínios e HTTPS do ambiente; não reutilize configurações locais sem revisão.
 
-### 2. Ativar o ambiente e aplicar as migrações
+### 5. Ativar o ambiente e aplicar as migrações
 
 No Windows PowerShell:
 
@@ -175,11 +219,11 @@ alembic upgrade head
 
 Antes de aplicar migrações em um banco que já contém dados, faça um backup e valide o processo em uma cópia isolada.
 
-### 3. Iniciar a API
+### 6. Iniciar a API
 
 Ainda dentro de `backend` e com o ambiente virtual ativo:
 
-```text
+```bash
 task run
 ```
 
@@ -336,11 +380,13 @@ npm run web
 
 Abra `http://localhost:8081` no navegador. Para usar um celular, inicie o Expo com `npx expo start --lan` e use a configuração de rede indicada acima.
 
+As configurações de SMTP permanecem no arquivo `backend/.env`. Não é necessário refazer a configuração a cada inicialização, desde que os valores estejam corretos.
+
 ## Testes e documentação da API
 
 Com o ambiente virtual do backend ativado, na pasta `backend`:
 
-```text
+```bash
 task test
 ```
 
@@ -367,3 +413,7 @@ O endpoint do Assistente Público também pode ser testado pela interface Swagge
 - **Erro relacionado ao Google Gemini:** confira a validade da chave de API, a disponibilidade do serviço e os logs do backend.
 - **Assistente não consegue conectar à API:** confira `EXPO_PUBLIC_API_URL`, CORS e conectividade entre frontend e backend. No Expo Go, utilize o IPv4 do computador em vez de `localhost`.
 - **Erro HTTP 503 no assistente:** verifique a configuração do Google Gemini e os logs do backend para identificar a falha na execução do agente.
+- **Falha no envio de e-mail:** confira `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` e `SMTP_FROM_EMAIL`. Para Gmail, confirme se a verificação em duas etapas está ativa e se foi utilizada uma senha de aplicativo.
+- **Erro de autenticação SMTP:** não utilize a senha normal do Gmail. Gere uma nova senha de aplicativo e atualize `SMTP_PASSWORD` no arquivo `backend/.env`.
+- **Orçamento não chega ao cliente:** confira se o endereço de e-mail cadastrado na solicitação está correto e verifique a caixa de spam do destinatário.
+- **PDF do orçamento não abre:** confirme se as dependências foram sincronizadas com `uv sync`, incluindo o ReportLab. Verifique também os logs do backend e se o arquivo PDF foi gerado corretamente antes do envio.

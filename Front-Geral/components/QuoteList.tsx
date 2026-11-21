@@ -19,6 +19,7 @@ import {
   listQuotes,
   quoteStatusLabel,
   rejectQuote,
+  sendQuoteEmail,
 } from '@/services/quotes';
 import type { Quote } from '@/services/quotes';
 
@@ -31,6 +32,7 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
   const [availableIds, setAvailableIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendingQuoteId, setSendingQuoteId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,6 +62,28 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
     } catch (cause) {
       notify('Erro', errorMessage(cause));
     }
+  }
+
+  async function sendEmail(quote: Quote) {
+    setSendingQuoteId(quote.id);
+
+    try {
+      const result = await sendQuoteEmail(quote.id);
+      notify('Sucesso', result.message);
+    } catch (cause) {
+      notify('Erro', errorMessage(cause));
+    } finally {
+      setSendingQuoteId(null);
+    }
+  }
+
+  function askSendEmail(quote: Quote) {
+    confirmAction(
+      'Enviar orçamento por e-mail',
+      `O PDF será enviado para ${quote.client_email}. Deseja continuar?`,
+      'Enviar',
+      () => void sendEmail(quote),
+    );
   }
 
   function askDecision(quote: Quote, action: 'approve' | 'reject') {
@@ -124,6 +148,15 @@ export function QuoteList({ eyebrow }: { eyebrow: string }) {
                   <Pressable style={styles.dangerButton} onPress={() => askDecision(item, 'reject')}>
                     <Text style={styles.buttonText}>RECUSAR</Text>
                   </Pressable>
+                  <Pressable
+                    style={styles.emailButton}
+                    onPress={() => askSendEmail(item)}
+                    disabled={sendingQuoteId === item.id}
+                  >
+                    <Text style={styles.buttonText}>
+                      {sendingQuoteId === item.id ? 'ENVIANDO...' : 'ENVIAR POR E-MAIL'}
+                    </Text>
+                  </Pressable>
                 </View>
               ) : null}
 
@@ -165,8 +198,19 @@ const styles = StyleSheet.create({
   muted: { color: '#627485', fontSize: 13, lineHeight: 19 },
   status: { marginTop: 6, color: '#087F8C', fontWeight: '700', fontSize: 12 },
   error: { color: '#B42318', lineHeight: 20 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
   button: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#087F8C' },
   dangerButton: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#B42318' },
   buttonText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+  emailButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#344B64',
+  },
 });
