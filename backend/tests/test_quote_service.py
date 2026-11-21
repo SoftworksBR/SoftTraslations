@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 from http import HTTPStatus
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi import HTTPException
@@ -16,6 +17,7 @@ from src.schemas.project_schema import ProjectCreate
 from src.schemas.quote_schema import QuoteCreate, QuoteUpdate
 from src.services.project_service import ProjectService
 from src.services.quote_service import QuoteService
+from src.settings import Settings
 
 ATENDENTE = SimpleNamespace(id=7, role=Roles.ATENDIMENTO)
 GESTOR = SimpleNamespace(id=9, role=Roles.PROJETOS)
@@ -32,6 +34,9 @@ class FakeQuoteRepository:
         return self.quote
 
     async def get_by_id(self, quote_id):
+        return self.quote
+
+    async def get_by_id_for_update(self, quote_id):
         return self.quote
 
     async def create(self, quote):
@@ -105,6 +110,7 @@ def make_quote(status=QuoteStatus.IN_REVIEW, **overrides):
         'status': status,
         'approved_by_id': None,
         'approved_at': None,
+        'client_email': 'cliente@example.com',
     }
     data.update(overrides)
     return SimpleNamespace(**data)
@@ -126,9 +132,17 @@ def test_quote_create_requires_atendimento_role():
     assert error.value.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_quote_create_marks_request_as_quoted_and_assigns_employee():
+def test_quote_create_marks_request_as_quoted_assigns_and_emails(
+    monkeypatch,
+):
     request = make_request()
     service = make_service(request=request)
+    sent_quotes = []
+
+    def fake_send_quote_email(quote):
+        sent_quotes.append(quote)
+
+    monkeypatch.setattr(service, '_send_quote_email', fake_send_quote_email)
     data = QuoteCreate(
         request_id=1, value=Decimal('10'), deadline=date(2026, 12, 1)
     )
@@ -138,6 +152,7 @@ def test_quote_create_marks_request_as_quoted_and_assigns_employee():
     assert quote.created_by_id == ATENDENTE.id
     assert request.status == RequestStatus.QUOTED
     assert request.employee_id == ATENDENTE.id
+    assert sent_quotes == [quote]
 
 
 def test_quote_create_rejects_request_that_is_not_pending():
@@ -190,6 +205,55 @@ def test_reject_marks_request_as_rejected():
 
     assert result.status == QuoteStatus.REJECTED
     assert request.status == RequestStatus.REJECTED
+
+
+def test_client_approval_records_decision_without_employee():
+    quote = make_quote()
+    service = make_service(quote=quote)
+
+    result = run(service.decide_by_client(3, 'approve'))
+
+    assert result.status == QuoteStatus.APPROVED
+    assert result.approved_by_id is None
+    assert result.approved_at is not None
+
+
+def test_client_rejection_marks_request_as_rejected():
+    request = make_request(status=RequestStatus.QUOTED)
+    service = make_service(quote=make_quote(), request=request)
+
+    result = run(service.decide_by_client(3, 'reject'))
+
+    assert result.status == QuoteStatus.REJECTED
+    assert result.approved_by_id is None
+    assert request.status == RequestStatus.REJECTED
+
+
+def test_quote_decision_link_is_signed_for_specific_decision():
+    service = make_service(quote=make_quote())
+    service.settings = Settings(
+        SECRET_KEY='test-secret',
+        ALGORITHM='HS256',
+        PUBLIC_API_URL='https://api.example.com',
+    )
+
+    link = service._create_decision_link(make_quote(), 'approve')
+    parsed = urlparse(link)
+    token = parse_qs(parsed.query)['token'][0]
+
+    assert parsed.netloc == 'api.example.com'
+    assert parsed.path == '/public/quotes/3/decision'
+    assert parse_qs(parsed.query)['decision'] == ['approve']
+    QuoteService.verify_decision_token(
+        token, 3, 'approve', service.settings
+    )
+
+    with pytest.raises(HTTPException) as error:
+        QuoteService.verify_decision_token(
+            token, 3, 'reject', service.settings
+        )
+
+    assert error.value.status_code == HTTPStatus.BAD_REQUEST
 
 
 @pytest.mark.parametrize(

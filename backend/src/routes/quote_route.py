@@ -93,6 +93,19 @@ async def reject_quote(
     return await QuoteController.reject(quote_id, session, current_employee)
 
 
+@router.post('/{quote_id}/send-email')
+async def send_quote_email(
+    quote_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await QuoteController.send_email(
+        quote_id,
+        session,
+        current_employee,
+    )
+
+
 @router.delete('/{quote_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_quote(
     quote_id: int,
