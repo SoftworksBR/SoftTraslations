@@ -355,7 +355,10 @@ O backend permite criar e enviar faturas de pagamento destinadas aos freelancers
 
 A implementação está localizada em:
 
-`src/services/invoice_service.py`
+A migração `20261116_rejection_comment` adiciona o motivo da recusa às etapas.
+Execute `alembic upgrade head` para aplicar as migrações pendentes.
+
+O endpoint `POST /payment-invoices/` cria a fatura, gera o PDF e o envia como anexo ao e-mail do freelancer. O PDF também pode ser baixado por `GET /payment-invoices/{id}/pdf`.
 
 A geração do documento PDF e o envio por e-mail são realizados pelo serviço de faturas, utilizando as configurações SMTP do ambiente.
 

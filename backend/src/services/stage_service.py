@@ -312,7 +312,9 @@ class StageService:
             if stage.freelancer_id != current_employee.id:
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
-                    detail='Freelancers can only upload files to their own stages',
+                    detail=(
+                        'Freelancers can only upload files to their own stages'
+                    ),
                 )
             if stage.status == StageStatus.NO_FREELANCER:
                 raise HTTPException(
@@ -326,7 +328,10 @@ class StageService:
         if len(current_files) >= settings.MAX_FILES_PER_REQUEST:
             raise HTTPException(
                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail=f'Limite de {settings.MAX_FILES_PER_REQUEST} arquivos por etapa atingido',
+                detail=(
+                    f'Limite de {settings.MAX_FILES_PER_REQUEST} arquivos '
+                    'por etapa atingido'
+                ),
             )
 
         original_name = self._clean_filename(upload.filename)
@@ -350,7 +355,9 @@ class StageService:
                 detail='Arquivo vazio',
             )
 
-        directory = StoragePath(settings.UPLOAD_DIR) / 'project-stages' / str(stage.id)
+        directory = (
+            StoragePath(settings.UPLOAD_DIR) / 'project-stages' / str(stage.id)
+        )
         directory.mkdir(parents=True, exist_ok=True)
         stored_path = directory / f'{secrets.token_hex(16)}{extension}'
         stored_path.write_bytes(content)
@@ -399,7 +406,10 @@ class StageService:
             if stage.freelancer_id != current_employee.id:
                 raise HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
-                    detail='Freelancers can only access files from their own stages',
+                    detail=(
+                        'Freelancers can only access files '
+                        'from their own stages'
+                    ),
                 )
         elif current_employee.role not in {Roles.PROJETOS, Roles.ADMIN}:
             self._raise_stage_access_denied()
@@ -411,6 +421,71 @@ class StageService:
                 detail='Arquivo não encontrado',
             )
         return file
+
+    async def delete_file(
+        self,
+        stage_id: int,
+        file_id: int,
+        current_employee: Employee,
+    ) -> None:
+        if current_employee.role != Roles.FREELANCER:
+            self._raise_stage_access_denied()
+
+        stage = await self.get_by_id(stage_id)
+        if stage.freelancer_id != current_employee.id:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail=(
+                    'Freelancers can only remove files from their own '
+                    'stages'
+                ),
+            )
+
+        file = await self.repository.get_file(stage_id, file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail='File not found',
+            )
+        if file.uploaded_by_id != current_employee.id:
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Freelancers can only remove files they uploaded',
+            )
+        if stage.status == StageStatus.DONE:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='Files from completed stages cannot be removed',
+            )
+
+        previous_status = stage.status
+        if stage.status == StageStatus.TESTING:
+            stage.status = StageStatus.IN_PROGRESS
+
+        enqueue_event(
+            self.repository.session,
+            event_type='project_stage.file_removed',
+            aggregate_type='project_stage',
+            aggregate_id=stage.id,
+            payload={
+                'actor': self._actor(current_employee),
+                'details': {
+                    'file_id': file.id,
+                    'original_name': file.original_name,
+                    'status_before': previous_status.value,
+                    'status_after': stage.status.value,
+                },
+                'source': 'api',
+            },
+        )
+        try:
+            await self.repository.session.delete(file)
+            await self.repository.session.commit()
+        except SQLAlchemyError:
+            await self.repository.session.rollback()
+            raise
+
+        StoragePath(file.file_path).unlink(missing_ok=True)
 
     async def update(
         self,
@@ -443,6 +518,9 @@ class StageService:
                     detail='Freelancers can only advance their own stage',
                 )
         previous_status = stage.status
+        previous_rejection_comment = stage.rejection_comment
+        self._update_rejection_comment(stage, data, current_employee)
+
         assignment_changed = (
             current_employee.role == Roles.PROJETOS
             and data.freelancer_id is not None
@@ -469,7 +547,11 @@ class StageService:
                     stage.started_at = now
                 stage.completed_at = now
 
-        if stage.status != previous_status or assignment_changed:
+        if (
+            stage.status != previous_status
+            or assignment_changed
+            or stage.rejection_comment != previous_rejection_comment
+        ):
             event_type = (
                 'project_stage.completed'
                 if stage.status == StageStatus.DONE
@@ -487,12 +569,53 @@ class StageService:
                         'status_before': previous_status.value,
                         'status_after': stage.status.value,
                         'freelancer_id': stage.freelancer_id,
+                        'rejection_comment': stage.rejection_comment,
                     },
                     'source': 'api',
                 },
             )
 
         return await self.repository.update(stage)
+
+    @staticmethod
+    def _update_rejection_comment(
+        stage: ProjectStage,
+        data: StageUpdate,
+        current_employee: Employee,
+    ) -> None:
+        if data.rejection_comment is not None:
+            if current_employee.role != Roles.PROJETOS:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        'Only project managers can record a rejection '
+                        'comment'
+                    ),
+                )
+            rejection_comment = data.rejection_comment.strip()
+            if data.status != StageStatus.IN_PROGRESS or not rejection_comment:
+                raise HTTPException(
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    detail=(
+                        'A rejection comment is required when returning a '
+                        'stage'
+                    ),
+                )
+            stage.rejection_comment = rejection_comment
+        elif (
+            current_employee.role == Roles.FREELANCER
+            and data.status == StageStatus.TESTING
+        ) or (
+            current_employee.role == Roles.PROJETOS
+            and (
+                data.status in {
+                    StageStatus.IN_PROGRESS,
+                    StageStatus.DONE,
+                }
+                or data.freelancer_id is not None
+            )
+        ):
+            stage.rejection_comment = None
 
     async def _validate_stage_assignment(
         self, stage_id: int, freelancer_id: int | None

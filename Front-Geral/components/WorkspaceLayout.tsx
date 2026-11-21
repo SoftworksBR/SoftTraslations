@@ -47,6 +47,7 @@ const navigation: Record<EmployeeRole, NavItem[]> = {
   ],
   projetos: [
     { label: 'Projetos', href: '/gestor/projetos', icon: 'folder-outline' },
+    { label: 'Entregas', href: '/gestor/entregas', icon: 'clipboard-outline' },
     { label: 'Orçamentos', href: '/gestor/orcamentos', icon: 'document-text-outline' },
     { label: 'Tradutores', href: '/gestor/tradutores', icon: 'people-outline' },
     { label: 'Workflow', href: '/gestor/workflow', icon: 'git-branch-outline' },
@@ -70,6 +71,7 @@ const titles: Record<string, string> = {
   '/gestor': 'Visão geral',
   '/gestor/orcamentos': 'Orçamentos',
   '/gestor/projetos': 'Projetos',
+  '/gestor/entregas': 'Entregas',
   '/gestor/novo-projeto': 'Novo projeto',
   '/gestor/tradutores': 'Tradutores',
   '/gestor/tradutores/novo': 'Pré-cadastrar tradutor',
