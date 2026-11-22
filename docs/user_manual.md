@@ -312,7 +312,7 @@ Depois de aceitar, a etapa aparece em **Meus serviços** com o selo
 Você não encaminha a etapa para revisão: o envio de documentos do colaborador
 não muda a situação da etapa, e o tradutor responsável segue cuidando do
 andamento. Se o responsável recusar a etapa, não é possível enviar documentos
-até o gestor atribuir outro responsável. O responsável vê, na própria etapa, o
+até um novo responsável aceitá-la. O responsável vê, na própria etapa, o
 nome do tradutor adicional e a situação do convite.
 
 ## Situações e regras do fluxo
