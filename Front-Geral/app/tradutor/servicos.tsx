@@ -62,6 +62,9 @@ export default function Servicos() {
     stage.second_freelancer_id === employee?.id && stage.second_status === 'invited';
   const isCollaborator = (stage: TranslationStage) =>
     stage.second_freelancer_id === employee?.id && stage.second_status === 'accepted';
+  // Colaborador aceito só envia depois que o responsável aceitar a etapa.
+  const isUploadBlocked = (stage: TranslationStage) =>
+    isCollaborator(stage) && stage.status === 'no_freelancer';
   const isPending = (stage: TranslationStage) =>
     isInvited(stage) || (!isCollaborator(stage) && stage.status === 'no_freelancer');
 
@@ -466,14 +469,27 @@ export default function Servicos() {
                       ) : null}
                     </View>
                   ))}
-                  <WebFilePicker
-                    files={selectedFiles[item.id] ?? []}
-                    onChange={(files) => setSelectedFiles((current) => ({ ...current, [item.id]: files }))}
-                  />
+                  {isUploadBlocked(item) ? (
+                    <Text style={styles.blockedNotice}>
+                      Aguarde o responsável aceitar a etapa para enviar documentos.
+                    </Text>
+                  ) : (
+                    <WebFilePicker
+                      files={selectedFiles[item.id] ?? []}
+                      onChange={(files) => setSelectedFiles((current) => ({ ...current, [item.id]: files }))}
+                    />
+                  )}
                   {Platform.OS === 'web' ? (
                     <Pressable
                       accessibilityRole="button"
+                      aria-disabled={
+                        isUploadBlocked(item) ||
+                        uploadingStageId === item.id ||
+                        removingFile?.stageId === item.id ||
+                        !(selectedFiles[item.id]?.length)
+                      }
                       disabled={
+                        isUploadBlocked(item) ||
                         uploadingStageId === item.id ||
                         removingFile?.stageId === item.id ||
                         !(selectedFiles[item.id]?.length)
@@ -481,7 +497,8 @@ export default function Servicos() {
                       onPress={() => void uploadDocument(item)}
                       style={[
                         styles.uploadButton,
-                        (uploadingStageId === item.id ||
+                        (isUploadBlocked(item) ||
+                          uploadingStageId === item.id ||
                           removingFile?.stageId === item.id ||
                           !(selectedFiles[item.id]?.length)) &&
                           styles.disabled,
@@ -521,6 +538,15 @@ const styles = StyleSheet.create({
   buttonText: { color: '#FFFFFF', fontWeight: '700' },
   stageTitle: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
   collaboratorPill: { backgroundColor: '#E8F6F7' },
+  blockedNotice: {
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFF5E3',
+    color: '#8A5A0B',
+    fontSize: 12,
+    lineHeight: 18,
+  },
   collaboratorText: { color: '#087F8C' },
   list: { paddingTop: 20, gap: 12, flexGrow: 1 },
   stageCard: {
