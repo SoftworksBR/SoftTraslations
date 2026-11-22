@@ -93,15 +93,27 @@ def make_service(monkeypatch, stage, declined=(), files=()):
     )
     service = StageService(session)
     service.expired = expired
+    # Ordem das chamadas: trava, validações, transferência e gravação.
+    calls = service.calls = []
     monkeypatch.setattr(service, 'get_by_id', AsyncMock(return_value=stage))
-    monkeypatch.setattr(
-        service,
-        '_get_declined_freelancer_ids',
-        AsyncMock(return_value=set(declined)),
-    )
-    monkeypatch.setattr(service, '_validate_freelancer', AsyncMock())
+
+    async def lock(self, stage_id):
+        calls.append('lock')
+        return stage
+
+    async def declined_ids(stage_id):
+        calls.append('declined')
+        return set(declined)
+
+    async def validate(freelancer_id):
+        calls.append('validate')
+
+    monkeypatch.setattr(StageRepository, 'get_by_id_for_update', lock)
+    monkeypatch.setattr(service, '_get_declined_freelancer_ids', declined_ids)
+    monkeypatch.setattr(service, '_validate_freelancer', validate)
 
     async def update(self, updated_stage):
+        calls.append('save')
         return updated_stage
 
     # Simula o UPDATE de autoria sobre os arquivos da etapa.
@@ -109,6 +121,7 @@ def make_service(monkeypatch, stage, declined=(), files=()):
     service.reassign_calls = []
 
     async def reassign_stage_files(self, stage_id, from_id, to_id):
+        calls.append('reassign')
         service.reassign_calls.append((stage_id, from_id, to_id))
         moved = [f for f in service.files if f.uploaded_by_id == from_id]
         for file in moved:
@@ -151,7 +164,7 @@ def test_manager_invites_second_freelancer(monkeypatch, events):
 def test_invite_unknown_stage_returns_404(monkeypatch):
     service = StageService(SimpleNamespace())
     monkeypatch.setattr(
-        StageRepository, 'get_by_id', AsyncMock(return_value=None)
+        StageRepository, 'get_by_id_for_update', AsyncMock(return_value=None)
     )
 
     status = expect_error(
@@ -912,3 +925,76 @@ def test_update_rereads_freelancer_names(monkeypatch):
 
     session.commit.assert_awaited_once()
     assert expired == [['freelancer', 'second_freelancer']]
+
+
+# --- trava da etapa nas ações de colaboração --------------------------------
+
+
+def test_stage_lock_query_locks_only_project_stages():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+
+    asyncio.run(StageRepository(session).get_by_id_for_update(STAGE_ID))
+
+    statement = session.execute.await_args.args[0]
+    query = ' '.join(
+        str(statement.compile(dialect=postgresql.dialect())).lower().split()
+    )
+    assert 'where project_stages.id =' in query
+    assert query.endswith('for update of project_stages')
+    assert statement.get_execution_options()['populate_existing'] is True
+    assert {
+        'ProjectStage.freelancer',
+        'ProjectStage.second_freelancer',
+        'ProjectStage.files',
+    } <= loaded_paths(statement)
+
+
+@pytest.mark.parametrize(
+    ('action', 'expected'),
+    [
+        ('invite', ['lock', 'declined', 'validate', 'save']),
+        ('remove', ['lock', 'reassign', 'save']),
+        ('accept', ['lock', 'save']),
+        ('decline', ['lock', 'save']),
+    ],
+)
+def test_collaboration_actions_lock_stage_first(
+    monkeypatch, events, action, expected
+):
+    stages = {
+        'invite': make_stage,
+        'remove': accepted_stage,
+        'accept': invited_stage,
+        'decline': invited_stage,
+    }
+    service = make_service(monkeypatch, stages[action]())
+    calls = {
+        'invite': lambda: service.invite_collaborator(
+            STAGE_ID, SECOND_ID, MANAGER
+        ),
+        'remove': lambda: service.remove_collaborator(STAGE_ID, MANAGER),
+        'accept': lambda: service.accept_collaboration(
+            STAGE_ID, freelancer(SECOND_ID)
+        ),
+        'decline': lambda: service.decline_collaboration(
+            STAGE_ID, freelancer(SECOND_ID)
+        ),
+    }
+
+    asyncio.run(calls[action]())
+
+    assert service.calls == expected
+
+
+def test_failed_answer_reads_invite_under_lock(monkeypatch):
+    service = make_service(monkeypatch, invited_stage())
+
+    status = expect_error(
+        service.accept_collaboration(STAGE_ID, freelancer(OTHER_ID))
+    )
+
+    assert status == HTTPStatus.FORBIDDEN
+    assert service.calls == ['lock']

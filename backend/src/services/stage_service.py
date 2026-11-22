@@ -211,6 +211,17 @@ class StageService:
         await self.repository.session.commit()
         return path
 
+    async def _get_for_update(self, stage_id: int) -> ProjectStage:
+        # Trava a etapa até o commit; em erro, o rollback ao fechar a
+        # sessão libera a trava.
+        stage = await self.repository.get_by_id_for_update(stage_id)
+        if stage is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Stage not found',
+            )
+        return stage
+
     async def get_by_id(self, stage_id: int) -> ProjectStage:
         stage = await self.repository.get_by_id(stage_id)
         if stage is None:
@@ -302,7 +313,7 @@ class StageService:
         current_employee: Employee,
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
-        stage = await self.get_by_id(stage_id)
+        stage = await self._get_for_update(stage_id)
         if stage.freelancer_id is None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
@@ -340,7 +351,7 @@ class StageService:
         self, stage_id: int, current_employee: Employee
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
-        stage = await self.get_by_id(stage_id)
+        stage = await self._get_for_update(stage_id)
         self._require_stage_not_done(stage)
         if stage.second_freelancer_id is None:
             raise HTTPException(
@@ -408,7 +419,7 @@ class StageService:
         if current_employee.role != Roles.FREELANCER:
             self._raise_stage_access_denied()
 
-        stage = await self.get_by_id(stage_id)
+        stage = await self._get_for_update(stage_id)
         if stage.second_freelancer_id != current_employee.id:
             raise HTTPException(
                 status_code=HTTPStatus.FORBIDDEN,

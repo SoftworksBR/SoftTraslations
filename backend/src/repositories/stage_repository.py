@@ -50,6 +50,30 @@ class StageRepository:
             .where(ProjectStage.id == stage_id)
         )
 
+    async def get_by_id_for_update(
+        self, stage_id: int
+    ) -> ProjectStage | None:
+        # of=ProjectStage: as relações por outer join não aceitam trava;
+        # populate_existing relê a linha já travada se estiver na sessão.
+        result = await self.session.execute(
+            select(ProjectStage)
+            .options(
+                joinedload(ProjectStage.path_stage).joinedload(
+                    PathStage.stage_template
+                ),
+                joinedload(ProjectStage.project_path).joinedload(
+                    ProjectPath.path
+                ),
+                selectinload(ProjectStage.files),
+                selectinload(ProjectStage.freelancer),
+                selectinload(ProjectStage.second_freelancer),
+            )
+            .where(ProjectStage.id == stage_id)
+            .with_for_update(of=ProjectStage)
+            .execution_options(populate_existing=True)
+        )
+        return result.unique().scalar_one_or_none()
+
     async def get_by_id(self, stage_id: int) -> ProjectStage | None:
         result = await self.session.execute(
             select(ProjectStage)
