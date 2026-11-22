@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   sectionHint: { marginTop: 4, marginBottom: 10, color: '#627485', fontSize: 12 },
   documentsLoading: { alignSelf: 'flex-start', marginVertical: 8 },
   errorText: { color: '#B42318', fontSize: 13, lineHeight: 19 },
-  emptyText: { color: '#8293A0', fontSize: 13 },
+  emptyText: { color: '#627485', fontSize: 13 },
   fileRow: {
     flexDirection: 'row',
     alignItems: 'center',
