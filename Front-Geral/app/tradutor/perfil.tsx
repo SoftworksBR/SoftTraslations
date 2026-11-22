@@ -175,7 +175,8 @@ export default function MeuPerfil() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Salvar idiomas"
-            accessibilityState={{ disabled: saving, busy: saving }}
+            aria-disabled={saving}
+            aria-busy={saving}
             disabled={saving}
             onPress={() => void saveLanguages()}
             style={[styles.saveButton, saving && styles.disabled]}

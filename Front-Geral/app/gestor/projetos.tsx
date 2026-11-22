@@ -411,7 +411,7 @@ export default function Projetos() {
                             <Pressable
                               accessibilityRole="switch"
                               accessibilityLabel="Mostrar todos"
-                              accessibilityState={{ checked: showAllFreelancers }}
+                              aria-checked={showAllFreelancers}
                               disabled={freelancersLoading}
                               onPress={() => {
                                 const next = !showAllFreelancers;
