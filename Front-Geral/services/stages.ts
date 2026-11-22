@@ -25,6 +25,7 @@ export type TranslationStage = {
   project_path_id: number;
   path_stage_id: number;
   freelancer_id: number | null;
+  freelancer_name: string | null;
   status: StageStatus;
   created_at: string;
   started_at: string | null;

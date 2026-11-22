@@ -64,6 +64,7 @@ class StageResponse(BaseModel):
     project_path_id: int
     path_stage_id: int
     freelancer_id: int | None
+    freelancer_name: str | None = None
     status: StageStatus
     created_at: datetime
     started_at: datetime | None

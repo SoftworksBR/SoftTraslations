@@ -20,9 +20,14 @@ from src.enums.enums import (
     StageStatus,
 )
 from src.main import app
-from src.models.stage_model import ProjectStage
+from src.models.employee_model import Employee
+from src.models.stage_model import PathStage, ProjectStage, StageTemplate
 from src.repositories.stage_repository import StageRepository
-from src.schemas.stage_schema import StageSearchFilters, StageUpdate
+from src.schemas.stage_schema import (
+    StageResponse,
+    StageSearchFilters,
+    StageUpdate,
+)
 from src.security import get_current_employee
 from src.services import stage_service
 from src.services.stage_service import StageService
@@ -825,3 +830,85 @@ def test_reassign_query_moves_only_removed_freelancer_stage_files():
         'project_stage_id_1': STAGE_ID,
         'uploaded_by_id_1': SECOND_ID,
     }
+
+
+# --- nome do responsável na resposta da etapa ------------------------------
+
+
+def stage_for_response(**overrides):
+    stage = make_stage(**overrides)
+    stage.created_at = datetime(2026, 11, 1, tzinfo=UTC)
+    path_stage = PathStage(stage_template_id=1, sequence=1)
+    path_stage.stage_template = StageTemplate(name='Tradução')
+    stage.path_stage = path_stage
+    return stage
+
+
+def test_stage_response_includes_main_freelancer_name():
+    stage = stage_for_response()
+    stage.freelancer = Employee(
+        username='ana',
+        email='ana@example.com',
+        password_hash='hash',
+        role=Roles.FREELANCER,
+    )
+
+    response = StageResponse.model_validate(stage)
+
+    assert response.freelancer_id == MAIN_ID
+    assert response.freelancer_name == 'ana'
+
+
+def test_stage_response_without_main_freelancer_has_no_name():
+    stage = stage_for_response(
+        freelancer_id=None, status=StageStatus.NO_FREELANCER
+    )
+
+    response = StageResponse.model_validate(stage)
+
+    assert response.freelancer_id is None
+    assert response.freelancer_name is None
+
+
+def loaded_paths(statement):
+    return {
+        str(option.path.path[-2])
+        for option in statement._with_options  # noqa: SLF001
+    }
+
+
+def test_stage_queries_load_main_and_second_freelancer():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(
+            scalar_one_or_none=lambda: None,
+            scalars=lambda: SimpleNamespace(all=lambda: []),
+        )
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+    repository = StageRepository(session)
+
+    asyncio.run(repository.get_by_id(STAGE_ID))
+    by_id = loaded_paths(session.execute.await_args.args[0])
+    asyncio.run(repository.get_all(freelancer_id=MAIN_ID))
+    listing = loaded_paths(session.execute.await_args.args[0])
+
+    for paths in (by_id, listing):
+        assert 'ProjectStage.freelancer' in paths
+        assert 'ProjectStage.second_freelancer' in paths
+
+
+def test_update_rereads_freelancer_names(monkeypatch):
+    expired = []
+    session = SimpleNamespace(
+        commit=AsyncMock(),
+        expire=lambda instance, attributes: expired.append(attributes),
+    )
+    stage = make_stage()
+    monkeypatch.setattr(
+        StageRepository, 'get_by_id', AsyncMock(return_value=stage)
+    )
+
+    asyncio.run(StageRepository(session).update(stage))
+
+    session.commit.assert_awaited_once()
+    assert expired == [['freelancer', 'second_freelancer']]

@@ -158,8 +158,7 @@ export default function Quadros() {
                 <Text style={styles.stageName}>{item.name}</Text>
                 <Text style={styles.hint}>
                   Situação: {item.status} · Tradutor:{' '}
-                  {freelancersByStage[item.id]?.find((freelancer) => freelancer.id === item.freelancer_id)?.username
-                    ?? 'não atribuído'}
+                  {item.freelancer_name ?? 'não atribuído'}
                 </Text>
                 {freelancersByStage[item.id]?.length ? (
                   <View style={styles.employeePicker}>

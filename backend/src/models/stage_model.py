@@ -181,6 +181,12 @@ class ProjectStage:
     )
 
     @property
+    def freelancer_name(self) -> str | None:
+        if self.freelancer is None:
+            return None
+        return self.freelancer.username
+
+    @property
     def second_freelancer_name(self) -> str | None:
         if self.second_freelancer is None:
             return None

@@ -61,6 +61,7 @@ class StageRepository:
                     ProjectPath.path
                 ),
                 selectinload(ProjectStage.files),
+                selectinload(ProjectStage.freelancer),
                 selectinload(ProjectStage.second_freelancer),
             )
             .where(ProjectStage.id == stage_id)
@@ -80,6 +81,7 @@ class StageRepository:
                 ProjectPath.project
             ),
             selectinload(ProjectStage.files),
+            selectinload(ProjectStage.freelancer),
             selectinload(ProjectStage.second_freelancer),
         )
 
@@ -127,6 +129,8 @@ class StageRepository:
 
     async def update(self, stage: ProjectStage) -> ProjectStage:
         await self.session.commit()
+        # Os ids dos tradutores podem ter mudado; o get_by_id relê os nomes.
+        self.session.expire(stage, ['freelancer', 'second_freelancer'])
         return await self.get_by_id(stage.id)
 
     async def delete(self, stage: ProjectStage) -> None:
