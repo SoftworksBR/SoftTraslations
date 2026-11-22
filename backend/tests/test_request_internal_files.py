@@ -177,3 +177,45 @@ def test_quote_is_locked_before_request_and_both_before_counting():
         'lock_request',
         'list_files',
     ]
+
+
+class FakePublicRequestRepository(FakeRequestRepository):
+    def __init__(self, by_token, locked, calls):
+        super().__init__(locked, calls=calls)
+        self.by_token = by_token
+
+    async def get_by_public_token(self, token):
+        self.calls.append('by_token')
+        return self.by_token
+
+
+def make_public_service(by_token_status, locked_status):
+    service = RequestService(session=None)
+    service.repository = FakePublicRequestRepository(
+        SimpleNamespace(id=1, status=by_token_status),
+        SimpleNamespace(id=1, status=locked_status),
+        [],
+    )
+    return service
+
+
+def test_public_upload_locks_request_before_counting_files():
+    service = make_public_service(RequestStatus.PENDING, RequestStatus.PENDING)
+
+    asyncio.run(service.add_file_public('token', upload()))
+
+    assert service.repository.calls == [
+        'by_token',
+        'lock_request',
+        'list_files',
+    ]
+
+
+def test_public_upload_checks_status_read_under_lock():
+    service = make_public_service(RequestStatus.PENDING, RequestStatus.QUOTED)
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(service.add_file_public('token', upload()))
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert 'list_files' not in service.repository.calls

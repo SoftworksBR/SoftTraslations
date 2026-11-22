@@ -232,3 +232,16 @@ def test_request_for_stage_returns_found_request_unchanged():
     result, _ = _request_for_stage_statement(42, found=request)
 
     assert result is request
+
+
+def test_request_lock_rereads_row_already_in_session():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+
+    asyncio.run(RequestRepository(session).get_by_id_for_update(3))
+
+    statement = session.execute.await_args.args[0]
+    assert statement.get_execution_options()['populate_existing'] is True
+    assert _sql(statement).endswith('for update of requests')

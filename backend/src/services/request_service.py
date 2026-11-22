@@ -153,6 +153,13 @@ class RequestService:
         self, token: str, upload: UploadFile
     ) -> RequestFile:
         request = await self._get_by_token(token)
+        # Trava a solicitação antes de conferir status e limite de arquivos.
+        request = await self.repository.get_by_id_for_update(request.id)
+        if request is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Solicitação não encontrada',
+            )
         self._require_pending(request)
 
         settings = Settings()
