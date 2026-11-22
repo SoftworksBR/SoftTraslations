@@ -56,8 +56,19 @@ export type ProjectInput = {
   path_ids: number[];
 };
 
+export type ProjectsSummary = {
+  total: number;
+  awaiting: number;
+  in_progress: number;
+  completed: number;
+};
+
 export function getProjects() {
   return apiRequest<Project[]>('/projects/');
+}
+
+export function getProjectsSummary() {
+  return apiRequest<ProjectsSummary>('/projects/summary');
 }
 
 export function getProjectDetails(projectId: number) {

@@ -1,4 +1,5 @@
-from sqlalchemy import select
+from sqlalchemy import String, cast, distinct, func, select
+from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -131,6 +132,35 @@ class ProjectRepository:
         result = await self.session.execute(statement)
 
         return list(result.scalars().all())
+
+    async def count_by_stage_statuses(
+        self,
+    ) -> list[tuple[list[str] | None, int]]:
+        """Conta projetos agrupados pelo conjunto de status das etapas.
+
+        Projetos sem etapas aparecem com o conjunto ``None``.
+        """
+        stage_status = cast(ProjectStage.status, String)
+        statuses = func.array_agg(
+            aggregate_order_by(distinct(stage_status), stage_status)
+        ).filter(ProjectStage.id.is_not(None))
+        statuses_by_project = (
+            select(statuses.label('statuses'))
+            .select_from(Project)
+            .outerjoin(ProjectPath, ProjectPath.project_id == Project.id)
+            .outerjoin(
+                ProjectStage, ProjectStage.project_path_id == ProjectPath.id
+            )
+            .group_by(Project.id)
+            .subquery()
+        )
+        result = await self.session.execute(
+            select(statuses_by_project.c.statuses, func.count()).group_by(
+                statuses_by_project.c.statuses
+            )
+        )
+
+        return [(statuses, count) for statuses, count in result.all()]
 
     async def update(self, project: Project) -> Project:
         await self.session.commit()

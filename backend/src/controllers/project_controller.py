@@ -5,6 +5,7 @@ from src.schemas.project_schema import (
     ProjectCreate,
     ProjectDetailsResponse,
     ProjectSearchFilters,
+    ProjectSummaryResponse,
     ProjectUpdate,
 )
 from src.services.project_service import ProjectService
@@ -30,6 +31,14 @@ class ProjectController:
         service = ProjectService(session)
 
         return await service.get_all(current_employee, filters)
+
+    @staticmethod
+    async def get_summary(
+        session: AsyncSession,
+        current_employee: Employee,
+    ) -> ProjectSummaryResponse:
+        service = ProjectService(session)
+        return await service.get_summary(current_employee)
 
     @staticmethod
     async def get_details(

@@ -84,6 +84,18 @@ O painel apresenta indicadores e uma visão da equipe retornada pela API. Se
 alguma seção não tiver dados, confirme se os registros foram cadastrados e se a
 API está acessível.
 
+A seção **Projetos** mostra quatro indicadores e uma barra de proporção:
+
+- **Total**: todos os projetos cadastrados.
+- **Aguardando**: projetos sem etapas ou com etapas ainda não iniciadas.
+- **Em andamento**: projetos com alguma etapa em andamento ou em teste, ou com
+  parte das etapas concluída.
+- **Concluídos**: projetos em que todas as etapas foram concluídas.
+
+A situação é calculada a partir das etapas de cada projeto. Se os indicadores
+de projetos não puderem ser carregados, apenas essa seção mostra a mensagem de
+erro; os indicadores da equipe continuam disponíveis.
+
 ### Gerenciar funcionários
 
 Na área **Funcionários**, o administrador pode consultar, filtrar, cadastrar,
