@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -105,17 +105,25 @@ export default function Projetos() {
     }
   }, []);
 
+  // Só a busca mais recente atualiza a lista; respostas antigas são ignoradas.
+  const latestFreelancersLoad = useRef(0);
+
   const loadFreelancers = useCallback(async (stageId: number, includeAll = false) => {
+    const loadId = ++latestFreelancersLoad.current;
+    const isCurrent = () => latestFreelancersLoad.current === loadId;
     setFreelancersLoading(true);
     setFreelancersError(null);
     try {
-      setFreelancers(await getAvailableStageFreelancers(stageId, { includeAll }));
+      const result = await getAvailableStageFreelancers(stageId, { includeAll });
+      if (isCurrent()) setFreelancers(result);
     } catch (cause) {
-      setFreelancersError(
-        cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
-      );
+      if (isCurrent()) {
+        setFreelancersError(
+          cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
+        );
+      }
     } finally {
-      setFreelancersLoading(false);
+      if (isCurrent()) setFreelancersLoading(false);
     }
   }, []);
 
@@ -126,6 +134,7 @@ export default function Projetos() {
   );
 
   async function openProject(project: Project) {
+    latestFreelancersLoad.current += 1;
     setSelectedProject(project);
     setDetails(null);
     setSelectedStageId(null);
@@ -149,6 +158,7 @@ export default function Projetos() {
   }
 
   function closeProject() {
+    latestFreelancersLoad.current += 1;
     setSelectedProject(null);
     setDetails(null);
     setDetailsError(null);
