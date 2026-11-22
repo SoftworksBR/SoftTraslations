@@ -12,7 +12,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.enums.enums import AccountStatus, Roles, StageStatus
+from src.enums.enums import (
+    AccountStatus,
+    LanguageMatch,
+    Roles,
+    StageStatus,
+)
 from src.models.employee_model import Employee
 from src.models.file_model import File
 from src.models.outbox_model import OutboxEvent
@@ -21,6 +26,7 @@ from src.models.project_model import Project, ProjectPath
 from src.models.stage_model import PathStage, ProjectStage, StageTemplate
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
+    AvailableFreelancerSchema,
     ProjectStageCreate,
     StageSearchFilters,
     StageTemplateCreate,
@@ -30,6 +36,14 @@ from src.services.outbox import enqueue_event
 from src.settings import Settings
 
 settings = Settings()
+
+LANGUAGE_MATCH_ORDER = (
+    LanguageMatch.COMPATIBLE,
+    LanguageMatch.UNDECLARED,
+    LanguageMatch.INCOMPATIBLE,
+)
+# Incompatíveis só aparecem com include_all.
+VISIBLE_MATCHES = LANGUAGE_MATCH_ORDER[:2]
 ALLOWED_FILE_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.odt', '.txt', '.rtf', '.xls', '.xlsx',
     '.png', '.jpg', '.jpeg',
@@ -281,8 +295,11 @@ class StageService:
         return await self.repository.update(stage)
 
     async def get_available_freelancers(
-        self, stage_id: int, current_employee: Employee
-    ) -> list[Employee]:
+        self,
+        stage_id: int,
+        current_employee: Employee,
+        include_all: bool = False,
+    ) -> list[AvailableFreelancerSchema]:
         self._require_projects_role(current_employee)
         await self.get_by_id(stage_id)
         declined_ids = await self._get_declined_freelancer_ids(stage_id)
@@ -295,11 +312,61 @@ class StageService:
                 Employee.account_status == AccountStatus.ACTIVE,
             )
         )
-        return [
+        available = [
             employee
             for employee in employees
             if employee.profile_completed and employee.id not in declined_ids
         ]
+
+        request = await self.repository.get_request_for_stage(stage_id)
+        if request is None or not request.target_language_ids:
+            return [
+                self._available_freelancer(employee, None)
+                for employee in available
+            ]
+
+        matches = [
+            (
+                employee,
+                self._classify_language_match(
+                    request.source_language_id,
+                    request.target_language_ids,
+                    employee.source_language_ids,
+                    employee.target_language_ids,
+                ),
+            )
+            for employee in available
+        ]
+        visible = LANGUAGE_MATCH_ORDER if include_all else VISIBLE_MATCHES
+        return [
+            self._available_freelancer(employee, match)
+            for group in visible
+            for employee, match in matches
+            if match == group
+        ]
+
+    @staticmethod
+    def _classify_language_match(
+        request_source_id: int,
+        request_target_ids: list[int],
+        source_ids: list[int],
+        target_ids: list[int],
+    ) -> LanguageMatch:
+        if not source_ids and not target_ids:
+            return LanguageMatch.UNDECLARED
+        if request_source_id in source_ids and set(
+            request_target_ids
+        ).intersection(target_ids):
+            return LanguageMatch.COMPATIBLE
+        return LanguageMatch.INCOMPATIBLE
+
+    @staticmethod
+    def _available_freelancer(
+        employee: Employee, match: LanguageMatch | None
+    ) -> AvailableFreelancerSchema:
+        return AvailableFreelancerSchema.model_validate(employee).model_copy(
+            update={'language_match': match}
+        )
 
     async def upload_file(
         self,

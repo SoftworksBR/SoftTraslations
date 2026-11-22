@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.controllers.stage_controller import StageController
 from src.database import get_session
 from src.models.employee_model import Employee
-from src.schemas.employee_schema import EmployeePublicSchema
 from src.schemas.stage_schema import (
+    AvailableFreelancerSchema,
     ProjectStageCreate,
     StageFileResponse,
     StageResponse,
@@ -157,15 +157,16 @@ async def decline_stage(
 
 @router.get(
     '/{stage_id}/available-freelancers',
-    response_model=list[EmployeePublicSchema],
+    response_model=list[AvailableFreelancerSchema],
 )
 async def get_available_stage_freelancers(
     stage_id: int,
+    include_all: bool = False,
     session: AsyncSession = Depends(get_session),
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await StageController.get_available_freelancers(
-        stage_id, session, current_employee
+        stage_id, session, current_employee, include_all
     )
 
 

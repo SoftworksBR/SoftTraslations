@@ -2,7 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.enums.enums import StageStatus
+from src.enums.enums import LanguageMatch, StageStatus
+from src.schemas.employee_schema import EmployeePublicSchema
 
 
 class StageCreate(BaseModel):
@@ -65,3 +66,8 @@ class StageResponse(BaseModel):
     completed_at: datetime | None
     rejection_comment: str | None = None
     files: list[StageFileResponse] = Field(default_factory=list)
+
+
+class AvailableFreelancerSchema(EmployeePublicSchema):
+    # Nulo quando o projeto não tem orçamento para comparar idiomas.
+    language_match: LanguageMatch | None = None
