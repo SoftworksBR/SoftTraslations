@@ -157,6 +157,36 @@ def test_stage_search_filters_include_related_projects():
     assert 'employees.username ilike' in query
 
 
+def _locked_statement(call):
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+    asyncio.run(call(session))
+    return _sql(session.execute.await_args.args[0])
+
+
+def test_quote_lock_by_request_locks_only_quotes():
+    query = _locked_statement(
+        lambda session: QuoteRepository(session).get_by_request_id_for_update(
+            3
+        )
+    )
+
+    assert 'where quotes.request_id =' in query
+    assert query.endswith('for update of quotes')
+
+
+def test_request_lock_locks_request_row():
+    query = _locked_statement(
+        lambda session: RequestRepository(session).get_by_id_for_update(3)
+    )
+
+    assert 'where requests.id =' in query
+    assert 'for update' in query
+    assert query.endswith('for update of requests')
+
+
 def _request_for_stage_statement(stage_id, found=None):
     session = SimpleNamespace(scalar=AsyncMock(return_value=found))
     result = asyncio.run(
@@ -202,3 +232,16 @@ def test_request_for_stage_returns_found_request_unchanged():
     result, _ = _request_for_stage_statement(42, found=request)
 
     assert result is request
+
+
+def test_request_lock_rereads_row_already_in_session():
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+
+    asyncio.run(RequestRepository(session).get_by_id_for_update(3))
+
+    statement = session.execute.await_args.args[0]
+    assert statement.get_execution_options()['populate_existing'] is True
+    assert _sql(statement).endswith('for update of requests')

@@ -42,6 +42,17 @@ class QuoteRepository:
 
         return result.unique().scalar_one_or_none()
 
+    async def get_by_request_id_for_update(
+        self, request_id: int
+    ) -> Quote | None:
+        result = await self.session.execute(
+            select(Quote)
+            .where(Quote.request_id == request_id)
+            .with_for_update(of=Quote)
+        )
+
+        return result.unique().scalar_one_or_none()
+
     async def get_by_request_id(self, request_id: int) -> Quote | None:
         result = await self.session.execute(
             select(Quote).where(Quote.request_id == request_id)

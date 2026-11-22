@@ -285,6 +285,34 @@ def test_delete_returns_request_to_pending():
     assert service.repository.deleted is quote
 
 
+def test_delete_locks_quote_before_loading_request():
+    calls = []
+    quote = make_quote()
+    request = make_request(status=RequestStatus.QUOTED)
+    service = make_service(quote=quote, request=request)
+
+    async def lock_quote(quote_id):
+        calls.append('lock_quote')
+        return quote
+
+    async def get_quote(quote_id):
+        calls.append('get_quote')
+        return quote
+
+    async def get_request(request_id):
+        calls.append('get_request')
+        return request
+
+    service.repository.get_by_id_for_update = lock_quote
+    service.repository.get_by_id = get_quote
+    service.request_repository.get_by_id = get_request
+
+    run(service.delete(3, ATENDENTE))
+
+    assert calls == ['lock_quote', 'get_request']
+    assert request.status == RequestStatus.PENDING
+
+
 def test_suggested_price_sums_each_target_language():
     request = make_request(
         target_languages=[

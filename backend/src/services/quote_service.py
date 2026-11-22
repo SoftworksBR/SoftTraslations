@@ -486,7 +486,7 @@ class QuoteService:
 
     async def delete(self, quote_id: int, current_employee: Employee) -> None:
         self._require_atendimento_role(current_employee)
-        quote = await self._get(quote_id)
+        quote = await self._get_for_update(quote_id)
         self._require_in_review(quote)
 
         request = await self.request_repository.get_by_id(quote.request_id)

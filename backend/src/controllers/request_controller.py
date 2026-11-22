@@ -78,6 +78,17 @@ class RequestController:
         )
 
     @staticmethod
+    async def add_file_internal(
+        request_id: int,
+        upload: UploadFile,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await RequestService(session).add_file_internal(
+            request_id, upload, current_employee
+        )
+
+    @staticmethod
     async def get_file(
         request_id: int,
         file_id: int,

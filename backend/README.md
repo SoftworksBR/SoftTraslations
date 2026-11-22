@@ -267,6 +267,43 @@ Caso ocorra uma falha durante a comunicação com o servidor SMTP, o backend ret
 
 Verifique as configurações SMTP e os logs do backend para identificar a causa.
 
+## Documentos da solicitação enviados pelo atendimento
+
+Além do envio público pelo cliente (`POST /requests/public/{token}/files`), o
+atendimento pode anexar documentos a uma solicitação, por exemplo ao revisar o
+orçamento.
+
+### Endpoint
+
+**POST** `/requests/{request_id}/files` (`multipart/form-data`, campo `file`)
+
+Exige autenticação com perfil `atendimento` e devolve `201` com `id` e
+`original_name` do arquivo. Os arquivos ficam no mesmo diretório dos envios
+públicos (`UPLOAD_DIR/requests/{request_id}/`) e aparecem em
+`GET /requests/{request_id}/files`.
+
+### Regras de negócio
+
+- O envio é permitido enquanto a solicitação está `pending` ou quando o
+  orçamento dela ainda está `in_review`.
+- Valem os mesmos limites do envio público: extensões pdf, doc(x), odt, txt,
+  rtf, xls(x), png e jpg; até `MAX_UPLOAD_MB` por arquivo e
+  `MAX_FILES_PER_REQUEST` arquivos por solicitação.
+- O evento `request.file_added` é registrado com o funcionário que enviou
+  (`actor.employee_id`) e `source` igual a `api`.
+- Anexar documento não reenvia o orçamento ao cliente. Depois de alterar um
+  orçamento que já foi enviado, use `POST /quotes/{quote_id}/send-email`.
+
+### Tratamento de erros
+
+| Status | Quando |
+|---|---|
+| `403` | Perfil diferente de `atendimento`. |
+| `404` | Solicitação inexistente. |
+| `409` | Orçamento aprovado ou recusado (ou solicitação recusada): "Não é possível anexar arquivos a esta solicitação." |
+| `413` | Arquivo maior que `MAX_UPLOAD_MB`. |
+| `422` | Limite de arquivos atingido, extensão não permitida ou arquivo vazio. |
+
 ## Faturas de clientes
 
 O backend permite gerar faturas em PDF para clientes a partir de orçamentos aprovados e enviar esses documentos automaticamente por e-mail.

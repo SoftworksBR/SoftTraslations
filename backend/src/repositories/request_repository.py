@@ -35,6 +35,19 @@ class RequestRepository:
 
         return result.unique().scalar_one_or_none()
 
+    async def get_by_id_for_update(self, request_id: int) -> Request | None:
+        # of=Request: as relações carregadas por outer join não aceitam trava.
+        # populate_existing relê a linha já travada mesmo se ela estiver
+        # carregada na sessão.
+        result = await self.session.execute(
+            select(Request)
+            .where(Request.id == request_id)
+            .with_for_update(of=Request)
+            .execution_options(populate_existing=True)
+        )
+
+        return result.unique().scalar_one_or_none()
+
     async def get_by_public_token(self, token: str) -> Request | None:
         result = await self.session.execute(
             select(Request).where(Request.public_token == token)

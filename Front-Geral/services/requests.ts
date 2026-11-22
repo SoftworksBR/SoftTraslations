@@ -75,6 +75,15 @@ export function getRequestFiles(requestId: number) {
   return apiRequest<RequestFile[]>(`/requests/${requestId}/files`);
 }
 
+export function uploadRequestFileAsEmployee(requestId: number, file: File) {
+  const body = new FormData();
+  body.append('file', file);
+  return apiRequest<RequestFile>(`/requests/${requestId}/files`, {
+    method: 'POST',
+    body,
+  });
+}
+
 export function deleteRequest(id: number) {
   return apiRequest<void>(`/requests/${id}`, { method: 'DELETE' });
 }

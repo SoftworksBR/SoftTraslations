@@ -148,6 +148,24 @@ e-mail do cliente. Há apenas um orçamento por solicitação. Para acompanhar a
 proposta, abra **Orçamentos**. Se necessário, use **Enviar por e-mail** para
 reenviá-la enquanto estiver em análise.
 
+### Atualizar um orçamento e anexar documentos
+
+Enquanto o orçamento estiver em análise, a solicitação em **Requisições** mostra
+**Atualizar orçamento**. Na tela de atualização:
+
+1. Ajuste o valor, o prazo ou as observações e selecione **Atualizar
+   orçamento**.
+2. Em **Documentos da solicitação**, confira os arquivos já enviados e, se
+   precisar, use **Anexar documento** para incluir um novo arquivo (pdf,
+   doc, docx, odt, txt, rtf, xls, xlsx, png ou jpg). O documento é anexado na
+   hora, sem precisar salvar o orçamento.
+3. Se o orçamento já foi enviado por e-mail ao cliente, reenvie o e-mail depois
+   de salvar as alterações: abra **Orçamentos** e use **Enviar por e-mail**. A
+   tela de atualização lembra disso antes e depois de salvar.
+
+Depois que o orçamento é aprovado ou recusado, não é mais possível anexar
+documentos à solicitação.
+
 ### Registrar a decisão do cliente
 
 Na lista de orçamentos, confira cliente, serviço, idiomas, valor, prazo,
