@@ -52,6 +52,7 @@ export default function Servicos() {
   const [selectedFiles, setSelectedFiles] = useState<Record<number, File[]>>({});
   const [uploadingStageId, setUploadingStageId] = useState<number | null>(null);
   const [respondingStageId, setRespondingStageId] = useState<number | null>(null);
+  const [forwardingStageId, setForwardingStageId] = useState<number | null>(null);
   const [removingFile, setRemovingFile] = useState<{
     stageId: number;
     fileId: number;
@@ -176,6 +177,28 @@ export default function Servicos() {
       );
     } finally {
       setUploadingStageId(null);
+    }
+  }
+
+  // Principal encaminha com os arquivos já anexados, sem novo envio.
+  const canForward = (stage: TranslationStage) =>
+    !isCollaborator(stage) && stage.status === 'in_progress' && stage.files.length > 0;
+
+  async function forwardToReview(stage: TranslationStage) {
+    setForwardingStageId(stage.id);
+    try {
+      await updateStage(stage.id, { status: 'testing' });
+      const refreshed = await loadStages();
+      notify(
+        refreshed ? 'Etapa encaminhada' : 'Encaminhamento concluído',
+        refreshed
+          ? 'A etapa foi encaminhada para revisão do gestor.'
+          : 'A etapa foi encaminhada, mas não foi possível atualizar sua lista.',
+      );
+    } catch (cause) {
+      notify('Não foi possível encaminhar', errorMessage(cause));
+    } finally {
+      setForwardingStageId(null);
     }
   }
 
@@ -512,6 +535,43 @@ export default function Servicos() {
                       </Text>
                     </Pressable>
                   ) : null}
+                  {canForward(item) ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Encaminhar ${item.name} para revisão`}
+                      aria-busy={forwardingStageId === item.id}
+                      aria-disabled={
+                        forwardingStageId === item.id ||
+                        uploadingStageId === item.id ||
+                        removingFile?.stageId === item.id
+                      }
+                      disabled={
+                        forwardingStageId === item.id ||
+                        uploadingStageId === item.id ||
+                        removingFile?.stageId === item.id
+                      }
+                      onPress={() => confirmAction(
+                        'Encaminhar para revisão',
+                        'A etapa será enviada ao gestor com os documentos já anexados.',
+                        'Encaminhar',
+                        () => void forwardToReview(item),
+                      )}
+                      style={[
+                        styles.forwardButton,
+                        (forwardingStageId === item.id ||
+                          uploadingStageId === item.id ||
+                          removingFile?.stageId === item.id) &&
+                          styles.disabled,
+                      ]}
+                    >
+                      {forwardingStageId === item.id
+                        ? <ActivityIndicator size="small" color="#087F8C" />
+                        : <Ionicons name="send-outline" size={16} color="#087F8C" />}
+                      <Text style={styles.forwardButtonText}>
+                        {forwardingStageId === item.id ? 'ENCAMINHANDO...' : 'Encaminhar para revisão'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
                 </>
               )}
             </View>
@@ -596,6 +656,8 @@ const styles = StyleSheet.create({
   fileName: { flex: 1, color: '#087F8C', fontSize: 11 },
   uploadButton: { minHeight: 38, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 5, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#087F8C' },
   disabled: { opacity: 0.55 },
+  forwardButton: { minHeight: 38, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: '#087F8C', borderRadius: 8, backgroundColor: '#FFFFFF' },
+  forwardButtonText: { color: '#087F8C', fontWeight: '700' },
   responseActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 12 },
   acceptButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#087F8C' },
   declineButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, paddingHorizontal: 14, borderWidth: 1, borderColor: '#F0D8A8', borderRadius: 8, backgroundColor: '#FFF5E3' },
