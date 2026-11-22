@@ -170,3 +170,29 @@ def test_response_keeps_existing_employee_fields(monkeypatch):
 
     public = EmployeePublicSchema.model_validate(COMPATIBLE).model_dump()
     assert item.model_dump(exclude={'language_match'}) == public
+
+
+def test_real_query_without_request_disables_language_filter(monkeypatch):
+    employees = [INCOMPATIBLE, UNDECLARED, COMPATIBLE]
+    session = SimpleNamespace(
+        scalars=AsyncMock(return_value=employees),
+        scalar=AsyncMock(return_value=None),
+    )
+    service = StageService(session)
+    monkeypatch.setattr(service, 'get_by_id', AsyncMock())
+    monkeypatch.setattr(
+        service, '_get_declined_freelancer_ids', AsyncMock(return_value=set())
+    )
+
+    result = asyncio.run(
+        service.get_available_freelancers(
+            10, SimpleNamespace(role=Roles.PROJETOS)
+        )
+    )
+
+    assert session.scalar.await_count == 1
+    assert summary(result) == [
+        (INCOMPATIBLE.id, None),
+        (UNDECLARED.id, None),
+        (COMPATIBLE.id, None),
+    ]
