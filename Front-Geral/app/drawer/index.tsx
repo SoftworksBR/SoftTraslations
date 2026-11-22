@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -26,32 +26,49 @@ export default function AdminDashboard() {
   const [projects, setProjects] = useState<ProjectsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState<string | null>(null);
+  // Respostas de cargas antigas (tela sem foco ou nova carga) são ignoradas.
+  const latestLoad = useRef(0);
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(() => {
+    const loadId = ++latestLoad.current;
+    const isCurrent = () => latestLoad.current === loadId;
+
     setLoading(true);
     setError(null);
+    getEmployees()
+      .then((result) => {
+        if (isCurrent()) setEmployees(result.employees);
+      })
+      .catch((cause) => {
+        if (isCurrent()) setError(errorMessage(cause, 'Falha ao carregar funcionários.'));
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false);
+      });
+
+    setProjectsLoading(true);
     setProjectsError(null);
-    const [employeesResult, projectsResult] = await Promise.allSettled([
-      getEmployees(),
-      getProjectsSummary(),
-    ]);
-    if (employeesResult.status === 'fulfilled') {
-      setEmployees(employeesResult.value.employees);
-    } else {
-      setError(errorMessage(employeesResult.reason, 'Falha ao carregar funcionários.'));
-    }
-    if (projectsResult.status === 'fulfilled') {
-      setProjects(projectsResult.value);
-    } else {
-      setProjects(null);
-      setProjectsError(errorMessage(projectsResult.reason, 'Falha ao carregar projetos.'));
-    }
-    setLoading(false);
+    getProjectsSummary()
+      .then((summary) => {
+        if (isCurrent()) setProjects(summary);
+      })
+      .catch((cause) => {
+        if (!isCurrent()) return;
+        setProjects(null);
+        setProjectsError(errorMessage(cause, 'Falha ao carregar projetos.'));
+      })
+      .finally(() => {
+        if (isCurrent()) setProjectsLoading(false);
+      });
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void loadDashboard();
+    loadDashboard();
+    return () => {
+      latestLoad.current += 1;
+    };
   }, [loadDashboard]));
 
   const counts = {
@@ -160,16 +177,18 @@ export default function AdminDashboard() {
         </>
       )}
 
-      {loading ? null : <ProjectsSection summary={projects} error={projectsError} />}
+      <ProjectsSection summary={projects} loading={projectsLoading} error={projectsError} />
     </ScrollView>
   );
 }
 
 function ProjectsSection({
   summary,
+  loading,
   error,
 }: {
   summary: ProjectsSummary | null;
+  loading: boolean;
   error: string | null;
 }) {
   return (
@@ -178,7 +197,12 @@ function ProjectsSection({
       <Text style={styles.sectionDescription}>
         Situação calculada a partir das etapas de cada projeto.
       </Text>
-      {error || !summary ? (
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color="#087F8C" />
+          <Text style={styles.loadingText}>Carregando indicadores de projetos...</Text>
+        </View>
+      ) : error || !summary ? (
         <View style={styles.errorCard}>
           <Ionicons name="alert-circle-outline" size={22} color="#B33A3A" />
           <Text style={styles.errorText}>
