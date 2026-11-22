@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   collaboratorTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
   collaboratorRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 },
   collaboratorName: { flexShrink: 1, color: '#172B3A', fontSize: 11 },
-  collaboratorBadge: { marginTop: 0 },
+  collaboratorBadge: { marginTop: 0, alignSelf: 'center' },
   collaboratorAction: {
     flexDirection: 'row',
     alignItems: 'center',
