@@ -367,6 +367,20 @@ class StageService:
                 detail='This stage has no second freelancer',
             )
 
+        # Sem principal, os arquivos do removido ficariam sem dono.
+        if (
+            stage.freelancer_id is None
+            and await self.repository.count_stage_files_by(
+                stage.id, stage.second_freelancer_id
+            )
+        ):
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail=(
+                    'Atribua um responsável antes de remover um tradutor '
+                    'adicional que já enviou arquivos'
+                ),
+            )
         # Os arquivos do removido passam ao principal, que pode excluí-los;
         # o UPDATE entra no mesmo commit da remoção.
         files_reassigned = 0

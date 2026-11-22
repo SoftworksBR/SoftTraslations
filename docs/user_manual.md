@@ -251,7 +251,8 @@ a situação do convite (**Convidado** ou **Aceito**).
    aparece nela. Use **Cancelar** para desistir.
 3. Para retirar o tradutor adicional, selecione **Remover** e confirme. Os
    arquivos que ele enviou passam a ser do tradutor principal, que pode
-   excluí-los.
+   excluí-los. Se a etapa estiver sem responsável e o tradutor adicional já
+   tiver enviado arquivos, atribua um responsável antes de removê-lo.
 
 O tradutor adicional pode enviar e remover os próprios documentos, mas não
 encaminha a etapa para revisão: isso continua com o responsável.

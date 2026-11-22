@@ -126,6 +126,12 @@ def make_service(monkeypatch, stage, declined=(), files=()):
     service.files = list(files)
     service.reassign_calls = []
 
+    async def count_stage_files_by(self, stage_id, employee_id):
+        calls.append('count')
+        return len([
+            f for f in service.files if f.uploaded_by_id == employee_id
+        ])
+
     async def reassign_stage_files(self, stage_id, from_id, to_id):
         calls.append('reassign')
         service.reassign_calls.append((stage_id, from_id, to_id))
@@ -137,6 +143,9 @@ def make_service(monkeypatch, stage, declined=(), files=()):
     monkeypatch.setattr(StageRepository, 'update', update)
     monkeypatch.setattr(
         StageRepository, 'reassign_stage_files', reassign_stage_files
+    )
+    monkeypatch.setattr(
+        StageRepository, 'count_stage_files_by', count_stage_files_by
     )
     return service
 
@@ -810,8 +819,28 @@ def test_removal_without_collaborator_files_reports_zero(monkeypatch, events):
     assert events[0]['payload']['details']['files_reassigned'] == 0
 
 
-def test_removal_without_main_freelancer_keeps_files(monkeypatch, events):
+def test_removal_without_main_blocks_when_collaborator_has_files(
+    monkeypatch, events
+):
     files = [stage_file(1, SECOND_ID)]
+    stage = accepted_stage(
+        freelancer_id=None, status=StageStatus.NO_FREELANCER
+    )
+    service = make_service(monkeypatch, stage, files=files)
+
+    status = expect_error(service.remove_collaborator(STAGE_ID, MANAGER))
+
+    assert status == HTTPStatus.CONFLICT
+    assert stage.second_freelancer_id == SECOND_ID
+    assert files[0].uploaded_by_id == SECOND_ID
+    assert service.reassign_calls == []
+    assert events == []
+
+
+def test_removal_without_main_allowed_without_collaborator_files(
+    monkeypatch, events
+):
+    files = [stage_file(3, OTHER_ID)]
     stage = accepted_stage(
         freelancer_id=None, status=StageStatus.NO_FREELANCER
     )
@@ -820,7 +849,7 @@ def test_removal_without_main_freelancer_keeps_files(monkeypatch, events):
     result = asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
 
     assert result.second_freelancer_id is None
-    assert files[0].uploaded_by_id == SECOND_ID
+    assert files[0].uploaded_by_id == OTHER_ID
     assert service.reassign_calls == []
     assert events[0]['payload']['details']['files_reassigned'] == 0
 
@@ -1070,3 +1099,22 @@ def test_decline_response_has_no_files(monkeypatch, events):
     assert response.files == []
     assert response.second_freelancer_id is None
     assert [file.id for file in stage.files] == [1, 2]
+
+
+def test_count_query_counts_collaborator_files_in_stage():
+    session = SimpleNamespace(scalar=AsyncMock(return_value=2))
+
+    total = asyncio.run(
+        StageRepository(session).count_stage_files_by(STAGE_ID, SECOND_ID)
+    )
+
+    compiled = session.scalar.await_args.args[0].compile(
+        dialect=postgresql.dialect()
+    )
+    query = ' '.join(str(compiled).lower().split())
+    assert total == 2  # noqa: PLR2004
+    assert query.startswith('select count(files.id)')
+    assert compiled.params == {
+        'project_stage_id_1': STAGE_ID,
+        'uploaded_by_id_1': SECOND_ID,
+    }

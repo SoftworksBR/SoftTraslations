@@ -480,7 +480,7 @@ etapa e os detalhes do projeto trazem `second_freelancer_id`,
 | Método | Rota | Perfis | Descrição |
 |---|---|---|---|
 | POST | `/stages/{stage_id}/collaborator` | `projetos` | Convida o tradutor do corpo `{"freelancer_id": …}`. |
-| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. Os arquivos que ele enviou passam a ser do tradutor principal, que pode excluí-los. |
+| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. Os arquivos que ele enviou passam a ser do tradutor principal, que pode excluí-los. Sem principal, só remove quem ainda não enviou arquivos na etapa. |
 | POST | `/stages/{stage_id}/collaborator/accept` | o tradutor convidado | Aceita o convite. |
 | POST | `/stages/{stage_id}/collaborator/decline` | o tradutor convidado | Recusa o convite. |
 
@@ -511,7 +511,7 @@ etapa e os detalhes do projeto trazem `second_freelancer_id`,
 |---|---|
 | `403` | Convidar ou remover sem perfil `projetos`; aceitar ou recusar sem ser o tradutor convidado. |
 | `404` | Etapa inexistente. |
-| `409` | Etapa sem tradutor principal ou concluída; etapa que já tem tradutor adicional (ou não tem, ao remover); convidado igual ao principal ou que já recusou; resposta a convite que não está pendente; atribuir como principal quem já é o adicional. |
+| `409` | Etapa sem tradutor principal ou concluída; etapa que já tem tradutor adicional (ou não tem, ao remover); convidado igual ao principal ou que já recusou; resposta a convite que não está pendente; atribuir como principal quem já é o adicional; remover, em etapa sem principal, um tradutor adicional que já enviou arquivos. |
 | `422` | Convidado que não é freelancer ativo com perfil completo. |
 
 ## Resumo de projetos (dashboard)
