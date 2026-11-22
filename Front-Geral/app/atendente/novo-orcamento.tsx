@@ -200,9 +200,23 @@ function RequestDocuments({ requestId }: { requestId: number }) {
     }
   }, [requestId]);
 
+  // Primeiro carregamento: o estado inicial já é loading=true e error=null.
   useEffect(() => {
-    void loadFiles();
-  }, [loadFiles]);
+    let active = true;
+    getRequestFiles(requestId)
+      .then((result) => {
+        if (active) setFiles(result);
+      })
+      .catch((cause) => {
+        if (active) setError(errorMessage(cause));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [requestId]);
 
   async function upload(file: File) {
     setUploading(true);
