@@ -227,3 +227,40 @@ def test_auth_me_returns_empty_language_ids_for_other_roles(role):
 
     assert body['source_language_ids'] == []
     assert body['target_language_ids'] == []
+
+
+def make_freelancer_with_languages():
+    freelancer = make_employee(Roles.FREELANCER)
+    freelancer.freelancer_profile = FreelancerProfile(
+        source_languages=[CATALOG[PORTUGUESE]],
+        target_languages=[CATALOG[ENGLISH], CATALOG[SPANISH]],
+    )
+    return freelancer
+
+
+def test_freelancer_language_ids_come_from_profile():
+    freelancer = make_freelancer_with_languages()
+
+    assert freelancer.source_language_ids == [PORTUGUESE]
+    assert freelancer.target_language_ids == [ENGLISH, SPANISH]
+
+
+@pytest.mark.parametrize(
+    'role', [Roles.ADMIN, Roles.ATENDIMENTO, Roles.PROJETOS]
+)
+def test_language_ids_are_empty_after_role_change(role):
+    employee = make_freelancer_with_languages()
+
+    employee.role = role
+
+    assert employee.source_language_ids == []
+    assert employee.target_language_ids == []
+    assert ids(employee.freelancer_profile.source_languages) == [PORTUGUESE]
+
+
+def test_non_freelancer_without_profile_has_empty_language_ids():
+    employee = make_employee(Roles.ATENDIMENTO)
+
+    assert employee.freelancer_profile is None
+    assert employee.source_language_ids == []
+    assert employee.target_language_ids == []

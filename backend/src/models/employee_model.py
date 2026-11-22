@@ -118,7 +118,8 @@ class Employee:
 
     @property
     def source_language_ids(self) -> list[int]:
-        if self.freelancer_profile is None:
+        # Quem deixou de ser freelancer não expõe idiomas; o perfil é mantido.
+        if self.role != Roles.FREELANCER or self.freelancer_profile is None:
             return []
         return [
             language.id
@@ -127,7 +128,8 @@ class Employee:
 
     @property
     def target_language_ids(self) -> list[int]:
-        if self.freelancer_profile is None:
+        # Quem deixou de ser freelancer não expõe idiomas; o perfil é mantido.
+        if self.role != Roles.FREELANCER or self.freelancer_profile is None:
             return []
         return [
             language.id
