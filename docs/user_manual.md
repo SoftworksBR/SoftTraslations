@@ -249,7 +249,9 @@ a situação do convite (**Convidado** ou **Aceito**).
 2. Escolha o tradutor na lista de candidatos. A lista é a mesma da atribuição,
    com os selos de idioma e a opção **Mostrar todos**; o responsável atual não
    aparece nela. Use **Cancelar** para desistir.
-3. Para retirar o tradutor adicional, selecione **Remover** e confirme.
+3. Para retirar o tradutor adicional, selecione **Remover** e confirme. Os
+   arquivos que ele enviou passam a ser do tradutor principal, que pode
+   excluí-los.
 
 O tradutor adicional pode enviar e remover os próprios documentos, mas não
 encaminha a etapa para revisão: isso continua com o responsável.

@@ -348,11 +348,19 @@ class StageService:
                 detail='This stage has no second freelancer',
             )
 
+        # Os arquivos do removido passam ao principal, que pode excluí-los;
+        # o UPDATE entra no mesmo commit da remoção.
+        files_reassigned = 0
+        if stage.freelancer_id is not None:
+            files_reassigned = await self.repository.reassign_stage_files(
+                stage.id, stage.second_freelancer_id, stage.freelancer_id
+            )
         self._collaborator_event(
             stage,
             'project_stage.collaborator_removed',
             stage.second_freelancer_id,
             current_employee,
+            files_reassigned=files_reassigned,
         )
         stage.second_freelancer_id = None
         stage.second_status = None
@@ -424,6 +432,7 @@ class StageService:
         event_type: str,
         freelancer_id: int,
         current_employee: Employee,
+        **details,
     ) -> None:
         enqueue_event(
             self.repository.session,
@@ -432,7 +441,7 @@ class StageService:
             aggregate_id=stage.id,
             payload={
                 'actor': self._actor(current_employee),
-                'details': {'freelancer_id': freelancer_id},
+                'details': {'freelancer_id': freelancer_id, **details},
                 'source': 'api',
             },
         )

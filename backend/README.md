@@ -480,7 +480,7 @@ etapa e os detalhes do projeto trazem `second_freelancer_id`,
 | Método | Rota | Perfis | Descrição |
 |---|---|---|---|
 | POST | `/stages/{stage_id}/collaborator` | `projetos` | Convida o tradutor do corpo `{"freelancer_id": …}`. |
-| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. |
+| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. Os arquivos que ele enviou passam a ser do tradutor principal, que pode excluí-los. |
 | POST | `/stages/{stage_id}/collaborator/accept` | o tradutor convidado | Aceita o convite. |
 | POST | `/stages/{stage_id}/collaborator/decline` | o tradutor convidado | Recusa o convite. |
 

@@ -81,7 +81,7 @@ def events(monkeypatch):
     return recorded
 
 
-def make_service(monkeypatch, stage, declined=()):
+def make_service(monkeypatch, stage, declined=(), files=()):
     expired = []
     session = SimpleNamespace(
         expire=lambda instance, attributes: expired.append(attributes)
@@ -99,7 +99,21 @@ def make_service(monkeypatch, stage, declined=()):
     async def update(self, updated_stage):
         return updated_stage
 
+    # Simula o UPDATE de autoria sobre os arquivos da etapa.
+    service.files = list(files)
+    service.reassign_calls = []
+
+    async def reassign_stage_files(self, stage_id, from_id, to_id):
+        service.reassign_calls.append((stage_id, from_id, to_id))
+        moved = [f for f in service.files if f.uploaded_by_id == from_id]
+        for file in moved:
+            file.uploaded_by_id = to_id
+        return len(moved)
+
     monkeypatch.setattr(StageRepository, 'update', update)
+    monkeypatch.setattr(
+        StageRepository, 'reassign_stage_files', reassign_stage_files
+    )
     return service
 
 
@@ -237,7 +251,10 @@ def test_manager_removes_second_freelancer(monkeypatch, events):
     assert service.expired == [['second_freelancer']]
     (event,) = events
     assert event['event_type'] == 'project_stage.collaborator_removed'
-    assert event['payload']['details'] == {'freelancer_id': SECOND_ID}
+    assert event['payload']['details'] == {
+        'freelancer_id': SECOND_ID,
+        'files_reassigned': 0,
+    }
 
 
 @pytest.mark.parametrize(
@@ -701,3 +718,110 @@ def test_candidates_exclude_current_main_and_second(monkeypatch):
     )
 
     assert [item.id for item in available] == [OTHER_ID]
+
+
+# --- arquivos do tradutor adicional removido ------------------------------
+
+
+def stage_file(file_id, uploaded_by_id, path=None):
+    return SimpleNamespace(
+        id=file_id,
+        file_path=str(path) if path else f'/tmp/{file_id}.pdf',
+        original_name=f'arquivo-{file_id}.pdf',
+        uploaded_by_id=uploaded_by_id,
+    )
+
+
+def test_removal_reassigns_collaborator_files_to_main(monkeypatch, events):
+    files = [
+        stage_file(1, SECOND_ID),
+        stage_file(2, SECOND_ID),
+        stage_file(3, MAIN_ID),
+        stage_file(4, MANAGER.id),
+    ]
+    service = make_service(monkeypatch, accepted_stage(), files=files)
+
+    asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
+
+    assert [f.uploaded_by_id for f in files] == [
+        MAIN_ID,
+        MAIN_ID,
+        MAIN_ID,
+        MANAGER.id,
+    ]
+    assert service.reassign_calls == [(STAGE_ID, SECOND_ID, MAIN_ID)]
+    assert events[0]['payload']['details'] == {
+        'freelancer_id': SECOND_ID,
+        'files_reassigned': 2,
+    }
+
+
+def test_main_freelancer_deletes_reassigned_file(
+    monkeypatch, tmp_path, events
+):
+    path = tmp_path / 'do-colaborador.pdf'
+    path.write_text('entrega')
+    file = stage_file(1, SECOND_ID, path)
+    asyncio.run(
+        make_service(
+            monkeypatch, accepted_stage(), files=[file]
+        ).remove_collaborator(STAGE_ID, MANAGER)
+    )
+    stage = make_stage()
+    service, session = file_service(monkeypatch, stage, file)
+
+    asyncio.run(service.delete_file(STAGE_ID, file.id, freelancer(MAIN_ID)))
+
+    session.delete.assert_awaited_once()
+    assert not path.exists()
+
+
+def test_removal_without_collaborator_files_reports_zero(monkeypatch, events):
+    files = [stage_file(3, MAIN_ID)]
+    service = make_service(monkeypatch, accepted_stage(), files=files)
+
+    asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
+
+    assert files[0].uploaded_by_id == MAIN_ID
+    assert events[0]['payload']['details']['files_reassigned'] == 0
+
+
+def test_removal_without_main_freelancer_keeps_files(monkeypatch, events):
+    files = [stage_file(1, SECOND_ID)]
+    stage = accepted_stage(
+        freelancer_id=None, status=StageStatus.NO_FREELANCER
+    )
+    service = make_service(monkeypatch, stage, files=files)
+
+    result = asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
+
+    assert result.second_freelancer_id is None
+    assert files[0].uploaded_by_id == SECOND_ID
+    assert service.reassign_calls == []
+    assert events[0]['payload']['details']['files_reassigned'] == 0
+
+
+def test_reassign_query_moves_only_removed_freelancer_stage_files():
+    session = SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(rowcount=2))
+    )
+
+    moved = asyncio.run(
+        StageRepository(session).reassign_stage_files(
+            STAGE_ID, SECOND_ID, MAIN_ID
+        )
+    )
+
+    compiled = session.execute.await_args.args[0].compile(
+        dialect=postgresql.dialect()
+    )
+    query = ' '.join(str(compiled).lower().split())
+    assert moved == 2  # noqa: PLR2004
+    assert query.startswith('update files set uploaded_by_id=')
+    assert 'files.project_stage_id = %(project_stage_id_1)s' in query
+    assert 'files.uploaded_by_id = %(uploaded_by_id_1)s' in query
+    assert compiled.params == {
+        'uploaded_by_id': MAIN_ID,
+        'project_stage_id_1': STAGE_ID,
+        'uploaded_by_id_1': SECOND_ID,
+    }
