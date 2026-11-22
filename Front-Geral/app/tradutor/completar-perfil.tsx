@@ -186,7 +186,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  languageFields: { gap: 16, marginTop: 14 },
+  // zIndex: a lista aberta do seletor precisa ficar acima do botão de salvar.
+  languageFields: { zIndex: 1, gap: 16, marginTop: 14 },
   languageField: { zIndex: 2 },
   button: {
     minHeight: 50,

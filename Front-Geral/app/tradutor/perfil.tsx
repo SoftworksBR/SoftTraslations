@@ -243,7 +243,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 20, paddingTop: 17, borderTopWidth: 1, borderTopColor: '#EDF1F3' },
   primaryButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 15, borderRadius: 8, backgroundColor: '#087F8C' },
   primaryButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
-  languages: { marginTop: 22, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#EDF1F3' },
+  // zIndex: a lista aberta do seletor precisa ficar acima dos botões seguintes.
+  languages: { zIndex: 1, marginTop: 22, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#EDF1F3' },
   warning: {
     marginTop: 8,
     padding: 10,
@@ -253,7 +254,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 17,
   },
-  languageFields: { gap: 16, marginTop: 14 },
+  languageFields: { zIndex: 1, gap: 16, marginTop: 14 },
   languageField: { zIndex: 2 },
   successText: { marginTop: 12, color: '#20845A', fontSize: 11, fontWeight: '600' },
   errorText: { marginTop: 12, color: '#B42318', fontSize: 11, lineHeight: 16 },
