@@ -154,6 +154,7 @@ export default function MeuPerfil() {
           {message ? (
             <Text
               accessibilityRole={message.type === 'error' ? 'alert' : undefined}
+              accessibilityLiveRegion="polite"
               style={message.type === 'error' ? styles.errorText : styles.successText}
             >
               {message.text}
@@ -161,6 +162,8 @@ export default function MeuPerfil() {
           ) : null}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Salvar idiomas"
+            accessibilityState={{ disabled: saving, busy: saving }}
             disabled={saving}
             onPress={() => void saveLanguages()}
             style={[styles.saveButton, saving && styles.disabled]}
