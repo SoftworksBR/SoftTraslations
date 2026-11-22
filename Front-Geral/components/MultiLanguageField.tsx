@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 
-export type LanguageOption = { label: string; value: number };
+// inactive é opcional: só quem monta o catálogo com idiomas desativados usa.
+export type LanguageOption = { label: string; value: number; inactive?: boolean };
 
 export function MultiLanguageField({
   label,
@@ -84,7 +85,9 @@ export function MultiLanguageField({
                       onPress={() => onSelect(option.value)}
                       style={styles.selectOption}
                     >
-                      <Text style={styles.selectOptionText}>{option.label}</Text>
+                      <Text style={[styles.selectOptionText, option.inactive && styles.inactiveOptionText]}>
+                        {option.label}
+                      </Text>
                       {selected ? (
                         <Ionicons name="checkmark" size={16} color="#087F8C" />
                       ) : null}
@@ -101,6 +104,15 @@ export function MultiLanguageField({
       {error ? <Text accessibilityRole="alert" style={styles.fieldError}>{error}</Text> : null}
     </View>
   );
+}
+
+// Acrescenta ao catálogo os ids selecionados que não vieram na lista de ativos.
+export function withInactiveLanguages(options: LanguageOption[], selectedIds: number[]) {
+  const missing = selectedIds.filter((id) => !options.some((option) => option.value === id));
+  return [
+    ...options,
+    ...missing.map((id) => ({ label: `Idioma desativado (nº ${id})`, value: id, inactive: true })),
+  ];
 }
 
 export function toggleLanguageId(ids: number[], id: number) {
@@ -150,4 +162,5 @@ const styles = StyleSheet.create({
   },
   selectOption: { minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 11, borderBottomWidth: 1, borderBottomColor: '#EDF1F3' },
   selectOptionText: { color: '#172B3A', fontSize: 12 },
+  inactiveOptionText: { color: '#8A99A5', fontStyle: 'italic' },
 });

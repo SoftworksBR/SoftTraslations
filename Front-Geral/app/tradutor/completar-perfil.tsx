@@ -10,7 +10,11 @@ import {
   View,
 } from 'react-native';
 
-import { MultiLanguageField, toggleLanguageId } from '@/components/MultiLanguageField';
+import {
+  MultiLanguageField,
+  toggleLanguageId,
+  withInactiveLanguages,
+} from '@/components/MultiLanguageField';
 import type { LanguageOption } from '@/components/MultiLanguageField';
 import { LANGUAGES_WARNING } from '@/constants/freelancer-languages';
 import { useAuth } from '@/context/AuthContext';
@@ -27,7 +31,8 @@ export default function CompletarPerfil() {
   const [hourlyRate, setHourlyRate] = useState('');
   const [sourceIds, setSourceIds] = useState<number[]>([]);
   const [targetIds, setTargetIds] = useState<number[]>([]);
-  const [languages, setLanguages] = useState<LanguageOption[]>([]);
+  // null enquanto a lista de idiomas ativos não carregou.
+  const [languages, setLanguages] = useState<LanguageOption[] | null>(null);
   const [languagesError, setLanguagesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +44,12 @@ export default function CompletarPerfil() {
       ))
       .catch(() => setLanguagesError('Não foi possível carregar os idiomas.'));
   }, []);
+
+  // Idiomas salvos que foram desativados entram como "Idioma desativado" para
+  // poderem ser removidos; só depois que a lista de ativos carregou.
+  function catalog(selectedIds: number[]) {
+    return languages ? withInactiveLanguages(languages, selectedIds) : [];
+  }
 
   if (!employee) {
     return <Redirect href="/login" />;
@@ -105,7 +116,7 @@ export default function CompletarPerfil() {
             <MultiLanguageField
               label="Idiomas de origem"
               placeholder="Selecione um ou mais idiomas (opcional)"
-              options={languages}
+              options={catalog(sourceIds)}
               value={sourceIds}
               onSelect={(id) => setSourceIds((ids) => toggleLanguageId(ids, id))}
               required={false}
@@ -114,7 +125,7 @@ export default function CompletarPerfil() {
           <MultiLanguageField
             label="Idiomas de destino"
             placeholder="Selecione um ou mais idiomas (opcional)"
-            options={languages}
+            options={catalog(targetIds)}
             value={targetIds}
             onSelect={(id) => setTargetIds((ids) => toggleLanguageId(ids, id))}
             required={false}

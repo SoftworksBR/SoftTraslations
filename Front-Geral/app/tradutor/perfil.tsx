@@ -10,7 +10,11 @@ import {
   View,
 } from 'react-native';
 
-import { MultiLanguageField, toggleLanguageId } from '@/components/MultiLanguageField';
+import {
+  MultiLanguageField,
+  toggleLanguageId,
+  withInactiveLanguages,
+} from '@/components/MultiLanguageField';
 import type { LanguageOption } from '@/components/MultiLanguageField';
 import { LANGUAGES_WARNING } from '@/constants/freelancer-languages';
 import { useAuth } from '@/context/AuthContext';
@@ -25,7 +29,8 @@ const statusLabels = {
 
 export default function MeuPerfil() {
   const { employee, replaceEmployee } = useAuth();
-  const [languages, setLanguages] = useState<LanguageOption[]>([]);
+  // null enquanto a lista de idiomas ativos não carregou.
+  const [languages, setLanguages] = useState<LanguageOption[] | null>(null);
   const [sourceIds, setSourceIds] = useState<number[]>(employee?.source_language_ids ?? []);
   const [targetIds, setTargetIds] = useState<number[]>(employee?.target_language_ids ?? []);
   const [saving, setSaving] = useState(false);
@@ -63,9 +68,16 @@ export default function MeuPerfil() {
     }
   }
 
+  // Idiomas salvos que foram desativados entram como "Idioma desativado" para
+  // poderem ser removidos; só depois que a lista de ativos carregou.
+  function catalog(selectedIds: number[]) {
+    return languages ? withInactiveLanguages(languages, selectedIds) : [];
+  }
+
   function languageNames(ids?: number[]) {
+    const options = catalog(ids ?? []);
     const names = (ids ?? [])
-      .map((id) => languages.find((language) => language.value === id)?.label)
+      .map((id) => options.find((language) => language.value === id)?.label)
       .filter(Boolean);
     return names.length ? names.join(', ') : undefined;
   }
@@ -136,7 +148,7 @@ export default function MeuPerfil() {
               <MultiLanguageField
                 label="Idiomas de origem"
                 placeholder="Selecione um ou mais idiomas"
-                options={languages}
+                options={catalog(sourceIds)}
                 value={sourceIds}
                 onSelect={(id) => setSourceIds((ids) => toggleLanguageId(ids, id))}
                 required={false}
@@ -145,7 +157,7 @@ export default function MeuPerfil() {
             <MultiLanguageField
               label="Idiomas de destino"
               placeholder="Selecione um ou mais idiomas"
-              options={languages}
+              options={catalog(targetIds)}
               value={targetIds}
               onSelect={(id) => setTargetIds((ids) => toggleLanguageId(ids, id))}
               required={false}
