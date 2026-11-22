@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -13,29 +13,63 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { getEmployees } from '@/services/employees';
 import type { Employee } from '@/services/employees';
+import { getProjectsSummary } from '@/services/projects';
+import type { ProjectsSummary } from '@/services/projects';
+
+function errorMessage(cause: unknown, fallback: string) {
+  return cause instanceof Error ? cause.message : fallback;
+}
 
 export default function AdminDashboard() {
   const { employee } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<ProjectsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  // Respostas de cargas antigas (tela sem foco ou nova carga) são ignoradas.
+  const latestLoad = useRef(0);
 
-  const loadEmployees = useCallback(async () => {
+  const loadDashboard = useCallback(() => {
+    const loadId = ++latestLoad.current;
+    const isCurrent = () => latestLoad.current === loadId;
+
     setLoading(true);
     setError(null);
-    try {
-      const result = await getEmployees();
-      setEmployees(result.employees);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Falha ao carregar funcionários.');
-    } finally {
-      setLoading(false);
-    }
+    getEmployees()
+      .then((result) => {
+        if (isCurrent()) setEmployees(result.employees);
+      })
+      .catch((cause) => {
+        if (isCurrent()) setError(errorMessage(cause, 'Falha ao carregar funcionários.'));
+      })
+      .finally(() => {
+        if (isCurrent()) setLoading(false);
+      });
+
+    setProjectsLoading(true);
+    setProjectsError(null);
+    getProjectsSummary()
+      .then((summary) => {
+        if (isCurrent()) setProjects(summary);
+      })
+      .catch((cause) => {
+        if (!isCurrent()) return;
+        setProjects(null);
+        setProjectsError(errorMessage(cause, 'Falha ao carregar projetos.'));
+      })
+      .finally(() => {
+        if (isCurrent()) setProjectsLoading(false);
+      });
   }, []);
 
   useFocusEffect(useCallback(() => {
-    void loadEmployees();
-  }, [loadEmployees]));
+    loadDashboard();
+    return () => {
+      latestLoad.current += 1;
+    };
+  }, [loadDashboard]));
 
   const counts = {
     admin: employees.filter((item) => item.role === 'admin').length,
@@ -55,7 +89,7 @@ export default function AdminDashboard() {
         <Text style={styles.eyebrow}>VISÃO GERAL</Text>
         <Text style={styles.title}>Olá, {greeting}. Aqui está sua visão administrativa.</Text>
         <Text style={styles.description}>
-          Resumo dos funcionários cadastrados na plataforma.
+          Resumo dos funcionários e projetos cadastrados na plataforma.
         </Text>
       </View>
 
@@ -142,7 +176,90 @@ export default function AdminDashboard() {
           </View>
         </>
       )}
+
+      <ProjectsSection summary={projects} loading={projectsLoading} error={projectsError} />
     </ScrollView>
+  );
+}
+
+function ProjectsSection({
+  summary,
+  loading,
+  error,
+}: {
+  summary: ProjectsSummary | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  return (
+    <View style={styles.projectsSection}>
+      <Text style={styles.sectionTitle}>Projetos</Text>
+      <Text style={styles.sectionDescription}>
+        Situação calculada a partir das etapas de cada projeto.
+      </Text>
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator color="#087F8C" />
+          <Text style={styles.loadingText}>Carregando indicadores de projetos...</Text>
+        </View>
+      ) : error || !summary ? (
+        <View style={styles.errorCard}>
+          <Ionicons name="alert-circle-outline" size={22} color="#B33A3A" />
+          <Text style={styles.errorText}>
+            Não foi possível carregar os indicadores de projetos: {error ?? 'resposta vazia.'}
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.stats}>
+            <StatCard
+              icon="folder-outline"
+              label="Total"
+              value={String(summary.total)}
+              note="Projetos cadastrados na plataforma"
+              tint="teal"
+            />
+            <StatCard
+              icon="hourglass-outline"
+              label="Aguardando"
+              value={String(summary.awaiting)}
+              note="Sem etapas iniciadas"
+              tint="purple"
+            />
+            <StatCard
+              icon="time-outline"
+              label="Em andamento"
+              value={String(summary.in_progress)}
+              note="Com etapas iniciadas ou concluídas"
+              tint="amber"
+            />
+            <StatCard
+              icon="checkmark-circle-outline"
+              label="Concluídos"
+              value={String(summary.completed)}
+              note="Todas as etapas concluídas"
+              tint="green"
+            />
+          </View>
+          <View style={styles.dashboardGrid}>
+            <View style={styles.dashboardCard}>
+              <View style={styles.sectionHeader}>
+                <View>
+                  <Text style={styles.cardTitle}>Andamento dos projetos</Text>
+                  <Text style={styles.cardDescription}>Proporção sobre o total de projetos.</Text>
+                </View>
+              </View>
+              <StatusBar label="Aguardando" count={summary.awaiting} total={summary.total} color="#7357A8" />
+              <StatusBar label="Em andamento" count={summary.in_progress} total={summary.total} color="#C58B26" />
+              <StatusBar label="Concluídos" count={summary.completed} total={summary.total} color="#20845A" />
+              {summary.total === 0 ? (
+                <Text style={styles.noEmployees}>Nenhum projeto cadastrado.</Text>
+              ) : null}
+            </View>
+          </View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -235,7 +352,7 @@ const tintColors = {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F5F8FA' },
   content: { width: '100%', maxWidth: 1240, alignSelf: 'center', padding: 24, paddingBottom: 38 },
-  heading: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 22 },
+  heading: { marginBottom: 22 },
   eyebrow: { color: '#087F8C', fontSize: 10, fontWeight: '800', letterSpacing: 1.3 },
   title: { marginTop: 6, color: '#0B2239', fontSize: 27, lineHeight: 34, fontWeight: '800', letterSpacing: -0.7 },
   description: { marginTop: 6, color: '#627485', fontSize: 13 },
@@ -244,7 +361,7 @@ const styles = StyleSheet.create({
   errorCard: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 16, borderWidth: 1, borderColor: '#F0CECE', borderRadius: 10, backgroundColor: '#FFF0F0' },
   errorText: { flex: 1, color: '#B33A3A', fontSize: 12, lineHeight: 18 },
   stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: { flexBasis: 230, flexGrow: 1, minHeight: 156, padding: 17, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 12, backgroundColor: '#FFFFFF' },
+  statCard: { flexBasis: 230, flexGrow: 1, maxWidth: '100%', minHeight: 156, padding: 17, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 12, backgroundColor: '#FFFFFF' },
   statIcon: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   icon_teal: { backgroundColor: '#E8F6F7' },
   icon_green: { backgroundColor: '#E8F5EE' },
@@ -254,7 +371,7 @@ const styles = StyleSheet.create({
   statValue: { marginTop: 3, color: '#0B2239', fontSize: 25, fontWeight: '800' },
   statNote: { marginTop: 3, color: '#8293A0', fontSize: 10, lineHeight: 15 },
   dashboardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 16 },
-  dashboardCard: { flexBasis: 350, flexGrow: 1, padding: 18, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 12, backgroundColor: '#FFFFFF' },
+  dashboardCard: { flexBasis: 350, flexGrow: 1, maxWidth: '100%', padding: 18, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 12, backgroundColor: '#FFFFFF' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 17 },
   cardTitle: { color: '#172B3A', fontSize: 15, fontWeight: '700' },
   cardDescription: { marginTop: 4, color: '#627485', fontSize: 11 },
@@ -271,4 +388,7 @@ const styles = StyleSheet.create({
   linkTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
   linkDetail: { marginTop: 3, color: '#8293A0', fontSize: 9 },
   roleTotal: { marginTop: 10, color: '#8293A0', fontSize: 10, lineHeight: 15 },
+  projectsSection: { marginTop: 28 },
+  sectionTitle: { color: '#0B2239', fontSize: 18, fontWeight: '800' },
+  sectionDescription: { marginTop: 4, marginBottom: 14, color: '#627485', fontSize: 12 },
 });

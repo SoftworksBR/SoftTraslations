@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.enums.enums import QuoteStatus, Roles
+from src.enums.enums import QuoteStatus, Roles, StageStatus
 from src.models.employee_model import Employee
 from src.models.file_model import File
 from src.models.path_model import Path
@@ -18,9 +18,15 @@ from src.schemas.project_schema import (
     ProjectPathDetails,
     ProjectSearchFilters,
     ProjectStageDetails,
+    ProjectSummaryResponse,
     ProjectUpdate,
 )
 from src.services.outbox import enqueue_event
+
+IN_PROGRESS_STAGE_STATUSES = frozenset({
+    StageStatus.IN_PROGRESS,
+    StageStatus.TESTING,
+})
 
 
 class ProjectService:
@@ -200,6 +206,19 @@ class ProjectService:
 
         return await self.repository.get_all(filters)
 
+    async def get_summary(
+        self, current_employee: Employee
+    ) -> ProjectSummaryResponse:
+        self._require_project_reader_role(current_employee)
+
+        counts = {'awaiting': 0, 'in_progress': 0, 'completed': 0}
+        rows = await self.repository.count_by_stage_statuses()
+        for statuses, project_count in rows:
+            stage_statuses = {StageStatus(value) for value in statuses or []}
+            counts[self._classify_progress(stage_statuses)] += project_count
+
+        return ProjectSummaryResponse(total=sum(counts.values()), **counts)
+
     async def update(
         self,
         project_id: int,
@@ -284,6 +303,19 @@ class ProjectService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail='Já existe projeto para este orçamento',
             )
+
+    @staticmethod
+    def _classify_progress(stage_statuses: set[StageStatus]) -> str:
+        # O status do projeto não muda pelas telas; o progresso vem das
+        # etapas.
+        if stage_statuses == {StageStatus.DONE}:
+            return 'completed'
+        if stage_statuses & IN_PROGRESS_STAGE_STATUSES:
+            return 'in_progress'
+        # Etapa concluída junto com pendentes: o trabalho já começou.
+        if StageStatus.DONE in stage_statuses:
+            return 'in_progress'
+        return 'awaiting'
 
     @staticmethod
     def _require_projects_role(current_employee: Employee) -> None:

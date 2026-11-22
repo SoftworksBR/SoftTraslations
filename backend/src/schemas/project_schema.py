@@ -73,3 +73,10 @@ class ProjectDetailsResponse(BaseModel):
     creator_id: int
     creator_name: str
     paths: list[ProjectPathDetails]
+
+
+class ProjectSummaryResponse(BaseModel):
+    total: int
+    awaiting: int
+    in_progress: int
+    completed: int

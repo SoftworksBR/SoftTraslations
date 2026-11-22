@@ -429,6 +429,35 @@ há filtro nem reordenação e `language_match` é `null`. A exclusão de quem
 recusou a etapa continua valendo em qualquer modo e depende do MongoDB: sem
 ele, a rota responde `503`.
 
+## Resumo de projetos (dashboard)
+
+O painel do administrador usa um resumo com a quantidade de projetos por
+situação. O resumo não lista projetos e não usa o campo `status` do projeto,
+que não é alterado pelas telas: a situação é calculada a partir das etapas.
+
+### Endpoint
+
+| Método | Rota | Perfis | Descrição |
+|---|---|---|---|
+| GET | `/projects/summary` | `admin`, `projetos` | Retorna `total`, `awaiting`, `in_progress` e `completed`. |
+
+Os demais perfis recebem `403 Forbidden`. A listagem `GET /projects/`
+continua restrita ao perfil `projetos`.
+
+### Regras de negócio
+
+- **Concluído** (`completed`): o projeto tem ao menos uma etapa e todas estão
+  em `done`.
+- **Em andamento** (`in_progress`): alguma etapa está em `in_progress` ou
+  `testing`, ou o projeto tem ao menos uma etapa em `done` e outra ainda não
+  concluída.
+- **Aguardando** (`awaiting`): os demais casos, incluindo projetos sem etapas
+  e projetos apenas com etapas não iniciadas (`no_freelancer`, `public` ou
+  `ready`).
+
+A contagem é feita no banco, agrupando os projetos pelo conjunto de status das
+suas etapas; a classificação fica em `ProjectService._classify_progress`.
+
 ## Testes e qualidade
 
 Com o ambiente virtual ativo:

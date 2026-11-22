@@ -14,6 +14,7 @@ from src.schemas.project_schema import (
     ProjectDetailsResponse,
     ProjectResponse,
     ProjectSearchFilters,
+    ProjectSummaryResponse,
     ProjectUpdate,
 )
 from src.security import get_current_employee
@@ -34,6 +35,15 @@ async def create_project(
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await ProjectController.create(data, session, current_employee)
+
+
+# Declarada antes das rotas com /{project_id} para não haver conflito.
+@router.get('/summary', response_model=ProjectSummaryResponse)
+async def get_projects_summary(
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await ProjectController.get_summary(session, current_employee)
 
 
 @router.put(
