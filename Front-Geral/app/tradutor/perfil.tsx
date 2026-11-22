@@ -152,6 +152,7 @@ export default function MeuPerfil() {
                 value={sourceIds}
                 onSelect={(id) => setSourceIds((ids) => toggleLanguageId(ids, id))}
                 required={false}
+                disabled={saving}
               />
             </View>
             <MultiLanguageField
@@ -161,6 +162,7 @@ export default function MeuPerfil() {
               value={targetIds}
               onSelect={(id) => setTargetIds((ids) => toggleLanguageId(ids, id))}
               required={false}
+              disabled={saving}
             />
           </View>
           {message ? (

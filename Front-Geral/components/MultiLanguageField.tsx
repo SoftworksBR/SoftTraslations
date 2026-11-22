@@ -20,6 +20,7 @@ export function MultiLanguageField({
   onSelect,
   required,
   error,
+  disabled = false,
 }: {
   label: string;
   placeholder: string;
@@ -28,8 +29,11 @@ export function MultiLanguageField({
   onSelect: (value: number) => void;
   required: boolean;
   error?: string;
+  // Opcional: bloqueia o campo (por exemplo, enquanto a tela salva).
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const isOpen = open && !disabled;
   const [search, setSearch] = useState('');
   const selectedNames = optionNames(options, value);
   const normalizedSearch = normalizeSearch(search);
@@ -38,7 +42,7 @@ export function MultiLanguageField({
   );
 
   return (
-    <View style={[styles.field, open && styles.fieldOpen]}>
+    <View style={[styles.field, isOpen && styles.fieldOpen]}>
       <Text style={styles.fieldLabel}>
         {label}{required ? <Text style={styles.required}> *</Text> : null}
       </Text>
@@ -46,19 +50,21 @@ export function MultiLanguageField({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${value.length ? selectedNames : placeholder}`}
-          aria-expanded={open}
+          aria-expanded={isOpen}
+          aria-disabled={disabled}
+          disabled={disabled}
           onPress={() => {
             setOpen((current) => !current);
             setSearch('');
           }}
-          style={[styles.select, error && styles.inputError]}
+          style={[styles.select, error && styles.inputError, disabled && styles.selectDisabled]}
         >
           <Text style={[styles.selectText, !value.length && styles.selectPlaceholder]}>
             {value.length ? selectedNames : placeholder}
           </Text>
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
+          <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={16} color="#627485" />
         </Pressable>
-        {open ? (
+        {isOpen ? (
           <View style={styles.selectOptions}>
             <TextInput
               value={search}
@@ -82,6 +88,7 @@ export function MultiLanguageField({
                       key={option.value}
                       accessibilityRole="checkbox"
                       aria-checked={selected}
+                      disabled={disabled}
                       onPress={() => onSelect(option.value)}
                       style={styles.selectOption}
                     >
@@ -142,6 +149,7 @@ const styles = StyleSheet.create({
   fieldError: { marginTop: 5, color: '#B33A3A', fontSize: 10, lineHeight: 15 },
   select: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderWidth: 1, borderColor: '#CAD6DD', borderRadius: 9, backgroundColor: '#FFFFFF' },
   selectText: { color: '#172B3A', fontSize: 13 },
+  selectDisabled: { opacity: 0.6 },
   selectPlaceholder: { color: '#9AA8B2' },
   selectAnchor: { position: 'relative', zIndex: 1 },
   selectOptions: { position: 'absolute', top: 49, left: 0, right: 0, zIndex: 20, maxHeight: 240, borderWidth: 1, borderColor: '#DFE7EC', borderRadius: 9, backgroundColor: '#FFFFFF', elevation: 12, shadowColor: '#0B2239', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.16, shadowRadius: 12 },
