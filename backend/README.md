@@ -381,6 +381,54 @@ As faturas de pagamento, as faturas de clientes e os orçamentos possuem fluxos 
 - `/client-invoices/`: faturas emitidas para os clientes.
 - `/quotes/`: operações relacionadas aos orçamentos.
 
+## Idiomas do freelancer
+
+O freelancer informa os idiomas de **origem** e de **destino** com que
+trabalha. Eles ficam nas tabelas `freelancer_source_languages` e
+`freelancer_target_languages` (migração `b7d3e5a1c9f2`), ligadas ao perfil do
+freelancer e apagadas junto com ele.
+
+### Endpoints
+
+| Método | Rota | Perfis | Descrição |
+|---|---|---|---|
+| PUT | `/employee/me/profile` | `freelancer` | Completa o perfil; aceita `source_language_ids` e `target_language_ids` (opcionais). |
+| PATCH | `/employee/me/languages` | `freelancer` | Edita os idiomas depois de o perfil estar completo. |
+
+Regras do `PATCH /employee/me/languages`:
+
+- campo ausente (ou `null`) mantém os idiomas atuais; lista vazia remove todos;
+- ids repetidos são ignorados; id de idioma inexistente retorna `422`;
+- outros perfis recebem `403`; freelancer com perfil pendente também recebe
+  `403` e deve informar os idiomas ao completar o perfil.
+
+O schema público de funcionário (`/auth/me`, `/employee/` e o pré-cadastro)
+inclui `source_language_ids` e `target_language_ids`, com listas vazias para
+quem não é freelancer.
+
+## Atribuição de tradutores por idioma
+
+`GET /stages/{stage_id}/available-freelancers` (perfil `projetos`) lista os
+freelancers ativos, com perfil completo, que não recusaram a etapa. Cada item
+traz os campos de funcionário e `language_match`, calculado a partir da
+solicitação de origem do projeto (etapa → projeto → orçamento → solicitação):
+
+- `compatible`: o idioma de origem da solicitação está nos idiomas de origem do
+  freelancer **e** ao menos um destino da solicitação está nos idiomas de
+  destino dele;
+- `undeclared`: o freelancer não informou nenhum idioma;
+- `incompatible`: informou idiomas, mas não atende à regra acima (inclusive quem
+  preencheu só um dos lados).
+
+| Parâmetro | Padrão | Efeito |
+|---|---|---|
+| `include_all` | `false` | `false`: devolve compatíveis e depois `undeclared`; `true`: devolve todos, na ordem compatível, `undeclared`, incompatível. |
+
+Dentro de cada grupo, a ordem original é mantida. Em projetos sem orçamento não
+há filtro nem reordenação e `language_match` é `null`. A exclusão de quem
+recusou a etapa continua valendo em qualquer modo e depende do MongoDB: sem
+ele, a rota responde `503`.
+
 ## Resumo de projetos (dashboard)
 
 O painel do administrador usa um resumo com a quantidade de projetos por

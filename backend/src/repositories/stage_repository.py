@@ -5,6 +5,8 @@ from sqlalchemy.orm import joinedload, selectinload
 from src.models.employee_model import Employee
 from src.models.file_model import File
 from src.models.project_model import Project, ProjectPath
+from src.models.quote_model import Quote
+from src.models.request_model import Request
 from src.models.stage_model import (
     PathStage,
     ProjectStage,
@@ -36,6 +38,17 @@ class StageRepository:
             select(StageTemplate).order_by(StageTemplate.id)
         )
         return list(result)
+
+    async def get_request_for_stage(self, stage_id: int) -> Request | None:
+        """Solicitação que originou o projeto da etapa, se houver."""
+        return await self.session.scalar(
+            select(Request)
+            .join(Quote, Quote.request_id == Request.id)
+            .join(Project, Project.quote_id == Quote.id)
+            .join(ProjectPath, ProjectPath.project_id == Project.id)
+            .join(ProjectStage, ProjectStage.project_path_id == ProjectPath.id)
+            .where(ProjectStage.id == stage_id)
+        )
 
     async def get_by_id(self, stage_id: int) -> ProjectStage | None:
         result = await self.session.execute(

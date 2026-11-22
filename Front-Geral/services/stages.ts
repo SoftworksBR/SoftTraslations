@@ -1,5 +1,5 @@
 import { apiRequest } from './api';
-import type { Employee } from './employees';
+import type { AvailableFreelancer } from './employees';
 
 export type StageStatus =
   | 'no_freelancer'
@@ -41,8 +41,14 @@ export function getStages() {
   return apiRequest<TranslationStage[]>('/stages/');
 }
 
-export function getAvailableStageFreelancers(stageId: number) {
-  return apiRequest<Employee[]>(`/stages/${stageId}/available-freelancers`);
+export function getAvailableStageFreelancers(
+  stageId: number,
+  { includeAll = false }: { includeAll?: boolean } = {},
+) {
+  const query = includeAll ? '?include_all=true' : '';
+  return apiRequest<AvailableFreelancer[]>(
+    `/stages/${stageId}/available-freelancers${query}`,
+  );
 }
 
 export function acceptStage(id: number) {

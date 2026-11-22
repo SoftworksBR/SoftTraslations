@@ -1,4 +1,5 @@
 import asyncio
+import re
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -154,3 +155,50 @@ def test_stage_search_filters_include_related_projects():
     assert 'project_paths' in query
     assert 'projects.name ilike' in query
     assert 'employees.username ilike' in query
+
+
+def _request_for_stage_statement(stage_id, found=None):
+    session = SimpleNamespace(scalar=AsyncMock(return_value=found))
+    result = asyncio.run(
+        StageRepository(session).get_request_for_stage(stage_id)
+    )
+    return result, session.scalar.await_args.args[0]
+
+
+def test_request_for_stage_joins_stage_to_request_through_quote():
+    _, statement = _request_for_stage_statement(42)
+
+    query = ' '.join(_sql(statement).split())
+    assert (
+        'from requests '
+        'join quotes on quotes.request_id = requests.id '
+        'join projects on projects.quote_id = quotes.id '
+        'join project_paths on project_paths.project_id = projects.id '
+        'join project_stages '
+        'on project_stages.project_path_id = project_paths.id'
+    ) in query
+
+
+def test_request_for_stage_filters_by_given_stage_id():
+    _, statement = _request_for_stage_statement(42)
+
+    compiled = statement.compile(dialect=postgresql.dialect())
+    match = re.search(
+        r'where project_stages\.id = %\((\w+)\)s', str(compiled).lower()
+    )
+    assert match is not None
+    assert compiled.params[match.group(1)] == 42  # noqa: PLR2004
+
+
+def test_request_for_stage_returns_none_without_request():
+    result, _ = _request_for_stage_statement(42, found=None)
+
+    assert result is None
+
+
+def test_request_for_stage_returns_found_request_unchanged():
+    request = SimpleNamespace(id=7, source_language_id=1)
+
+    result, _ = _request_for_stage_statement(42, found=request)
+
+    assert result is request

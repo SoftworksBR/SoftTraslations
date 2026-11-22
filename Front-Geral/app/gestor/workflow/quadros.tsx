@@ -44,7 +44,7 @@ export default function Quadros() {
       const stageFreelancers = await Promise.all(
         loadedStages.map(async (stage) => [
           stage.id,
-          await getAvailableStageFreelancers(stage.id),
+          await getAvailableStageFreelancers(stage.id, { includeAll: true }),
         ] as const),
       );
       setStages(loadedStages);

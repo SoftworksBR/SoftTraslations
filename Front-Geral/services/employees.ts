@@ -15,6 +15,14 @@ export type Employee = {
   status: EmployeeStatus;
   account_status?: 'active' | 'disabled';
   profile_completed?: boolean;
+  source_language_ids?: number[];
+  target_language_ids?: number[];
+};
+
+export type LanguageMatch = 'compatible' | 'undeclared' | 'incompatible' | null;
+
+export type AvailableFreelancer = Employee & {
+  language_match: LanguageMatch;
 };
 
 export type EmployeeInput = {
@@ -95,12 +103,26 @@ export type FreelancerProfileInput = {
   specialization?: string | null;
   bio?: string | null;
   hourly_rate?: number | null;
+  source_language_ids?: number[];
+  target_language_ids?: number[];
 };
 
 export function completeFreelancerProfile(profile: FreelancerProfileInput) {
   return apiRequest<Employee>('/employee/me/profile', {
     method: 'PUT',
     body: JSON.stringify(profile),
+  });
+}
+
+export type FreelancerLanguagesInput = {
+  source_language_ids?: number[];
+  target_language_ids?: number[];
+};
+
+export function updateMyLanguages(languages: FreelancerLanguagesInput) {
+  return apiRequest<Employee>('/employee/me/languages', {
+    method: 'PATCH',
+    body: JSON.stringify(languages),
   });
 }
 

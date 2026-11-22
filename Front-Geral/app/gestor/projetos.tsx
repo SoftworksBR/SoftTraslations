@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 
 import { API_URL } from '@/services/api';
-import type { Employee } from '@/services/employees';
+import type { AvailableFreelancer, LanguageMatch } from '@/services/employees';
 import {
   getProjectDetails,
   getProjects,
@@ -60,6 +60,15 @@ const stageStatusColors: Record<ProjectStageDetails['status'], string> = {
   done: '#20845A',
 };
 
+const languageBadges: Record<
+  Exclude<LanguageMatch, null>,
+  { label: string; color: string; background: string }
+> = {
+  compatible: { label: 'Compatível', color: '#20845A', background: '#E8F5EE' },
+  undeclared: { label: 'Sem idiomas informados', color: '#627485', background: '#EEF2F4' },
+  incompatible: { label: 'Idiomas não compatíveis', color: '#A46B12', background: '#FFF5E3' },
+};
+
 export default function Projetos() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +78,14 @@ export default function Projetos() {
   const [details, setDetails] = useState<ProjectDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
-  const [freelancers, setFreelancers] = useState<Employee[]>([]);
+  const [freelancers, setFreelancers] = useState<AvailableFreelancer[]>([]);
+  const [showAllFreelancers, setShowAllState] = useState(false);
+  // Espelha o alternador para recarregamentos assíncronos usarem o valor atual.
+  const showAllRef = useRef(false);
+  const setShowAllFreelancers = useCallback((value: boolean) => {
+    showAllRef.current = value;
+    setShowAllState(value);
+  }, []);
   const [freelancersLoading, setFreelancersLoading] = useState(true);
   const [freelancersError, setFreelancersError] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
@@ -95,17 +111,25 @@ export default function Projetos() {
     }
   }, []);
 
-  const loadFreelancers = useCallback(async (stageId: number) => {
+  // Só a busca mais recente atualiza a lista; respostas antigas são ignoradas.
+  const latestFreelancersLoad = useRef(0);
+
+  const loadFreelancers = useCallback(async (stageId: number, includeAll = false) => {
+    const loadId = ++latestFreelancersLoad.current;
+    const isCurrent = () => latestFreelancersLoad.current === loadId;
     setFreelancersLoading(true);
     setFreelancersError(null);
     try {
-      setFreelancers(await getAvailableStageFreelancers(stageId));
+      const result = await getAvailableStageFreelancers(stageId, { includeAll });
+      if (isCurrent()) setFreelancers(result);
     } catch (cause) {
-      setFreelancersError(
-        cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
-      );
+      if (isCurrent()) {
+        setFreelancersError(
+          cause instanceof Error ? cause.message : 'Falha ao carregar freelancers.',
+        );
+      }
     } finally {
-      setFreelancersLoading(false);
+      if (isCurrent()) setFreelancersLoading(false);
     }
   }, []);
 
@@ -116,6 +140,7 @@ export default function Projetos() {
   );
 
   async function openProject(project: Project) {
+    latestFreelancersLoad.current += 1;
     setSelectedProject(project);
     setDetails(null);
     setSelectedStageId(null);
@@ -127,6 +152,7 @@ export default function Projetos() {
       setSelectedStageId(firstStage?.id ?? null);
       setDetails(loadedDetails);
       setFreelancers([]);
+      setShowAllFreelancers(false);
       if (firstStage) {
         await loadFreelancers(firstStage.id);
       }
@@ -138,11 +164,13 @@ export default function Projetos() {
   }
 
   function closeProject() {
+    latestFreelancersLoad.current += 1;
     setSelectedProject(null);
     setDetails(null);
     setDetailsError(null);
     setSelectedStageId(null);
     setFreelancers([]);
+    setShowAllFreelancers(false);
   }
 
   async function openFile(projectId: number, fileId: number) {
@@ -171,11 +199,12 @@ export default function Projetos() {
           ? stageId
           : (refreshedStageIds[0] ?? null),
       );
-      await loadFreelancers(
-        refreshedStageIds.includes(stageId)
-          ? stageId
-          : (refreshedStageIds[0] ?? stageId),
-      );
+      if (refreshedStageIds.includes(stageId)) {
+        await loadFreelancers(stageId, showAllRef.current);
+      } else {
+        setShowAllFreelancers(false);
+        await loadFreelancers(refreshedStageIds[0] ?? stageId);
+      }
     } catch (cause) {
       setDetailsError(
         cause instanceof Error
@@ -326,6 +355,7 @@ export default function Projetos() {
                               accessibilityLabel={`Selecionar etapa ${stage.name}`}
                               onPress={() => {
                                 setSelectedStageId(stage.id);
+                                setShowAllFreelancers(false);
                                 void loadFreelancers(stage.id);
                               }}
                               style={[
@@ -391,7 +421,31 @@ export default function Projetos() {
                         <Text style={styles.infoLine}>
                           Responsável atual: {stage.freelancer_name ?? 'Não atribuído'}
                         </Text>
-                        <Text style={styles.assignTitle}>Atribuir responsável</Text>
+                        <View style={styles.assignHeader}>
+                          <Text style={styles.assignTitle}>Atribuir responsável</Text>
+                          {selectedProject?.quote_id != null ? (
+                            <Pressable
+                              accessibilityRole="switch"
+                              accessibilityLabel="Mostrar todos"
+                              aria-checked={showAllFreelancers}
+                              aria-disabled={freelancersLoading || updatingStageId !== null}
+                              disabled={freelancersLoading || updatingStageId !== null}
+                              onPress={() => {
+                                const next = !showAllFreelancers;
+                                setShowAllFreelancers(next);
+                                void loadFreelancers(stage.id, next);
+                              }}
+                              style={styles.showAllToggle}
+                            >
+                              <Ionicons
+                                name={showAllFreelancers ? 'checkbox' : 'square-outline'}
+                                size={16}
+                                color="#087F8C"
+                              />
+                              <Text style={styles.showAllText}>Mostrar todos</Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
                         {freelancersLoading ? (
                           <ActivityIndicator size="small" color="#087F8C" />
                         ) : freelancersError ? (
@@ -402,7 +456,9 @@ export default function Projetos() {
                           <View style={styles.employeePicker}>
                             {freelancers.length === 0 ? (
                               <Text style={styles.infoLine}>
-                                Não há freelancers disponíveis para esta etapa.
+                                {selectedProject?.quote_id != null && !showAllFreelancers
+                                  ? "Nenhum tradutor compatível. Use 'Mostrar todos' para ver todos."
+                                  : 'Não há freelancers disponíveis para esta etapa.'}
                               </Text>
                             ) : null}
                             <Pressable
@@ -429,7 +485,11 @@ export default function Projetos() {
                               <Pressable
                                 key={freelancer.id}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Atribuir ${freelancer.username} à etapa`}
+                                accessibilityLabel={
+                                  freelancer.language_match
+                                    ? `Atribuir ${freelancer.username} à etapa. ${languageBadges[freelancer.language_match].label}`
+                                    : `Atribuir ${freelancer.username} à etapa`
+                                }
                                 disabled={updatingStageId === stage.id}
                                 onPress={() =>
                                   void assignResponsible(stage.id, freelancer.id)
@@ -450,6 +510,20 @@ export default function Projetos() {
                                 >
                                   {freelancer.username}
                                 </Text>
+                                {freelancer.language_match ? (
+                                  <Text
+                                    style={[
+                                      styles.languageBadge,
+                                      {
+                                        color: languageBadges[freelancer.language_match].color,
+                                        backgroundColor:
+                                          languageBadges[freelancer.language_match].background,
+                                      },
+                                    ]}
+                                  >
+                                    {languageBadges[freelancer.language_match].label}
+                                  </Text>
+                                ) : null}
                               </Pressable>
                             ))}
                           </View>
@@ -544,6 +618,18 @@ const styles = StyleSheet.create({
   stageDetailsTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
   assignTitle: { marginTop: 12, marginBottom: 7, color: '#172B3A', fontSize: 11, fontWeight: '700' },
   employeePicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  assignHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  showAllToggle: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
+  showAllText: { color: '#087F8C', fontSize: 10, fontWeight: '700' },
+  languageBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontSize: 9,
+    fontWeight: '700',
+  },
   employeeOption: {
     paddingHorizontal: 10,
     paddingVertical: 7,

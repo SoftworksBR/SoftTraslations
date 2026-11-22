@@ -55,3 +55,9 @@ class QuoteStatus(Enum):
     IN_REVIEW = 'in_review'
     APPROVED = 'approved'
     REJECTED = 'rejected'
+
+
+class LanguageMatch(Enum):
+    COMPATIBLE = 'compatible'
+    UNDECLARED = 'undeclared'
+    INCOMPATIBLE = 'incompatible'

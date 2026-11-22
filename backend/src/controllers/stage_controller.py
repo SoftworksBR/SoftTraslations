@@ -119,9 +119,10 @@ class StageController:
         stage_id: int,
         session: AsyncSession,
         current_employee: Employee,
+        include_all: bool = False,
     ):
         return await StageService(session).get_available_freelancers(
-            stage_id, current_employee
+            stage_id, current_employee, include_all
         )
 
     @staticmethod

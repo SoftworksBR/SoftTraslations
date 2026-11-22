@@ -25,6 +25,8 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<Employee>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
+  // Atualiza o usuário logado com dados já devolvidos pela API, sem recarregar.
+  replaceEmployee: (employee: Employee) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -100,9 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('unauthenticated');
   }, []);
 
+  const replaceEmployee = useCallback((updated: Employee) => {
+    setEmployee(updated);
+  }, []);
+
   const value = useMemo(
-    () => ({ status, employee, error, signIn, signOut, refresh }),
-    [status, employee, error, signIn, signOut, refresh],
+    () => ({ status, employee, error, signIn, signOut, refresh, replaceEmployee }),
+    [status, employee, error, signIn, signOut, refresh, replaceEmployee],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

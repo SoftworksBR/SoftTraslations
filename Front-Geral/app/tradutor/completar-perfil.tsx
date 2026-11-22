@@ -1,17 +1,26 @@
 import { Redirect, router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
 
+import {
+  MultiLanguageField,
+  toggleLanguageId,
+  withInactiveLanguages,
+} from '@/components/MultiLanguageField';
+import type { LanguageOption } from '@/components/MultiLanguageField';
+import { LANGUAGES_WARNING } from '@/constants/freelancer-languages';
 import { useAuth } from '@/context/AuthContext';
 import { completeFreelancerProfile } from '@/services/employees';
 import { notify } from '@/services/dialog';
+import { getRequestOptions } from '@/services/requests';
 
 export default function CompletarPerfil() {
   const { employee, refresh } = useAuth();
@@ -20,8 +29,27 @@ export default function CompletarPerfil() {
   const [specialization, setSpecialization] = useState('');
   const [bio, setBio] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [sourceIds, setSourceIds] = useState<number[]>([]);
+  const [targetIds, setTargetIds] = useState<number[]>([]);
+  // null enquanto a lista de idiomas ativos não carregou.
+  const [languages, setLanguages] = useState<LanguageOption[] | null>(null);
+  const [languagesError, setLanguagesError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getRequestOptions()
+      .then((options) => setLanguages(
+        options.languages.map((language) => ({ label: language.name, value: language.id })),
+      ))
+      .catch(() => setLanguagesError('Não foi possível carregar os idiomas.'));
+  }, []);
+
+  // Idiomas salvos que foram desativados entram como "Idioma desativado" para
+  // poderem ser removidos; só depois que a lista de ativos carregou.
+  function catalog(selectedIds: number[]) {
+    return languages ? withInactiveLanguages(languages, selectedIds) : [];
+  }
 
   if (!employee) {
     return <Redirect href="/login" />;
@@ -51,6 +79,8 @@ export default function CompletarPerfil() {
         specialization: specialization.trim() || null,
         bio: bio.trim() || null,
         hourly_rate: rate,
+        source_language_ids: sourceIds,
+        target_language_ids: targetIds,
       });
       await refresh();
       router.replace('/tradutor/servicos');
@@ -62,7 +92,7 @@ export default function CompletarPerfil() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.container}>
       <View style={styles.form}>
         <Text style={styles.title}>Completar perfil</Text>
         <Text style={styles.description}>
@@ -78,6 +108,29 @@ export default function CompletarPerfil() {
         <TextInput value={hourlyRate} onChangeText={setHourlyRate} keyboardType="decimal-pad" style={styles.input} />
         <Text style={styles.label}>Sobre você</Text>
         <TextInput value={bio} onChangeText={setBio} multiline style={styles.input} />
+        <Text style={styles.sectionTitle}>Idiomas</Text>
+        <Text style={styles.warning}>{LANGUAGES_WARNING}</Text>
+        {languagesError ? <Text style={styles.error}>{languagesError}</Text> : null}
+        <View style={styles.languageFields}>
+          <View style={styles.languageField}>
+            <MultiLanguageField
+              label="Idiomas de origem"
+              placeholder="Selecione um ou mais idiomas (opcional)"
+              options={catalog(sourceIds)}
+              value={sourceIds}
+              onSelect={(id) => setSourceIds((ids) => toggleLanguageId(ids, id))}
+              required={false}
+            />
+          </View>
+          <MultiLanguageField
+            label="Idiomas de destino"
+            placeholder="Selecione um ou mais idiomas (opcional)"
+            options={catalog(targetIds)}
+            value={targetIds}
+            onSelect={(id) => setTargetIds((ids) => toggleLanguageId(ids, id))}
+            required={false}
+          />
+        </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Pressable
           style={[styles.button, saving && styles.disabled]}
@@ -89,13 +142,14 @@ export default function CompletarPerfil() {
           )}
         </Pressable>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: '#F5F8FA' },
   container: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
     backgroundColor: '#F5F8FA',
@@ -122,6 +176,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: { marginTop: 12, color: '#B42318', lineHeight: 20 },
+  sectionTitle: { marginTop: 26, color: '#172B3A', fontSize: 16, fontWeight: '700' },
+  warning: {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#FFF5E3',
+    color: '#8A5A0B',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  // zIndex: a lista aberta do seletor precisa ficar acima do botão de salvar.
+  languageFields: { zIndex: 1, gap: 16, marginTop: 14 },
+  languageField: { zIndex: 2 },
   button: {
     minHeight: 50,
     alignItems: 'center',

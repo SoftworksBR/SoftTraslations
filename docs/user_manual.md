@@ -204,6 +204,22 @@ Antes de criar um projeto, confira se as etapas e a trilha necessárias já
 existem. Uma tela sem etapas de projeto pode simplesmente indicar que ainda
 não há projetos usando uma trilha.
 
+### Atribuir tradutores a uma etapa
+
+Em **Projetos**, abra um projeto e selecione uma etapa. Em **Atribuir
+responsável**, a lista de tradutores considera os idiomas da solicitação que
+originou o projeto:
+
+- por padrão, aparecem primeiro os tradutores **Compatível** (atendem ao idioma
+  de origem e a pelo menos um idioma de destino) e depois os marcados como
+  **Sem idiomas informados**;
+- marque **Mostrar todos** para incluir também os tradutores com **Idiomas não
+  compatíveis**. A opção volta a ficar desmarcada ao trocar de etapa;
+- se nenhum tradutor aparecer, a mensagem sugere usar **Mostrar todos**.
+
+Em projetos criados sem orçamento, a lista aparece sem selos e sem a opção
+**Mostrar todos**. Tradutores que recusaram a etapa não aparecem.
+
 ### Gerenciar tradutores
 
 Em **Tradutores**, pesquise por nome ou e-mail e filtre por situação. Use
@@ -218,7 +234,18 @@ informações retornadas e a situação do cadastro nessa lista.
 Se a conta estiver pendente, o sistema direciona para **Completar perfil**.
 Informe a data de nascimento no formato **AAAA-MM-DD** e o telefone. A
 especialização, o valor por hora e a apresentação pessoal são opcionais.
-Selecione **Salvar perfil** ao terminar.
+
+Na seção **Idiomas**, escolha os **idiomas de origem** e os **idiomas de
+destino** com que você trabalha. Os idiomas são opcionais, mas informe os dois
+lados para aparecer nas sugestões do gestor: com só um dos lados preenchido
+você não aparece como compatível. Selecione **Salvar perfil** ao terminar.
+
+### Editar seus idiomas
+
+Em **Meu perfil**, os idiomas de origem e de destino aparecem junto com os
+demais dados. Na área **Editar idiomas**, ajuste a seleção e escolha **Salvar
+idiomas**; a tela confirma com **Idiomas atualizados.** Os demais dados do
+perfil continuam apenas para consulta.
 
 ### Consultar etapas atribuídas
 
