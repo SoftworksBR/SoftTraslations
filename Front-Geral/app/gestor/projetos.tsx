@@ -79,7 +79,13 @@ export default function Projetos() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [freelancers, setFreelancers] = useState<AvailableFreelancer[]>([]);
-  const [showAllFreelancers, setShowAllFreelancers] = useState(false);
+  const [showAllFreelancers, setShowAllState] = useState(false);
+  // Espelha o alternador para recarregamentos assíncronos usarem o valor atual.
+  const showAllRef = useRef(false);
+  const setShowAllFreelancers = useCallback((value: boolean) => {
+    showAllRef.current = value;
+    setShowAllState(value);
+  }, []);
   const [freelancersLoading, setFreelancersLoading] = useState(true);
   const [freelancersError, setFreelancersError] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
@@ -194,7 +200,7 @@ export default function Projetos() {
           : (refreshedStageIds[0] ?? null),
       );
       if (refreshedStageIds.includes(stageId)) {
-        await loadFreelancers(stageId, showAllFreelancers);
+        await loadFreelancers(stageId, showAllRef.current);
       } else {
         setShowAllFreelancers(false);
         await loadFreelancers(refreshedStageIds[0] ?? stageId);
@@ -422,7 +428,8 @@ export default function Projetos() {
                               accessibilityRole="switch"
                               accessibilityLabel="Mostrar todos"
                               aria-checked={showAllFreelancers}
-                              disabled={freelancersLoading}
+                              aria-disabled={freelancersLoading || updatingStageId !== null}
+                              disabled={freelancersLoading || updatingStageId !== null}
                               onPress={() => {
                                 const next = !showAllFreelancers;
                                 setShowAllFreelancers(next);
