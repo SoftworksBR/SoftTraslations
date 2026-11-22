@@ -16,8 +16,9 @@ ATENDENTE = SimpleNamespace(id=5, role=Roles.ATENDIMENTO)
 
 
 class FakeRequestRepository:
-    def __init__(self, request, files_count=0):
+    def __init__(self, request, files_count=0, calls=None):
         self.request = request
+        self.calls = calls if calls is not None else []
         self.files_count = files_count
         self.events = []
         self.saved = None
@@ -32,10 +33,12 @@ class FakeRequestRepository:
     async def _flush(self):
         return None
 
-    async def get_by_id(self, request_id):
+    async def get_by_id_for_update(self, request_id):
+        self.calls.append('lock_request')
         return self.request
 
     async def list_files(self, request_id):
+        self.calls.append('list_files')
         return [object()] * self.files_count
 
     async def add_file(self, request_file):
@@ -44,10 +47,12 @@ class FakeRequestRepository:
 
 
 class FakeQuoteRepository:
-    def __init__(self, quote):
+    def __init__(self, quote, calls):
         self.quote = quote
+        self.calls = calls
 
-    async def get_by_request_id(self, request_id):
+    async def get_by_request_id_for_update(self, request_id):
+        self.calls.append('lock_quote')
         return self.quote
 
 
@@ -63,11 +68,12 @@ def make_service(
     request_status=RequestStatus.PENDING, quote_status=None, files_count=0
 ):
     service = RequestService(session=None)
+    calls = []
     service.repository = FakeRequestRepository(
-        SimpleNamespace(id=1, status=request_status), files_count
+        SimpleNamespace(id=1, status=request_status), files_count, calls
     )
     quote = SimpleNamespace(status=quote_status) if quote_status else None
-    service.quote_repository = FakeQuoteRepository(quote)
+    service.quote_repository = FakeQuoteRepository(quote, calls)
     return service
 
 
@@ -159,3 +165,15 @@ def test_empty_file_returns_422():
     error = expect_error(make_service(), upload('vazio.pdf', b''))
 
     assert error.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def test_quote_is_locked_before_request_and_both_before_counting():
+    service = make_service(RequestStatus.QUOTED, QuoteStatus.IN_REVIEW)
+
+    add_file(service)
+
+    assert service.repository.calls == [
+        'lock_quote',
+        'lock_request',
+        'list_files',
+    ]

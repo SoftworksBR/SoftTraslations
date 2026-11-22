@@ -9,6 +9,7 @@ from src.enums.enums import QuoteStatus, RequestStatus, Roles
 from src.models.employee_model import Employee
 from src.models.file_model import RequestFile
 from src.models.language_model import Language
+from src.models.quote_model import Quote
 from src.models.request_model import Request
 from src.repositories.language_repository import LanguageRepository
 from src.repositories.quote_repository import QuoteRepository
@@ -336,8 +337,19 @@ class RequestService:
         current_employee: Employee,
     ) -> RequestFile:
         self._require_atendimento_role(current_employee)
-        request = await self.get_by_id(request_id)
-        await self._require_files_editable(request)
+        # Ordem das travas igual à da decisão do cliente (orçamento e depois
+        # solicitação), para não haver deadlock. Elas valem até o commit de
+        # add_file; em erro, o rollback ao fechar a sessão as libera.
+        quote = await self.quote_repository.get_by_request_id_for_update(
+            request_id
+        )
+        request = await self.repository.get_by_id_for_update(request_id)
+        if request is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail='Solicitação não encontrada',
+            )
+        self._require_files_editable(request, quote)
 
         # Mesmas validações e armazenamento de add_file_public, que não pode
         # ser alterado agora; muda só quem envia, registrado no evento.
@@ -409,11 +421,11 @@ class RequestService:
     # ------------------------------------------------------------------
     # Auxiliares
     # ------------------------------------------------------------------
-    async def _require_files_editable(self, request: Request) -> None:
+    @staticmethod
+    def _require_files_editable(request: Request, quote: Quote | None) -> None:
         # Pendente ou com orçamento ainda em análise pelo atendimento.
         if request.status == RequestStatus.PENDING:
             return
-        quote = await self.quote_repository.get_by_request_id(request.id)
         if quote is not None and quote.status == QuoteStatus.IN_REVIEW:
             return
         raise HTTPException(

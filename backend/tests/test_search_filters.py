@@ -154,3 +154,33 @@ def test_stage_search_filters_include_related_projects():
     assert 'project_paths' in query
     assert 'projects.name ilike' in query
     assert 'employees.username ilike' in query
+
+
+def _locked_statement(call):
+    result = SimpleNamespace(
+        unique=lambda: SimpleNamespace(scalar_one_or_none=lambda: None)
+    )
+    session = SimpleNamespace(execute=AsyncMock(return_value=result))
+    asyncio.run(call(session))
+    return _sql(session.execute.await_args.args[0])
+
+
+def test_quote_lock_by_request_locks_only_quotes():
+    query = _locked_statement(
+        lambda session: QuoteRepository(session).get_by_request_id_for_update(
+            3
+        )
+    )
+
+    assert 'where quotes.request_id =' in query
+    assert query.endswith('for update of quotes')
+
+
+def test_request_lock_locks_request_row():
+    query = _locked_statement(
+        lambda session: RequestRepository(session).get_by_id_for_update(3)
+    )
+
+    assert 'where requests.id =' in query
+    assert 'for update' in query
+    assert query.endswith('for update of requests')
