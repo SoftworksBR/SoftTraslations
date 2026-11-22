@@ -410,6 +410,7 @@ export default function Projetos() {
                           {selectedProject?.quote_id != null ? (
                             <Pressable
                               accessibilityRole="switch"
+                              accessibilityLabel="Mostrar todos"
                               accessibilityState={{ checked: showAllFreelancers }}
                               disabled={freelancersLoading}
                               onPress={() => {
@@ -467,7 +468,11 @@ export default function Projetos() {
                               <Pressable
                                 key={freelancer.id}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Atribuir ${freelancer.username} à etapa`}
+                                accessibilityLabel={
+                                  freelancer.language_match
+                                    ? `Atribuir ${freelancer.username} à etapa. ${languageBadges[freelancer.language_match].label}`
+                                    : `Atribuir ${freelancer.username} à etapa`
+                                }
                                 disabled={updatingStageId === stage.id}
                                 onPress={() =>
                                   void assignResponsible(stage.id, freelancer.id)
