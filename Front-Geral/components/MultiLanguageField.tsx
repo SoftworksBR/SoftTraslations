@@ -46,7 +46,7 @@ export function MultiLanguageField({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${value.length ? selectedNames : placeholder}`}
-          accessibilityState={{ expanded: open }}
+          aria-expanded={open}
           onPress={() => {
             setOpen((current) => !current);
             setSearch('');
@@ -81,7 +81,7 @@ export function MultiLanguageField({
                     <Pressable
                       key={option.value}
                       accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
+                      aria-checked={selected}
                       onPress={() => onSelect(option.value)}
                       style={styles.selectOption}
                     >
