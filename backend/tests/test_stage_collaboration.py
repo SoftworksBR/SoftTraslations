@@ -21,6 +21,7 @@ from src.enums.enums import (
 )
 from src.main import app
 from src.models.employee_model import Employee
+from src.models.file_model import File
 from src.models.stage_model import PathStage, ProjectStage, StageTemplate
 from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
@@ -69,6 +70,11 @@ def make_stage(**overrides):
     values.update(overrides)
     stage = ProjectStage(**values)
     stage.id = STAGE_ID
+    # Completa o necessário para montar a StageResponse.
+    stage.created_at = datetime(2026, 11, 1, tzinfo=UTC)
+    path_stage = PathStage(stage_template_id=1, sequence=1)
+    path_stage.stage_template = StageTemplate(name='Tradução')
+    stage.path_stage = path_stage
     return stage
 
 
@@ -849,12 +855,7 @@ def test_reassign_query_moves_only_removed_freelancer_stage_files():
 
 
 def stage_for_response(**overrides):
-    stage = make_stage(**overrides)
-    stage.created_at = datetime(2026, 11, 1, tzinfo=UTC)
-    path_stage = PathStage(stage_template_id=1, sequence=1)
-    path_stage.stage_template = StageTemplate(name='Tradução')
-    stage.path_stage = path_stage
-    return stage
+    return make_stage(**overrides)
 
 
 def test_stage_response_includes_main_freelancer_name():
@@ -998,3 +999,74 @@ def test_failed_answer_reads_invite_under_lock(monkeypatch):
 
     assert status == HTTPStatus.FORBIDDEN
     assert service.calls == ['lock']
+
+
+# --- convidado não recebe os arquivos ---------------------------------------
+
+
+def stage_with_files(**overrides):
+    stage = make_stage(**overrides)
+    for file_id, author in ((1, MAIN_ID), (2, SECOND_ID)):
+        file = File(
+            file_path=f'/tmp/{file_id}.pdf',
+            original_name=f'arquivo-{file_id}.pdf',
+            project_stage_id=STAGE_ID,
+            uploaded_by_id=author,
+        )
+        file.id = file_id
+        stage.files.append(file)
+    return stage
+
+
+def listed_files(monkeypatch, stage, employee):
+    monkeypatch.setattr(
+        StageRepository, 'get_all', AsyncMock(return_value=[stage])
+    )
+    (item,) = asyncio.run(
+        StageService(SimpleNamespace()).get_all(employee, StageSearchFilters())
+    )
+    return StageResponse.model_validate(item).files
+
+
+def test_invited_freelancer_lists_stage_without_files(monkeypatch):
+    stage = stage_with_files(
+        second_freelancer_id=SECOND_ID,
+        second_status=StageCollaborationStatus.INVITED,
+    )
+
+    files = listed_files(monkeypatch, stage, freelancer(SECOND_ID))
+
+    assert files == []
+    assert [file.id for file in stage.files] == [1, 2]
+
+
+@pytest.mark.parametrize(
+    'employee',
+    [freelancer(MAIN_ID), MANAGER, freelancer(SECOND_ID)],
+    ids=['principal', 'gestor', 'colaborador-aceito'],
+)
+def test_members_and_manager_list_all_stage_files(monkeypatch, employee):
+    stage = stage_with_files(
+        second_freelancer_id=SECOND_ID,
+        second_status=StageCollaborationStatus.ACCEPTED,
+    )
+
+    files = listed_files(monkeypatch, stage, employee)
+
+    assert [file.id for file in files] == [1, 2]
+
+
+def test_decline_response_has_no_files(monkeypatch, events):
+    stage = stage_with_files(
+        second_freelancer_id=SECOND_ID,
+        second_status=StageCollaborationStatus.INVITED,
+    )
+    service = make_service(monkeypatch, stage)
+
+    response = asyncio.run(
+        service.decline_collaboration(STAGE_ID, freelancer(SECOND_ID))
+    )
+
+    assert response.files == []
+    assert response.second_freelancer_id is None
+    assert [file.id for file in stage.files] == [1, 2]

@@ -29,6 +29,7 @@ from src.repositories.stage_repository import StageRepository
 from src.schemas.stage_schema import (
     AvailableFreelancerSchema,
     ProjectStageCreate,
+    StageResponse,
     StageSearchFilters,
     StageTemplateCreate,
     StageUpdate,
@@ -235,15 +236,22 @@ class StageService:
         self,
         current_employee: Employee,
         filters: StageSearchFilters,
-    ) -> list[ProjectStage]:
+    ) -> list[ProjectStage | StageResponse]:
         if current_employee.role == Roles.PROJETOS:
             return await self.repository.get_all(filters=filters)
 
         if current_employee.role == Roles.FREELANCER:
-            return await self.repository.get_all(
+            stages = await self.repository.get_all(
                 freelancer_id=current_employee.id,
                 filters=filters,
             )
+            return [
+                self._without_files(stage)
+                if stage.second_freelancer_id == current_employee.id
+                and stage.second_status == StageCollaborationStatus.INVITED
+                else stage
+                for stage in stages
+            ]
 
         self._raise_stage_access_denied()
 
@@ -411,7 +419,15 @@ class StageService:
         )
         stage.second_freelancer_id = None
         stage.second_status = None
-        return await self._save_collaboration(stage)
+        # Quem recusou deixa de ser membro e não recebe os arquivos.
+        return self._without_files(await self._save_collaboration(stage))
+
+    @staticmethod
+    def _without_files(stage: ProjectStage) -> StageResponse:
+        # Resposta resumida; o objeto ORM e seus arquivos não são alterados.
+        return StageResponse.model_validate(stage).model_copy(
+            update={'files': []}
+        )
 
     async def _get_invited_collaboration(
         self, stage_id: int, current_employee: Employee
