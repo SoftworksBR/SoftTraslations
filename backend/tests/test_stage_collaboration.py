@@ -415,10 +415,11 @@ def test_concurrent_accepts_only_one_wins(monkeypatch, events):
     row_lock = asyncio.Lock()
 
     async def read_row():
-        await asyncio.sleep(0)
-        return make_stage(
+        snapshot = make_stage(
             **{field: getattr(row, field) for field in OFFER_FIELDS}
         )
+        await asyncio.sleep(0)
+        return snapshot
 
     # Simula o FOR UPDATE: a segunda leitura espera o commit da primeira.
     async def lock(self, stage_id):
