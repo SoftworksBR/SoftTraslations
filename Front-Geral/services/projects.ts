@@ -1,6 +1,7 @@
 import { apiRequest } from './api';
 import { getPaths } from './paths';
 import type { TranslationPath } from './paths';
+import type { CollaborationStatus } from './stages';
 
 export type Path = TranslationPath;
 
@@ -22,9 +23,18 @@ export type ProjectStageFile = {
 export type ProjectStageDetails = {
   id: number;
   name: string;
-  status: 'ready' | 'in_progress' | 'testing' | 'done';
+  status:
+    | 'no_freelancer'
+    | 'public'
+    | 'ready'
+    | 'in_progress'
+    | 'testing'
+    | 'done';
   freelancer_id: number | null;
   freelancer_name: string | null;
+  second_freelancer_id: number | null;
+  second_freelancer_name: string | null;
+  second_status: CollaborationStatus | null;
   files: ProjectStageFile[];
 };
 
@@ -50,8 +60,19 @@ export type ProjectInput = {
   path_ids: number[];
 };
 
+export type ProjectsSummary = {
+  total: number;
+  awaiting: number;
+  in_progress: number;
+  completed: number;
+};
+
 export function getProjects() {
   return apiRequest<Project[]>('/projects/');
+}
+
+export function getProjectsSummary() {
+  return apiRequest<ProjectsSummary>('/projects/summary');
 }
 
 export function getProjectDetails(projectId: number) {

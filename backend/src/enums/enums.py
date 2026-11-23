@@ -18,6 +18,20 @@ class Status(Enum):
     DONE = 'done'
 
 
+class StageStatus(Enum):
+    NO_FREELANCER = 'no_freelancer'
+    PUBLIC = 'public'
+    READY = 'ready'
+    IN_PROGRESS = 'in_progress'
+    TESTING = 'testing'
+    DONE = 'done'
+
+
+class StageCollaborationStatus(Enum):
+    INVITED = 'invited'
+    ACCEPTED = 'accepted'
+
+
 class EmployeeStatus(Enum):
     AVAILABLE = 'available'
     BUSY = 'busy'
@@ -46,3 +60,9 @@ class QuoteStatus(Enum):
     IN_REVIEW = 'in_review'
     APPROVED = 'approved'
     REJECTED = 'rejected'
+
+
+class LanguageMatch(Enum):
+    COMPATIBLE = 'compatible'
+    UNDECLARED = 'undeclared'
+    INCOMPATIBLE = 'incompatible'

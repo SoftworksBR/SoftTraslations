@@ -1,10 +1,21 @@
 import { apiRequest } from './api';
+import type { AvailableFreelancer } from './employees';
 
-export type StageStatus = 'ready' | 'in_progress' | 'testing' | 'done';
+export type StageStatus =
+  | 'no_freelancer'
+  | 'public'
+  | 'ready'
+  | 'in_progress'
+  | 'testing'
+  | 'done';
+
+// Situação do tradutor adicional (segundo tradutor) da etapa.
+export type CollaborationStatus = 'invited' | 'accepted';
 
 export type StageFile = {
   id: number;
   original_name: string;
+  uploaded_by_id: number | null;
 };
 
 // Etapa de um projeto, criada a partir de uma etapa modelo da trilha.
@@ -14,10 +25,15 @@ export type TranslationStage = {
   project_path_id: number;
   path_stage_id: number;
   freelancer_id: number | null;
+  freelancer_name: string | null;
   status: StageStatus;
   created_at: string;
   started_at: string | null;
   completed_at: string | null;
+  rejection_comment: string | null;
+  second_freelancer_id: number | null;
+  second_freelancer_name: string | null;
+  second_status: CollaborationStatus | null;
   files: StageFile[];
 };
 
@@ -32,9 +48,62 @@ export function getStages() {
   return apiRequest<TranslationStage[]>('/stages/');
 }
 
+export function getAvailableStageFreelancers(
+  stageId: number,
+  { includeAll = false }: { includeAll?: boolean } = {},
+) {
+  const query = includeAll ? '?include_all=true' : '';
+  return apiRequest<AvailableFreelancer[]>(
+    `/stages/${stageId}/available-freelancers${query}`,
+  );
+}
+
+export function acceptStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/accept`, {
+    method: 'POST',
+  });
+}
+
+export function declineStage(id: number) {
+  return apiRequest<TranslationStage>(`/stages/${id}/decline`, {
+    method: 'POST',
+  });
+}
+
+export function inviteCollaborator(stageId: number, freelancerId: number) {
+  return apiRequest<TranslationStage>(`/stages/${stageId}/collaborator`, {
+    method: 'POST',
+    body: JSON.stringify({ freelancer_id: freelancerId }),
+  });
+}
+
+export function removeCollaborator(stageId: number) {
+  return apiRequest<TranslationStage>(`/stages/${stageId}/collaborator`, {
+    method: 'DELETE',
+  });
+}
+
+export function acceptCollaboration(stageId: number) {
+  return apiRequest<TranslationStage>(
+    `/stages/${stageId}/collaborator/accept`,
+    { method: 'POST' },
+  );
+}
+
+export function declineCollaboration(stageId: number) {
+  return apiRequest<TranslationStage>(
+    `/stages/${stageId}/collaborator/decline`,
+    { method: 'POST' },
+  );
+}
+
 export function updateStage(
   id: number,
-  data: { freelancer_id?: number | null; status?: StageStatus },
+  data: {
+    freelancer_id?: number | null;
+    status?: StageStatus;
+    rejection_comment?: string | null;
+  },
 ) {
   return apiRequest<TranslationStage>(`/stages/${id}`, {
     method: 'PUT',
@@ -48,6 +117,12 @@ export function uploadStageFile(stageId: number, file: File) {
   return apiRequest<StageFile>(`/stages/${stageId}/files`, {
     method: 'POST',
     body,
+  });
+}
+
+export function deleteStageFile(stageId: number, fileId: number) {
+  return apiRequest<void>(`/stages/${stageId}/files/${fileId}`, {
+    method: 'DELETE',
   });
 }
 

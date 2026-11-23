@@ -1,5 +1,5 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.employee_model import Employee
 from src.schemas.stage_schema import (
@@ -33,6 +33,19 @@ class StageController:
         current_employee: Employee,
     ):
         return await StageService(session).get_file(
+            stage_id,
+            file_id,
+            current_employee,
+        )
+
+    @staticmethod
+    async def delete_file(
+        stage_id: int,
+        file_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).delete_file(
             stage_id,
             file_id,
             current_employee,
@@ -84,6 +97,74 @@ class StageController:
         service = StageService(session)
 
         return await service.get_all(current_employee, filters)
+
+    @staticmethod
+    async def accept(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).accept(stage_id, current_employee)
+
+    @staticmethod
+    async def decline(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).decline(stage_id, current_employee)
+
+    @staticmethod
+    async def invite_collaborator(
+        stage_id: int,
+        freelancer_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).invite_collaborator(
+            stage_id, freelancer_id, current_employee
+        )
+
+    @staticmethod
+    async def remove_collaborator(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).remove_collaborator(
+            stage_id, current_employee
+        )
+
+    @staticmethod
+    async def accept_collaboration(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).accept_collaboration(
+            stage_id, current_employee
+        )
+
+    @staticmethod
+    async def decline_collaboration(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+    ):
+        return await StageService(session).decline_collaboration(
+            stage_id, current_employee
+        )
+
+    @staticmethod
+    async def get_available_freelancers(
+        stage_id: int,
+        session: AsyncSession,
+        current_employee: Employee,
+        include_all: bool = False,
+    ):
+        return await StageService(session).get_available_freelancers(
+            stage_id, current_employee, include_all
+        )
 
     @staticmethod
     async def update(

@@ -10,6 +10,7 @@ diretamente.
 
 - [O que o sistema faz](#o-que-o-sistema-faz)
 - [Solicitar um serviço](#solicitar-um-servico)
+- [Assistente virtual](#assistente-virtual)
 - [Entrar e navegar](#entrar-e-navegar)
 - [Administrador](#administrador)
 - [Atendimento](#atendimento)
@@ -17,7 +18,7 @@ diretamente.
 - [Tradutor freelancer](#tradutor-freelancer)
 - [Situações e regras do fluxo](#situacoes-e-regras-do-fluxo)
 - [Problemas comuns](#problemas-comuns)
-- [Recursos ainda não disponíveis na interface](#recursos-ainda-nao-disponiveis-na-interface)
+- [Evoluções previstas](#evolucoes-previstas)
 
 ## O que o sistema faz
 
@@ -26,21 +27,28 @@ trabalho interno da equipe. O fluxo principal é:
 
 1. O cliente envia uma solicitação com seus dados, idiomas e serviço desejado.
 2. O atendimento analisa a solicitação e prepara um orçamento.
-3. O atendimento registra a aprovação ou a recusa do orçamento, após a decisão
-   do cliente.
+3. O orçamento é enviado ao cliente por e-mail; o cliente usa os botões para
+   aprovar ou recusar.
 4. Com um orçamento aprovado, o gestor cria um projeto e escolhe uma ou mais
    trilhas de trabalho.
-5. As etapas criadas para o projeto podem ser acompanhadas e atribuídas a
-   tradutores.
-6. O tradutor consulta as etapas vinculadas à sua conta.
+5. As etapas criadas para o projeto são atribuídas a tradutores, que podem
+   aceitar ou recusar a atribuição. Cada etapa pode ter também um tradutor
+   adicional.
+6. O tradutor envia os documentos da etapa e a encaminha para revisão. O gestor
+   aprova a entrega ou a reprova com um comentário.
+7. Ao aprovar o orçamento, o cliente recebe a fatura de venda por e-mail; o
+   gestor pode enviar ao tradutor a fatura de pagamento pelo serviço.
+
+Visitantes da página inicial também contam com um assistente virtual para
+tirar dúvidas.
 
 | Perfil | Responsabilidade principal |
 | --- | --- |
 | Cliente sem conta | Enviar uma solicitação pública pelo formulário inicial. |
-| Administrador | Gerenciar contas da equipe e consultar o painel administrativo. |
-| Atendimento | Consultar solicitações, criar orçamentos e registrar decisões. |
-| Gestor de projetos | Organizar projetos, trilhas, etapas e tradutores. |
-| Tradutor freelancer | Completar o perfil pendente e consultar etapas atribuídas. |
+| Administrador | Gerenciar contas da equipe, configurar idiomas, serviços e preços e consultar o painel administrativo. |
+| Atendimento | Consultar solicitações, criar, atualizar e enviar orçamentos e acompanhar decisões. |
+| Gestor de projetos | Organizar projetos, trilhas, etapas e tradutores, aprovar entregas e enviar faturas de pagamento. |
+| Tradutor freelancer | Completar o perfil, aceitar etapas, enviar documentos e encaminhar a etapa para revisão. |
 
 ## Solicitar um serviço
 
@@ -49,8 +57,9 @@ Não é necessário entrar na plataforma para enviar uma solicitação.
 1. Abra a página inicial e selecione **Fazer uma solicitação**.
 2. Na etapa **Dados da solicitação**, informe nome completo, e-mail e telefone.
    A empresa é opcional.
-3. Escolha o idioma de origem, o idioma de destino e, se disponível, o serviço.
-   Os idiomas e serviços são carregados das opções ativas no sistema.
+3. Escolha um idioma de origem e um ou mais idiomas de destino. Se disponível,
+   selecione também o serviço. Os idiomas e serviços são carregados das opções
+   ativas no sistema.
 4. Escreva uma descrição ou observação que ajude a equipe a entender o pedido.
 5. Se necessário, anexe arquivos de referência. São aceitos PDF, DOC, DOCX,
    ODT, TXT, RTF, XLS, XLSX, PNG, JPG e JPEG. O limite é de 10 MB por arquivo e
@@ -61,6 +70,24 @@ Não é necessário entrar na plataforma para enviar uma solicitação.
 
 Se um anexo falhar, a confirmação informa quais arquivos não foram enviados.
 Envie novamente os arquivos que faltaram ou informe o problema ao atendimento.
+
+## Assistente virtual
+
+Na página inicial, o botão **Abrir assistente SoftTranslations** abre um chat
+para tirar dúvidas sem entrar na plataforma. O assistente responde sobre os
+serviços, os idiomas disponíveis e as estimativas de tradução, e ajuda a
+iniciar uma solicitação.
+
+1. Selecione o botão do assistente, no canto da tela.
+2. Escolha uma das perguntas sugeridas (por exemplo, **Quais idiomas vocês
+   traduzem?**) ou escreva sua mensagem em **Digite sua mensagem...** e
+   envie.
+3. Use **Minimizar assistente** para esconder o chat sem perder a conversa e
+   **Fechar assistente** para encerrá-lo.
+
+As respostas do assistente são informativas. O valor final de um serviço é
+definido no orçamento enviado pelo atendimento. Se aparecer uma mensagem de
+erro, tente enviar novamente em instantes.
 
 ## Entrar e navegar
 
@@ -82,6 +109,22 @@ O painel apresenta indicadores e uma visão da equipe retornada pela API. Se
 alguma seção não tiver dados, confirme se os registros foram cadastrados e se a
 API está acessível.
 
+A seção da equipe mostra os indicadores **Funcionários**, **Disponíveis**,
+**Ocupados** e **Pendentes**, com uma barra de proporção por situação, e
+atalhos para **Funcionários** e **Configurações**.
+
+A seção **Projetos** mostra quatro indicadores e uma barra de proporção:
+
+- **Total**: todos os projetos cadastrados.
+- **Aguardando**: projetos sem etapas ou com etapas ainda não iniciadas.
+- **Em andamento**: projetos com alguma etapa em andamento ou em teste, ou com
+  parte das etapas concluída.
+- **Concluídos**: projetos em que todas as etapas foram concluídas.
+
+A situação é calculada a partir das etapas de cada projeto. Se os indicadores
+de projetos não puderem ser carregados, apenas essa seção mostra a mensagem de
+erro; os indicadores da equipe continuam disponíveis.
+
 ### Gerenciar funcionários
 
 Na área **Funcionários**, o administrador pode consultar, filtrar, cadastrar,
@@ -96,10 +139,19 @@ irreversível.
 
 ### Configurações
 
-A área **Configurações** apresenta as seções **Idiomas**, **Serviços** e
-**Preços**. No estado atual da interface, a integração dessas configurações
-ainda está indisponível; não use essa área como confirmação de que uma alteração
-foi salva.
+A área **Configurações** concentra os cadastros usados nas solicitações e nos
+orçamentos. Ela tem três seções:
+
+- **Idiomas**: idiomas disponíveis para solicitações, orçamentos e cadastro dos
+  tradutores.
+- **Serviços**: serviços prestados (por exemplo, tradução e revisão).
+- **Preços**: valor em reais por palavra para cada combinação de serviço,
+  idioma de origem e idioma de destino. O atendimento usa esse valor como
+  sugestão ao criar o orçamento.
+
+Selecione a seção, escolha o registro para editar ou use o formulário de
+cadastro e selecione **Salvar**. Itens inativos permanecem guardados e podem ser
+reativados; um item inativo deixa de aparecer como opção.
 
 ## Atendimento
 
@@ -108,10 +160,12 @@ foi salva.
 1. Abra **Requisições**.
 2. Consulte os dados de contato, a empresa (quando informada), o par de idiomas,
    o serviço e as observações.
-3. Abra os anexos associados para conferir os arquivos enviados, se houver.
-4. Para iniciar o orçamento, use **Abrir orçamento** na solicitação
+3. Use o campo **Buscar por nome, e-mail ou empresa** para localizar uma
+   solicitação.
+4. Abra os anexos associados para conferir os arquivos enviados, se houver.
+5. Para iniciar o orçamento, use **Abrir orçamento** na solicitação
    correspondente.
-5. Só exclua uma solicitação depois de confirmar que ela não deve continuar no
+6. Só exclua uma solicitação depois de confirmar que ela não deve continuar no
    fluxo. A interface pede confirmação antes de excluir.
 
 Uma lista vazia significa que não há solicitações retornadas para a conta ou
@@ -129,20 +183,43 @@ se persistir, confira a conexão com a API.
 5. Adicione observações se forem importantes para a proposta e selecione
    **Criar orçamento**.
 
-O orçamento recém-criado fica em análise. Há apenas um orçamento por
-solicitação. Para acompanhar a proposta, abra **Orçamentos**.
+O orçamento recém-criado fica em análise e é enviado automaticamente para o
+e-mail do cliente. Há apenas um orçamento por solicitação. Para acompanhar a
+proposta, abra **Orçamentos**. Se necessário, use **Enviar por e-mail** para
+reenviá-la enquanto estiver em análise.
+
+### Atualizar um orçamento e anexar documentos
+
+Enquanto o orçamento estiver em análise, a solicitação em **Requisições** mostra
+**Atualizar orçamento**. Na tela de atualização:
+
+1. Ajuste o valor, o prazo ou as observações e selecione **Atualizar
+   orçamento**.
+2. Em **Documentos da solicitação**, confira os arquivos já enviados e, se
+   precisar, use **Anexar documento** para incluir um novo arquivo (pdf,
+   doc, docx, odt, txt, rtf, xls, xlsx, png ou jpg). O documento é anexado na
+   hora, sem precisar salvar o orçamento.
+3. Se o orçamento já foi enviado por e-mail ao cliente, reenvie o e-mail depois
+   de salvar as alterações: abra **Orçamentos** e use **Enviar por e-mail**. A
+   tela de atualização lembra disso antes e depois de salvar.
+
+Depois que o orçamento é aprovado ou recusado, não é mais possível anexar
+documentos à solicitação.
 
 ### Registrar a decisão do cliente
 
 Na lista de orçamentos, confira cliente, serviço, idiomas, valor, prazo,
-observações e situação. Para um orçamento **Em análise**, use **Aprovar** ou
-**Recusar** depois de obter a decisão do cliente:
+observações e situação. O cliente recebe no e-mail do orçamento os botões
+**Aprovar orçamento** e **Recusar orçamento**. Ao abrir um botão, ele confirma
+a ação na página exibida:
 
-- **Aprovar** libera o orçamento para que o gestor crie um projeto.
-- **Recusar** também marca a solicitação relacionada como recusada.
+- **Aprovar** registra a decisão e envia automaticamente a fatura ao cliente.
+- **Recusar** registra a decisão e marca a solicitação relacionada como
+  recusada.
 
-Essas ações registram uma decisão no sistema; o envio de uma proposta ou a
-coleta da resposta do cliente não é feito automaticamente por essa tela.
+Depois da aprovação, não é necessário gerar ou enviar a fatura pela tela de
+orçamentos. O orçamento aprovado fica disponível para o gestor criar um
+projeto.
 
 ## Gestor de projetos
 
@@ -185,12 +262,72 @@ Antes de criar um projeto, confira se as etapas e a trilha necessárias já
 existem. Uma tela sem etapas de projeto pode simplesmente indicar que ainda
 não há projetos usando uma trilha.
 
+### Atribuir tradutores a uma etapa
+
+Em **Projetos**, abra um projeto e selecione uma etapa. Em **Atribuir
+responsável**, a lista de tradutores considera os idiomas da solicitação que
+originou o projeto:
+
+- por padrão, aparecem primeiro os tradutores **Compatível** (atendem ao idioma
+  de origem e a pelo menos um idioma de destino) e depois os marcados como
+  **Sem idiomas informados**;
+- marque **Mostrar todos** para incluir também os tradutores com **Idiomas não
+  compatíveis**. A opção volta a ficar desmarcada ao trocar de etapa;
+- se nenhum tradutor aparecer, a mensagem sugere usar **Mostrar todos**.
+
+Em projetos criados sem orçamento, a lista aparece sem selos e sem a opção
+**Mostrar todos**. Tradutores que recusaram a etapa não aparecem.
+
+### Convidar um tradutor adicional
+
+Cada etapa pode ter um tradutor adicional, que colabora com o responsável. Na
+etapa selecionada, o bloco **Tradutor adicional** mostra quem foi convidado e
+a situação do convite (**Convidado** ou **Aceito**).
+
+1. Selecione **Convidar tradutor adicional**. A opção só fica disponível
+   quando a etapa já tem um responsável e não está concluída.
+2. Escolha o tradutor na lista de candidatos. A lista é a mesma da atribuição,
+   com os selos de idioma e a opção **Mostrar todos**; o responsável atual não
+   aparece nela. Use **Cancelar** para desistir.
+3. Para retirar o tradutor adicional, selecione **Remover** e confirme. Os
+   arquivos que ele enviou passam a ser do tradutor principal, que pode
+   excluí-los. Se a etapa estiver sem responsável e o tradutor adicional já
+   tiver enviado arquivos, atribua um responsável antes de removê-lo.
+
+O tradutor adicional pode enviar e remover os próprios documentos, mas não
+encaminha a etapa para revisão: isso continua com o responsável.
+
+### Aprovar ou reprovar entregas
+
+Abra **Entregas** (controle de alterações). A tela lista as etapas **Em
+revisão**, com projeto, trilha, tradutor e os **Arquivos da entrega**, que podem
+ser abertos para conferência.
+
+- **Aprovar** marca a etapa como concluída. Confirme a ação na janela exibida.
+- **Reprovar** abre a janela **Reprovar entrega**, onde o **comentário é
+  obrigatório**. A etapa volta ao tradutor, que vê o comentário e pode enviar
+  novos documentos.
+
+As decisões feitas ficam registradas no histórico de ações do sistema. Se não
+houver entregas, a tela mostra **Nenhuma entrega aguardando revisão**.
+
 ### Gerenciar tradutores
 
 Em **Tradutores**, pesquise por nome ou e-mail e filtre por situação. Use
 **Pré-cadastrar tradutor** para criar o acesso inicial de um freelancer. O
 tradutor deve completar o perfil para avançar no sistema; acompanhe as
 informações retornadas e a situação do cadastro nessa lista.
+
+### Enviar a fatura de pagamento ao tradutor
+
+1. Em **Tradutores**, localize o tradutor e selecione **Enviar fatura**.
+2. Informe o **Valor do pagamento** (maior que zero, com até duas casas
+   decimais) e a **Descrição do pagamento**.
+3. Selecione **Criar e enviar fatura PDF**.
+
+O sistema gera a fatura em PDF, com número próprio, e a envia para o e-mail do
+tradutor. A tela confirma com **Fatura criada com sucesso!**. Se o e-mail não
+puder ser enviado, a mensagem de erro aparece na própria tela.
 
 ## Tradutor freelancer
 
@@ -199,22 +336,67 @@ informações retornadas e a situação do cadastro nessa lista.
 Se a conta estiver pendente, o sistema direciona para **Completar perfil**.
 Informe a data de nascimento no formato **AAAA-MM-DD** e o telefone. A
 especialização, o valor por hora e a apresentação pessoal são opcionais.
-Selecione **Salvar perfil** ao terminar.
+
+Na seção **Idiomas**, escolha os **idiomas de origem** e os **idiomas de
+destino** com que você trabalha. Os idiomas são opcionais, mas informe os dois
+lados para aparecer nas sugestões do gestor: com só um dos lados preenchido
+você não aparece como compatível. Selecione **Salvar perfil** ao terminar.
+
+### Editar seus idiomas
+
+Em **Meu perfil**, os idiomas de origem e de destino aparecem junto com os
+demais dados. Na área **Editar idiomas**, ajuste a seleção e escolha **Salvar
+idiomas**; a tela confirma com **Idiomas atualizados.** Os demais dados do
+perfil continuam apenas para consulta.
 
 ### Consultar etapas atribuídas
 
-Abra **Serviços disponíveis** para consultar as etapas vinculadas à sua conta e
-a situação atual de cada uma:
+Abra **Serviços**. A tela possui duas abas:
 
-- **Pronta**
-- **Em andamento**
-- **Em revisão**
-- **Concluída**
+- **Aguardando aceite** lista etapas atribuídas pelo gestor. Selecione
+  **Aceitar** para iniciar a etapa ou **Recusar** para devolvê-la ao gestor,
+  que poderá atribuí-la a outra pessoa. Um freelancer que recusou a etapa deixa de aparecer entre as
+  opções de atribuição para aquela etapa.
+- **Meus serviços** lista as etapas aceitas e permite consultar os documentos
+  associados, anexar arquivos e encaminhar a etapa para revisão.
 
-Se a lista estiver vazia, ainda não há etapas associadas à sua conta. Confirme
-com o gestor responsável se a etapa deveria ter sido atribuída. A tela atual é
-de consulta das etapas; ações de aceite e envio de arquivo não estão disponíveis
-nesta área da interface.
+Se uma aba estiver vazia, não há etapas correspondentes atribuídas à sua conta
+no momento. Após aceitar, a etapa passa para **Em andamento**.
+
+### Enviar documentos e encaminhar para revisão
+
+Na aba **Meus serviços**, em uma etapa em andamento:
+
+1. Escolha os arquivos e selecione **ENVIAR DOCUMENTOS**. Como responsável, o
+   envio anexa os documentos e já encaminha a etapa para a revisão do gestor
+   (**Em revisão**).
+2. Se os documentos já estiverem anexados (inclusive os enviados pelo tradutor
+   adicional), use **Encaminhar para revisão**, sem novo envio, e confirme.
+3. Para retirar um documento seu, use **REMOVER**. Não é possível remover
+   documentos de etapas concluídas.
+
+Se o gestor **reprovar** a entrega, a etapa volta para **Em andamento** e mostra
+o **comentário da reprovação**. Corrija os arquivos e envie de novo.
+
+### Colaborar em uma etapa
+
+Quando o gestor convida você como tradutor adicional, a etapa aparece em
+**Aguardando aceite** como **Convite para colaborar**. Selecione **Aceitar**
+para participar ou **Recusar** para devolver o convite; quem recusa não é
+convidado de novo para a mesma etapa.
+
+Depois de aceitar, a etapa aparece em **Meus serviços** com o selo
+**Colaborador**. Como colaborador, você pode:
+
+- baixar os documentos da etapa;
+- enviar seus documentos e remover os que você enviou.
+
+Você não encaminha a etapa para revisão: o envio de documentos do colaborador
+não muda a situação da etapa, e o tradutor responsável segue cuidando do
+andamento. Enquanto o responsável não aceita a etapa, o envio fica bloqueado e
+a tela mostra **Aguarde o responsável aceitar a etapa para enviar
+documentos.** O responsável vê, na própria etapa, o
+nome do tradutor adicional e a situação do convite.
 
 ## Situações e regras do fluxo
 
@@ -222,8 +404,11 @@ nesta área da interface.
 | --- | --- | --- |
 | Solicitação | Pendente, Orçada, Recusada | Recebida, vinculada a orçamento ou encerrada após recusa. |
 | Orçamento | Em análise, Aprovado, Recusado | Aguardando decisão, liberado para projeto ou recusado. |
-| Projeto/etapa | Pronto, Em andamento, Em revisão, Concluído | Situação do trabalho ou da etapa exibida na área correspondente. |
+| Projeto | Pronto, Em andamento, Em revisão, Concluído | Situação geral do projeto. |
+| Etapa | Sem freelancer, Público, Pronto, Em andamento, Em revisão, Concluída | Etapas novas começam sem freelancer; uma atribuição aguarda aceite. “Público” está reservado para a funcionalidade de retirada pública. |
 | Freelancer | Pendente, Disponível, Ocupado | Situação do cadastro/disponibilidade apresentada à equipe. |
+| Entrega | Em revisão, Aprovada, Reprovada | Etapa enviada ao gestor, concluída pelo gestor ou devolvida ao tradutor com comentário. |
+| Convite de tradutor adicional | Convidado, Aceito | Aguardando resposta do tradutor ou colaboração ativa na etapa. |
 
 As opções para editar ou excluir um registro dependem de sua situação e do
 perfil autenticado. Por exemplo, uma solicitação com orçamento não pode ser
@@ -241,14 +426,16 @@ alterada pelo cliente; orçamentos podem ser decididos enquanto estão em análi
   informe à equipe responsável qual área estava usando e a mensagem exibida.
 - **A solicitação foi enviada, mas um anexo não:** consulte a mensagem de falha,
   verifique o tamanho e o formato e tente enviar o arquivo novamente.
-- **A tela de configurações não salva:** a integração de idiomas, serviços e
-  preços ainda não está disponível na interface atual.
+- **A tela de configurações não salva:** confira se o formulário foi preenchido
+  por inteiro, leia a mensagem exibida e tente salvar novamente.
+- **O assistente não responde:** aguarde alguns instantes e envie a mensagem
+  novamente; se o erro persistir, avise a equipe.
+- **A fatura não foi enviada:** confira se o valor é maior que zero e se o
+  tradutor tem e-mail válido; o envio por e-mail depende da configuração de SMTP
+  do ambiente (veja o Manual de Instalação).
 
-## Recursos ainda não disponíveis na interface
+## Evoluções previstas
 
-O backlog do produto descreve funcionalidades futuras que não devem ser
-confundidas com as ações disponíveis nas telas atuais. Entre elas estão o
-acompanhamento de solicitações pelo próprio cliente, a decisão de orçamento
-diretamente pelo cliente, o aceite de trabalhos e a entrega de arquivos pelo
-tradutor, notificações automáticas e configurações administrativas funcionais
-para idiomas, serviços e preços.
+O SoftTranslations continua em evolução. As novas funcionalidades serão
+descritas neste manual à medida que forem entregues, e sugestões de melhoria
+podem ser enviadas à equipe do projeto.

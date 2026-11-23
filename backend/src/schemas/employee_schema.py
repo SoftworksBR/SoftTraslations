@@ -23,6 +23,8 @@ class EmployeePublicSchema(BaseModel):
     status: EmployeeStatus
     account_status: AccountStatus
     profile_completed: bool = False
+    source_language_ids: list[int] = Field(default_factory=list)
+    target_language_ids: list[int] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,3 +89,10 @@ class FreelancerProfileSchema(BaseModel):
     specialization: str | None = None
     bio: str | None = None
     hourly_rate: float | None = Field(default=None, ge=0)
+    source_language_ids: list[int] | None = None
+    target_language_ids: list[int] | None = None
+
+
+class FreelancerLanguagesSchema(BaseModel):
+    source_language_ids: list[int] | None = None
+    target_language_ids: list[int] | None = None

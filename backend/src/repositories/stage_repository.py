@@ -1,10 +1,12 @@
-from sqlalchemy import select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.employee_model import Employee
 from src.models.file_model import File
 from src.models.project_model import Project, ProjectPath
+from src.models.quote_model import Quote
+from src.models.request_model import Request
 from src.models.stage_model import (
     PathStage,
     ProjectStage,
@@ -37,6 +39,41 @@ class StageRepository:
         )
         return list(result)
 
+    async def get_request_for_stage(self, stage_id: int) -> Request | None:
+        """Solicitação que originou o projeto da etapa, se houver."""
+        return await self.session.scalar(
+            select(Request)
+            .join(Quote, Quote.request_id == Request.id)
+            .join(Project, Project.quote_id == Quote.id)
+            .join(ProjectPath, ProjectPath.project_id == Project.id)
+            .join(ProjectStage, ProjectStage.project_path_id == ProjectPath.id)
+            .where(ProjectStage.id == stage_id)
+        )
+
+    async def get_by_id_for_update(
+        self, stage_id: int
+    ) -> ProjectStage | None:
+        # of=ProjectStage: as relações por outer join não aceitam trava;
+        # populate_existing relê a linha já travada se estiver na sessão.
+        result = await self.session.execute(
+            select(ProjectStage)
+            .options(
+                joinedload(ProjectStage.path_stage).joinedload(
+                    PathStage.stage_template
+                ),
+                joinedload(ProjectStage.project_path).joinedload(
+                    ProjectPath.path
+                ),
+                selectinload(ProjectStage.files),
+                selectinload(ProjectStage.freelancer),
+                selectinload(ProjectStage.second_freelancer),
+            )
+            .where(ProjectStage.id == stage_id)
+            .with_for_update(of=ProjectStage)
+            .execution_options(populate_existing=True)
+        )
+        return result.unique().scalar_one_or_none()
+
     async def get_by_id(self, stage_id: int) -> ProjectStage | None:
         result = await self.session.execute(
             select(ProjectStage)
@@ -48,6 +85,8 @@ class StageRepository:
                     ProjectPath.path
                 ),
                 selectinload(ProjectStage.files),
+                selectinload(ProjectStage.freelancer),
+                selectinload(ProjectStage.second_freelancer),
             )
             .where(ProjectStage.id == stage_id)
         )
@@ -66,10 +105,19 @@ class StageRepository:
                 ProjectPath.project
             ),
             selectinload(ProjectStage.files),
+            selectinload(ProjectStage.freelancer),
+            selectinload(ProjectStage.second_freelancer),
         )
 
         if freelancer_id is not None:
-            query = query.where(ProjectStage.freelancer_id == freelancer_id)
+            # Inclui as etapas em que ele é o segundo tradutor (convidado
+            # ou aceito).
+            query = query.where(
+                or_(
+                    ProjectStage.freelancer_id == freelancer_id,
+                    ProjectStage.second_freelancer_id == freelancer_id,
+                )
+            )
 
         if filters is not None:
             if filters.name is not None:
@@ -105,11 +153,37 @@ class StageRepository:
 
     async def update(self, stage: ProjectStage) -> ProjectStage:
         await self.session.commit()
+        # Os ids dos tradutores podem ter mudado; o get_by_id relê os nomes.
+        self.session.expire(stage, ['freelancer', 'second_freelancer'])
         return await self.get_by_id(stage.id)
 
     async def delete(self, stage: ProjectStage) -> None:
         await self.session.delete(stage)
         await self.session.commit()
+
+    async def count_stage_files_by(
+        self, stage_id: int, employee_id: int
+    ) -> int:
+        return await self.session.scalar(
+            select(func.count(File.id)).where(
+                File.project_stage_id == stage_id,
+                File.uploaded_by_id == employee_id,
+            )
+        )
+
+    async def reassign_stage_files(
+        self, stage_id: int, from_employee_id: int, to_employee_id: int
+    ) -> int:
+        """Transfere a autoria dos arquivos da etapa; não faz commit."""
+        result = await self.session.execute(
+            update(File)
+            .where(
+                File.project_stage_id == stage_id,
+                File.uploaded_by_id == from_employee_id,
+            )
+            .values(uploaded_by_id=to_employee_id)
+        )
+        return result.rowcount
 
     async def get_file(self, stage_id: int, file_id: int) -> File | None:
         return await self.session.scalar(

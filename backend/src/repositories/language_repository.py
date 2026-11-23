@@ -20,6 +20,16 @@ class LanguageRepository:
             select(Language).where(Language.id == language_id)
         )
 
+    async def get_by_ids(self, language_ids: list[int]) -> list[Language]:
+        if not language_ids:
+            return []
+        result = await self.session.scalars(
+            select(Language)
+            .where(Language.id.in_(language_ids))
+            .order_by(Language.id)
+        )
+        return list(result.all())
+
     async def get_all(self) -> list[Language]:
         result = await self.session.scalars(
             select(Language).order_by(Language.name)

@@ -9,6 +9,7 @@ from src.schemas.employee_schema import (
     EmployeeSchema,
     EmployeeSelfUpdateSchema,
     EmployeeSearchFilters,
+    FreelancerLanguagesSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -59,6 +60,18 @@ async def complete_freelancer_profile(
     current_employee: Employee,
 ):
     return await service.complete_freelancer_profile(
+        session,
+        data,
+        current_employee,
+    )
+
+
+async def update_freelancer_languages(
+    data: FreelancerLanguagesSchema,
+    session: AsyncSession,
+    current_employee: Employee,
+):
+    return await service.update_freelancer_languages(
         session,
         data,
         current_employee,

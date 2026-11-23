@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.enums.enums import Status
+from src.enums.enums import StageCollaborationStatus, StageStatus, Status
 from src.schemas.path_schema import PathResponse
 
 
@@ -53,9 +53,12 @@ class ProjectFileDetails(BaseModel):
 class ProjectStageDetails(BaseModel):
     id: int
     name: str
-    status: Status
+    status: StageStatus
     freelancer_id: int | None
     freelancer_name: str | None
+    second_freelancer_id: int | None = None
+    second_freelancer_name: str | None = None
+    second_status: StageCollaborationStatus | None = None
     files: list[ProjectFileDetails]
 
 
@@ -73,3 +76,10 @@ class ProjectDetailsResponse(BaseModel):
     creator_id: int
     creator_name: str
     paths: list[ProjectPathDetails]
+
+
+class ProjectSummaryResponse(BaseModel):
+    total: int
+    awaiting: int
+    in_progress: int
+    completed: int

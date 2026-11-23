@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
 } from 'react-native';
 
 import { preRegisterFreelancer } from '@/services/employees';
+import { notify } from '@/services/dialog';
 
 export default function NovoTradutor() {
   const [firstName, setFirstName] = useState('');
@@ -22,7 +22,7 @@ export default function NovoTradutor() {
 
   async function save() {
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
-      Alert.alert('Campos obrigatórios', 'Informe nome, sobrenome, e-mail e senha.');
+      notify('Campos obrigatórios', 'Informe nome, sobrenome, e-mail e senha.');
       return;
     }
 

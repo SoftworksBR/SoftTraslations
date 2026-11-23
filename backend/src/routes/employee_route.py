@@ -12,6 +12,7 @@ from src.controllers.employee_controller import (
     pre_register_freelancer,
     update_current_employee,
     update_employee,
+    update_freelancer_languages,
 )
 from src.database import get_session
 from src.models.employee_model import Employee
@@ -21,6 +22,7 @@ from src.schemas.employee_schema import (
     EmployeeSchema,
     EmployeeSearchFilters,
     EmployeeSelfUpdateSchema,
+    FreelancerLanguagesSchema,
     FreelancerPreRegistrationSchema,
     FreelancerProfileSchema,
 )
@@ -77,6 +79,23 @@ async def complete_freelancer_profile_route(
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await complete_freelancer_profile(
+        data,
+        session,
+        current_employee,
+    )
+
+
+@router.patch(
+    '/me/languages',
+    status_code=HTTPStatus.OK,
+    response_model=EmployeePublicSchema,
+)
+async def update_freelancer_languages_route(
+    data: FreelancerLanguagesSchema,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await update_freelancer_languages(
         data,
         session,
         current_employee,

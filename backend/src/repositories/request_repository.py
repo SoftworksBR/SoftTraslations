@@ -2,6 +2,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.file_model import RequestFile
+from src.models.language_model import Language
 from src.models.request_model import Request
 from src.schemas.request_schema import RequestSearchFilters
 
@@ -30,6 +31,19 @@ class RequestRepository:
     async def get_by_id(self, request_id: int) -> Request | None:
         result = await self.session.execute(
             select(Request).where(Request.id == request_id)
+        )
+
+        return result.unique().scalar_one_or_none()
+
+    async def get_by_id_for_update(self, request_id: int) -> Request | None:
+        # of=Request: as relações carregadas por outer join não aceitam trava.
+        # populate_existing relê a linha já travada mesmo se ela estiver
+        # carregada na sessão.
+        result = await self.session.execute(
+            select(Request)
+            .where(Request.id == request_id)
+            .with_for_update(of=Request)
+            .execution_options(populate_existing=True)
         )
 
         return result.unique().scalar_one_or_none()
@@ -75,7 +89,9 @@ class RequestRepository:
 
             if filters.target_language_id is not None:
                 statement = statement.where(
-                    Request.target_language_id == filters.target_language_id
+                    Request.target_languages.any(
+                        Language.id == filters.target_language_id
+                    )
                 )
 
             if filters.service_id is not None:
