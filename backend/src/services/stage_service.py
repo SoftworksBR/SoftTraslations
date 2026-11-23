@@ -246,10 +246,10 @@ class StageService:
                 freelancer_id=current_employee.id,
                 filters=filters,
             )
+            # Quem está só na vaga do segundo candidato não vê os arquivos.
             return [
                 self._without_files(stage)
-                if stage.second_freelancer_id == current_employee.id
-                and stage.second_status == StageCollaborationStatus.INVITED
+                if stage.freelancer_id != current_employee.id
                 else stage
                 for stage in stages
             ]
@@ -415,33 +415,11 @@ class StageService:
                 detail='This stage has no second freelancer',
             )
 
-        # Sem principal, os arquivos do removido ficariam sem dono.
-        if (
-            stage.freelancer_id is None
-            and await self.repository.count_stage_files_by(
-                stage.id, stage.second_freelancer_id
-            )
-        ):
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail=(
-                    'Atribua um responsável antes de remover um tradutor '
-                    'adicional que já enviou arquivos'
-                ),
-            )
-        # Os arquivos do removido passam ao principal, que pode excluí-los;
-        # o UPDATE entra no mesmo commit da remoção.
-        files_reassigned = 0
-        if stage.freelancer_id is not None:
-            files_reassigned = await self.repository.reassign_stage_files(
-                stage.id, stage.second_freelancer_id, stage.freelancer_id
-            )
         self._collaborator_event(
             stage,
             'project_stage.collaborator_removed',
             stage.second_freelancer_id,
             current_employee,
-            files_reassigned=files_reassigned,
         )
         stage.second_freelancer_id = None
         stage.second_status = None
@@ -491,11 +469,9 @@ class StageService:
 
     @staticmethod
     def _is_stage_member(stage: ProjectStage, employee: Employee) -> bool:
-        # Principal ou segundo tradutor que já aceitou o convite.
-        return employee.id == stage.freelancer_id or (
-            employee.id == stage.second_freelancer_id
-            and stage.second_status == StageCollaborationStatus.ACCEPTED
-        )
+        # Só o responsável trabalha na etapa; o segundo candidato da oferta
+        # sai dela quando alguém aceita.
+        return employee.id == stage.freelancer_id
 
     @staticmethod
     def _require_stage_not_done(stage: ProjectStage) -> None:

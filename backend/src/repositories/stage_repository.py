@@ -1,4 +1,4 @@
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -160,30 +160,6 @@ class StageRepository:
     async def delete(self, stage: ProjectStage) -> None:
         await self.session.delete(stage)
         await self.session.commit()
-
-    async def count_stage_files_by(
-        self, stage_id: int, employee_id: int
-    ) -> int:
-        return await self.session.scalar(
-            select(func.count(File.id)).where(
-                File.project_stage_id == stage_id,
-                File.uploaded_by_id == employee_id,
-            )
-        )
-
-    async def reassign_stage_files(
-        self, stage_id: int, from_employee_id: int, to_employee_id: int
-    ) -> int:
-        """Transfere a autoria dos arquivos da etapa; não faz commit."""
-        result = await self.session.execute(
-            update(File)
-            .where(
-                File.project_stage_id == stage_id,
-                File.uploaded_by_id == from_employee_id,
-            )
-            .values(uploaded_by_id=to_employee_id)
-        )
-        return result.rowcount
 
     async def get_file(self, stage_id: int, file_id: int) -> File | None:
         return await self.session.scalar(
