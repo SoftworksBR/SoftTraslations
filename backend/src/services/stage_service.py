@@ -47,6 +47,7 @@ LANGUAGE_MATCH_ORDER = (
 # Incompatíveis só aparecem com include_all.
 VISIBLE_MATCHES = LANGUAGE_MATCH_ORDER[:2]
 OFFER_TAKEN_DETAIL = 'Outro tradutor já aceitou esta etapa.'
+OFFER_CLOSED_DETAIL = 'A oferta desta etapa já foi encerrada.'
 ALLOWED_FILE_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.odt', '.txt', '.rtf', '.xls', '.xlsx',
     '.png', '.jpg', '.jpeg',
@@ -370,12 +371,14 @@ class StageService:
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
         stage = await self._get_for_update(stage_id)
+        # O gestor escolhe o primeiro candidato pela atribuição e o segundo
+        # aqui, sem esperar o aceite do primeiro.
+        self._require_open_offer(stage)
         if stage.freelancer_id is None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='The stage needs a main freelancer first',
             )
-        self._require_stage_not_done(stage)
         if stage.second_freelancer_id is not None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
@@ -408,7 +411,7 @@ class StageService:
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
         stage = await self._get_for_update(stage_id)
-        self._require_stage_not_done(stage)
+        self._require_open_offer(stage)
         if stage.second_freelancer_id is None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
@@ -474,11 +477,12 @@ class StageService:
         return employee.id == stage.freelancer_id
 
     @staticmethod
-    def _require_stage_not_done(stage: ProjectStage) -> None:
-        if stage.status == StageStatus.DONE:
+    def _require_open_offer(stage: ProjectStage) -> None:
+        # Depois do aceite a etapa tem um único tradutor.
+        if stage.status != StageStatus.NO_FREELANCER:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
-                detail='Completed stages cannot change collaborators',
+                detail=OFFER_CLOSED_DETAIL,
             )
 
     async def get_available_freelancers(

@@ -78,6 +78,11 @@ def make_stage(**overrides):
     return stage
 
 
+def open_stage(**overrides):
+    # Etapa aguardando aceite: a oferta ainda aceita o segundo candidato.
+    return make_stage(status=StageStatus.NO_FREELANCER, **overrides)
+
+
 def freelancer(employee_id):
     return SimpleNamespace(id=employee_id, role=Roles.FREELANCER)
 
@@ -136,7 +141,7 @@ def expect_error(call):
 
 
 def test_manager_invites_second_freelancer(monkeypatch, events):
-    stage = make_stage()
+    stage = open_stage()
     service = make_service(monkeypatch, stage)
 
     result = asyncio.run(
@@ -191,6 +196,7 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
     [
         ({'freelancer_id': None}, SECOND_ID, ()),
         ({'status': StageStatus.DONE}, SECOND_ID, ()),
+        ({'status': StageStatus.IN_PROGRESS}, SECOND_ID, ()),
         (
             {
                 'second_freelancer_id': OTHER_ID,
@@ -205,6 +211,7 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
     ids=[
         'sem-principal',
         'etapa-concluida',
+        'oferta-ja-aceita',
         'ja-tem-segundo',
         'escolhido-e-o-principal',
         'escolhido-ja-recusou',
@@ -213,7 +220,10 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
 def test_invite_conflicts_return_409(
     monkeypatch, events, stage_values, chosen, declined
 ):
-    service = make_service(monkeypatch, make_stage(**stage_values), declined)
+    stage = open_stage()
+    for field, value in stage_values.items():
+        setattr(stage, field, value)
+    service = make_service(monkeypatch, stage, declined)
 
     status = expect_error(
         service.invite_collaborator(STAGE_ID, chosen, MANAGER)
@@ -224,7 +234,7 @@ def test_invite_conflicts_return_409(
 
 
 def test_invite_inactive_freelancer_returns_422(monkeypatch, events):
-    service = make_service(monkeypatch, make_stage())
+    service = make_service(monkeypatch, open_stage())
     monkeypatch.setattr(
         service,
         '_validate_freelancer',
@@ -247,9 +257,9 @@ def test_invite_inactive_freelancer_returns_422(monkeypatch, events):
 
 
 def test_manager_removes_second_freelancer(monkeypatch, events):
-    stage = make_stage(
+    stage = open_stage(
         second_freelancer_id=SECOND_ID,
-        second_status=StageCollaborationStatus.ACCEPTED,
+        second_status=StageCollaborationStatus.INVITED,
     )
     service = make_service(monkeypatch, stage)
 
@@ -271,9 +281,14 @@ def test_manager_removes_second_freelancer(monkeypatch, events):
             'second_freelancer_id': SECOND_ID,
             'second_status': StageCollaborationStatus.ACCEPTED,
         },
-        {},
+        {
+            'status': StageStatus.IN_PROGRESS,
+            'second_freelancer_id': SECOND_ID,
+            'second_status': StageCollaborationStatus.INVITED,
+        },
+        {'status': StageStatus.NO_FREELANCER},
     ],
-    ids=['etapa-concluida', 'sem-segundo'],
+    ids=['etapa-concluida', 'oferta-ja-aceita', 'sem-segundo'],
 )
 def test_remove_conflicts_return_409(monkeypatch, events, stage_values):
     service = make_service(monkeypatch, make_stage(**stage_values))
@@ -281,6 +296,31 @@ def test_remove_conflicts_return_409(monkeypatch, events, stage_values):
     status = expect_error(service.remove_collaborator(STAGE_ID, MANAGER))
 
     assert status == HTTPStatus.CONFLICT
+    assert events == []
+
+
+@pytest.mark.parametrize('action', ['invite', 'remove'])
+def test_invite_or_remove_after_accept_returns_409(
+    monkeypatch, events, action
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(SECOND_ID)))
+    events.clear()
+    calls = {
+        'invite': lambda: service.invite_collaborator(
+            STAGE_ID, OTHER_ID, MANAGER
+        ),
+        'remove': lambda: service.remove_collaborator(STAGE_ID, MANAGER),
+    }
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(calls[action]())
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_CLOSED_DETAIL
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
     assert events == []
 
 
@@ -1066,8 +1106,8 @@ def test_collaboration_actions_lock_stage_first(
     monkeypatch, events, action, expected
 ):
     stages = {
-        'invite': make_stage,
-        'remove': accepted_stage,
+        'invite': open_stage,
+        'remove': invited_stage,
         'accept': invited_stage,
         'accept-main': invited_stage,
         'decline': invited_stage,
