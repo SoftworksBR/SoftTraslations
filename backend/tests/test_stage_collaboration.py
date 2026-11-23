@@ -491,6 +491,96 @@ def test_second_freelancer_declines_invite(monkeypatch, events):
     assert event['payload']['details']['role'] == 'collaborator'
 
 
+def declined_events(events):
+    return [
+        e['payload']['details']
+        for e in events
+        if e['event_type'] == 'project_stage.declined'
+    ]
+
+
+def test_second_declines_then_main_accepts(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.decline_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+    assert stage.freelancer_id == MAIN_ID
+    assert stage.status == StageStatus.NO_FREELANCER
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    assert stage.freelancer_id == MAIN_ID
+    assert stage.status == StageStatus.IN_PROGRESS
+    # O segundo já tinha saído: não há oferta a encerrar.
+    assert [e['event_type'] for e in events] == ['project_stage.declined']
+
+
+def test_main_declines_then_promoted_second_accepts(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.decline(STAGE_ID, freelancer(MAIN_ID)))
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    assert stage.status == StageStatus.NO_FREELANCER
+    assert declined_events(events) == [
+        {
+            'freelancer_id': MAIN_ID,
+            'status': 'no_freelancer',
+            'promoted_freelancer_id': SECOND_ID,
+        }
+    ]
+    # A tela do segundo pode ainda usar a rota de colaborador.
+    asyncio.run(service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.status == StageStatus.IN_PROGRESS
+    assert stage.started_at is not None
+
+
+@pytest.mark.parametrize(
+    'order',
+    [(MAIN_ID, SECOND_ID), (SECOND_ID, MAIN_ID)],
+    ids=['principal-recusa-primeiro', 'segundo-recusa-primeiro'],
+)
+def test_both_decline_and_stage_returns_to_no_freelancer(
+    monkeypatch, events, order
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    routes = {
+        MAIN_ID: service.decline,
+        SECOND_ID: service.decline_collaboration,
+    }
+
+    for employee_id in order:
+        asyncio.run(routes[employee_id](STAGE_ID, freelancer(employee_id)))
+
+    assert stage.freelancer_id is None
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    assert stage.status == StageStatus.NO_FREELANCER
+    # Os dois entram no filtro de recusas da etapa.
+    assert [d['freelancer_id'] for d in declined_events(events)] == list(
+        order
+    )
+
+
+def test_late_decline_gets_409_offer_taken(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.decline_collaboration(STAGE_ID, freelancer(SECOND_ID))
+        )
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_TAKEN_DETAIL
+    assert declined_events(events) == []
+
+
 @pytest.mark.parametrize('action', ['accept', 'decline'])
 @pytest.mark.parametrize(
     'employee',
@@ -805,12 +895,9 @@ def test_accepted_second_freelancer_cannot_advance_stage(
     assert status == HTTPStatus.FORBIDDEN
 
 
-def test_second_cannot_upload_after_main_freelancer_declines(
-    monkeypatch, events
-):
-    stage = accepted_stage()
+def test_promoted_candidate_uploads_only_after_accepting(monkeypatch, events):
+    stage = invited_stage()
     service = make_service(monkeypatch, stage)
-    stage.status = StageStatus.NO_FREELANCER
     asyncio.run(service.decline(STAGE_ID, freelancer(MAIN_ID)))
     upload_service, _ = file_service(monkeypatch, stage)
 
@@ -820,7 +907,7 @@ def test_second_cannot_upload_after_main_freelancer_declines(
         )
     )
 
-    assert stage.freelancer_id is None
+    assert stage.freelancer_id == SECOND_ID
     assert status == HTTPStatus.CONFLICT
 
 
@@ -1233,6 +1320,7 @@ def test_members_and_manager_list_all_stage_files(monkeypatch, employee):
 
 def test_decline_response_has_no_files(monkeypatch, events):
     stage = stage_with_files(
+        status=StageStatus.NO_FREELANCER,
         second_freelancer_id=SECOND_ID,
         second_status=StageCollaborationStatus.INVITED,
     )
