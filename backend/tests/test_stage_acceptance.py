@@ -44,6 +44,8 @@ def make_service(monkeypatch, stage):
         return updated_stage
 
     monkeypatch.setattr(StageService, 'get_by_id', get_by_id)
+    # O aceite lê a etapa travada.
+    monkeypatch.setattr(StageRepository, 'get_by_id_for_update', get_by_id)
     monkeypatch.setattr(StageRepository, 'update', update)
     return StageService(SimpleNamespace())
 

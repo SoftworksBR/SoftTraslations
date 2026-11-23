@@ -315,21 +315,149 @@ def test_remove_conflicts_return_409(monkeypatch, events, stage_values):
 
 
 def invited_stage():
+    # Oferta aberta: o principal e o segundo ainda não responderam.
     return make_stage(
+        status=StageStatus.NO_FREELANCER,
         second_freelancer_id=SECOND_ID,
         second_status=StageCollaborationStatus.INVITED,
     )
 
 
-def test_second_freelancer_accepts_invite(monkeypatch):
-    service = make_service(monkeypatch, invited_stage())
+def assert_offer_won_by(stage, winner_id, leaving_id, events):
+    assert stage.freelancer_id == winner_id
+    assert stage.status == StageStatus.IN_PROGRESS
+    assert stage.started_at is not None
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    (event,) = [
+        e for e in events if e['event_type'] == 'project_stage.offer_closed'
+    ]
+    assert event['payload']['details'] == {
+        'freelancer_id': leaving_id,
+        'kept_freelancer_id': winner_id,
+    }
+    assert event['payload']['actor']['employee_id'] == winner_id
 
-    result = asyncio.run(
-        service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID))
+
+def test_second_accepts_first_and_main_leaves_offer(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+
+    assert_offer_won_by(stage, SECOND_ID, MAIN_ID, events)
+
+
+def test_main_accepts_first_and_second_leaves_offer(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    assert_offer_won_by(stage, MAIN_ID, SECOND_ID, events)
+
+
+@pytest.mark.parametrize('route', ['accept', 'accept_collaboration'])
+@pytest.mark.parametrize(
+    ('winner_id', 'leaving_id'),
+    [(MAIN_ID, SECOND_ID), (SECOND_ID, MAIN_ID)],
+    ids=['principal', 'segundo'],
+)
+def test_both_accept_routes_serve_either_candidate(
+    monkeypatch, events, route, winner_id, leaving_id
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(getattr(service, route)(STAGE_ID, freelancer(winner_id)))
+
+    assert_offer_won_by(stage, winner_id, leaving_id, events)
+
+
+@pytest.mark.parametrize(
+    ('first_id', 'late_id', 'late_route'),
+    [
+        (SECOND_ID, MAIN_ID, 'accept'),
+        (MAIN_ID, SECOND_ID, 'accept_collaboration'),
+    ],
+    ids=['principal-chega-depois', 'segundo-chega-depois'],
+)
+def test_late_accept_gets_409_offer_taken(
+    monkeypatch, events, first_id, late_id, late_route
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(first_id)))
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            getattr(service, late_route)(STAGE_ID, freelancer(late_id))
+        )
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_TAKEN_DETAIL
+    assert stage.freelancer_id == first_id
+
+
+def test_concurrent_accepts_only_one_wins(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    row_lock = asyncio.Lock()
+
+    # Simula o FOR UPDATE: a segunda leitura espera o commit da primeira.
+    async def lock(self, stage_id):
+        await row_lock.acquire()
+        await asyncio.sleep(0)
+        return stage
+
+    async def commit(self, updated_stage):
+        await asyncio.sleep(0)
+        row_lock.release()
+        return updated_stage
+
+    # Leitura sem trava também cede a vez, para a corrida aparecer.
+    async def unlocked_read(stage_id):
+        await asyncio.sleep(0)
+        return stage
+
+    monkeypatch.setattr(StageRepository, 'get_by_id_for_update', lock)
+    monkeypatch.setattr(StageRepository, 'update', commit)
+    monkeypatch.setattr(service, 'get_by_id', unlocked_read)
+
+    async def both():
+        return await asyncio.gather(
+            service.accept(STAGE_ID, freelancer(MAIN_ID)),
+            service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)),
+            return_exceptions=True,
+        )
+
+    results = asyncio.run(both())
+
+    failures = [r for r in results if isinstance(r, HTTPException)]
+    assert len(failures) == 1
+    assert failures[0].status_code == HTTPStatus.CONFLICT
+    assert failures[0].detail == stage_service.OFFER_TAKEN_DETAIL
+    assert stage.freelancer_id == MAIN_ID
+    assert_offer_won_by(stage, MAIN_ID, SECOND_ID, events)
+
+
+def test_manager_moving_stage_out_of_offer_closes_it(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(
+        service.update(
+            STAGE_ID, StageUpdate(status=StageStatus.IN_PROGRESS), MANAGER
+        )
     )
 
-    assert result.second_status == StageCollaborationStatus.ACCEPTED
-    assert result.second_freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    (closed,) = [
+        e for e in events if e['event_type'] == 'project_stage.offer_closed'
+    ]
+    assert closed['payload']['details']['freelancer_id'] == SECOND_ID
+    assert closed['payload']['actor']['employee_id'] == MANAGER.id
 
 
 def test_second_freelancer_declines_invite(monkeypatch, events):
@@ -351,8 +479,8 @@ def test_second_freelancer_declines_invite(monkeypatch, events):
 @pytest.mark.parametrize('action', ['accept', 'decline'])
 @pytest.mark.parametrize(
     'employee',
-    [freelancer(MAIN_ID), freelancer(OTHER_ID), MANAGER],
-    ids=['principal', 'outro-tradutor', 'gestor'],
+    [freelancer(OTHER_ID), MANAGER],
+    ids=['outro-tradutor', 'gestor'],
 )
 def test_only_invited_freelancer_answers(monkeypatch, action, employee):
     service = make_service(monkeypatch, invited_stage())
@@ -988,6 +1116,7 @@ def test_stage_lock_query_locks_only_project_stages():
         ('invite', ['lock', 'declined', 'validate', 'save']),
         ('remove', ['lock', 'reassign', 'save']),
         ('accept', ['lock', 'save']),
+        ('accept-main', ['lock', 'save']),
         ('decline', ['lock', 'save']),
     ],
 )
@@ -998,6 +1127,7 @@ def test_collaboration_actions_lock_stage_first(
         'invite': make_stage,
         'remove': accepted_stage,
         'accept': invited_stage,
+        'accept-main': invited_stage,
         'decline': invited_stage,
     }
     service = make_service(monkeypatch, stages[action]())
@@ -1009,6 +1139,7 @@ def test_collaboration_actions_lock_stage_first(
         'accept': lambda: service.accept_collaboration(
             STAGE_ID, freelancer(SECOND_ID)
         ),
+        'accept-main': lambda: service.accept(STAGE_ID, freelancer(MAIN_ID)),
         'decline': lambda: service.decline_collaboration(
             STAGE_ID, freelancer(SECOND_ID)
         ),
