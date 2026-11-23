@@ -10,6 +10,7 @@ from src.models.employee_model import Employee
 from src.schemas.stage_schema import (
     AvailableFreelancerSchema,
     ProjectStageCreate,
+    StageCollaboratorInvite,
     StageFileResponse,
     StageResponse,
     StageSearchFilters,
@@ -151,6 +152,51 @@ async def decline_stage(
     current_employee: Employee = Depends(get_current_employee),
 ):
     return await StageController.decline(
+        stage_id, session, current_employee
+    )
+
+
+@router.post('/{stage_id}/collaborator', response_model=StageResponse)
+async def invite_stage_collaborator(
+    stage_id: int,
+    data: StageCollaboratorInvite,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.invite_collaborator(
+        stage_id, data.freelancer_id, session, current_employee
+    )
+
+
+@router.delete('/{stage_id}/collaborator', response_model=StageResponse)
+async def remove_stage_collaborator(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.remove_collaborator(
+        stage_id, session, current_employee
+    )
+
+
+@router.post('/{stage_id}/collaborator/accept', response_model=StageResponse)
+async def accept_stage_collaboration(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.accept_collaboration(
+        stage_id, session, current_employee
+    )
+
+
+@router.post('/{stage_id}/collaborator/decline', response_model=StageResponse)
+async def decline_stage_collaboration(
+    stage_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_employee: Employee = Depends(get_current_employee),
+):
+    return await StageController.decline_collaboration(
         stage_id, session, current_employee
     )
 

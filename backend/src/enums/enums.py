@@ -27,6 +27,11 @@ class StageStatus(Enum):
     DONE = 'done'
 
 
+class StageCollaborationStatus(Enum):
+    INVITED = 'invited'
+    ACCEPTED = 'accepted'
+
+
 class EmployeeStatus(Enum):
     AVAILABLE = 'available'
     BUSY = 'busy'

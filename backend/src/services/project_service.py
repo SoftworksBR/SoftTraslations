@@ -159,6 +159,11 @@ class ProjectService:
                                 if stage.freelancer is not None
                                 else None
                             ),
+                            second_freelancer_id=stage.second_freelancer_id,
+                            second_freelancer_name=(
+                                stage.second_freelancer_name
+                            ),
+                            second_status=stage.second_status,
                             files=[
                                 ProjectFileDetails.model_validate(file)
                                 for file in stage.files

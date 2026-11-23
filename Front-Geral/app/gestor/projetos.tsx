@@ -26,7 +26,14 @@ import type {
   ProjectDetails,
   ProjectStageDetails,
 } from '@/services/projects';
-import { getAvailableStageFreelancers, updateStage } from '@/services/stages';
+import { confirmAction } from '@/services/dialog';
+import {
+  getAvailableStageFreelancers,
+  inviteCollaborator,
+  removeCollaborator,
+  updateStage,
+} from '@/services/stages';
+import type { CollaborationStatus } from '@/services/stages';
 
 const statusNames: Record<Project['status'], string> = {
   ready: 'Pronto',
@@ -69,6 +76,14 @@ const languageBadges: Record<
   incompatible: { label: 'Idiomas não compatíveis', color: '#A46B12', background: '#FFF5E3' },
 };
 
+const collaborationBadges: Record<
+  CollaborationStatus,
+  { label: string; color: string; background: string }
+> = {
+  invited: { label: 'Convidado', color: '#A46B12', background: '#FFF5E3' },
+  accepted: { label: 'Aceito', color: '#20845A', background: '#E8F5EE' },
+};
+
 export default function Projetos() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +105,8 @@ export default function Projetos() {
   const [freelancersError, setFreelancersError] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   const [updatingStageId, setUpdatingStageId] = useState<number | null>(null);
+  // A lista de candidatos convida o tradutor adicional em vez de atribuir.
+  const [pickingCollaborator, setPickingCollaborator] = useState(false);
   const { width } = useWindowDimensions();
   const wide = width >= 720;
 
@@ -141,6 +158,7 @@ export default function Projetos() {
 
   async function openProject(project: Project) {
     latestFreelancersLoad.current += 1;
+    setPickingCollaborator(false);
     setSelectedProject(project);
     setDetails(null);
     setSelectedStageId(null);
@@ -165,6 +183,7 @@ export default function Projetos() {
 
   function closeProject() {
     latestFreelancersLoad.current += 1;
+    setPickingCollaborator(false);
     setSelectedProject(null);
     setDetails(null);
     setDetailsError(null);
@@ -181,14 +200,18 @@ export default function Projetos() {
     }
   }
 
-  async function assignResponsible(stageId: number, freelancerId: number | null) {
+  async function runStageAction(
+    stageId: number,
+    action: () => Promise<unknown>,
+    failureMessage: string,
+  ) {
     if (!details) {
       return;
     }
     setUpdatingStageId(stageId);
     setDetailsError(null);
     try {
-      await updateStage(stageId, { freelancer_id: freelancerId });
+      await action();
       const refreshedDetails = await getProjectDetails(details.id);
       setDetails(refreshedDetails);
       const refreshedStageIds = refreshedDetails.paths.flatMap((path) =>
@@ -206,14 +229,43 @@ export default function Projetos() {
         await loadFreelancers(refreshedStageIds[0] ?? stageId);
       }
     } catch (cause) {
-      setDetailsError(
-        cause instanceof Error
-          ? cause.message
-          : 'Não foi possível alterar o responsável da etapa.',
-      );
+      setDetailsError(cause instanceof Error ? cause.message : failureMessage);
     } finally {
       setUpdatingStageId(null);
     }
+  }
+
+  function assignResponsible(stageId: number, freelancerId: number | null) {
+    return runStageAction(
+      stageId,
+      () => updateStage(stageId, { freelancer_id: freelancerId }),
+      'Não foi possível alterar o responsável da etapa.',
+    );
+  }
+
+  function inviteSecondFreelancer(stageId: number, freelancerId: number) {
+    return runStageAction(
+      stageId,
+      async () => {
+        await inviteCollaborator(stageId, freelancerId);
+        setPickingCollaborator(false);
+      },
+      'Não foi possível convidar o tradutor adicional.',
+    );
+  }
+
+  function confirmRemoveSecondFreelancer(stageId: number, name: string) {
+    confirmAction(
+      'Remover tradutor adicional',
+      `Remover ${name} desta etapa?`,
+      'Remover',
+      () =>
+        void runStageAction(
+          stageId,
+          () => removeCollaborator(stageId),
+          'Não foi possível remover o tradutor adicional.',
+        ),
+    );
   }
 
   return (
@@ -356,6 +408,7 @@ export default function Projetos() {
                               onPress={() => {
                                 setSelectedStageId(stage.id);
                                 setShowAllFreelancers(false);
+                                setPickingCollaborator(false);
                                 void loadFreelancers(stage.id);
                               }}
                               style={[
@@ -421,8 +474,104 @@ export default function Projetos() {
                         <Text style={styles.infoLine}>
                           Responsável atual: {stage.freelancer_name ?? 'Não atribuído'}
                         </Text>
+                        <View style={styles.collaboratorBox}>
+                          <Text style={styles.collaboratorTitle}>Tradutor adicional</Text>
+                          {stage.second_freelancer_id !== null && stage.second_status ? (
+                            <View style={styles.collaboratorRow}>
+                              <Text style={styles.collaboratorName}>
+                                {stage.second_freelancer_name ?? 'Tradutor'}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.languageBadge,
+                                  styles.collaboratorBadge,
+                                  {
+                                    color: collaborationBadges[stage.second_status].color,
+                                    backgroundColor:
+                                      collaborationBadges[stage.second_status].background,
+                                  },
+                                ]}
+                              >
+                                {collaborationBadges[stage.second_status].label}
+                              </Text>
+                              {stage.status !== 'done' ? (
+                                <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Remover ${stage.second_freelancer_name ?? 'tradutor adicional'} da etapa`}
+                                  aria-disabled={updatingStageId !== null}
+                                  disabled={updatingStageId !== null}
+                                  onPress={() =>
+                                    confirmRemoveSecondFreelancer(
+                                      stage.id,
+                                      stage.second_freelancer_name ?? 'o tradutor adicional',
+                                    )
+                                  }
+                                  style={[
+                                    styles.collaboratorAction,
+                                    styles.collaboratorRemove,
+                                    updatingStageId !== null && styles.optionDisabled,
+                                  ]}
+                                >
+                                  <Text style={styles.collaboratorRemoveText}>Remover</Text>
+                                </Pressable>
+                              ) : null}
+                            </View>
+                          ) : pickingCollaborator ? (
+                            <View style={styles.collaboratorRow}>
+                              <Text style={styles.infoLine}>
+                                Escolha o tradutor adicional na lista abaixo.
+                              </Text>
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Cancelar convite de tradutor adicional"
+                                onPress={() => setPickingCollaborator(false)}
+                                style={styles.collaboratorAction}
+                              >
+                                <Text style={styles.collaboratorActionText}>Cancelar</Text>
+                              </Pressable>
+                            </View>
+                          ) : (
+                            <View style={styles.collaboratorRow}>
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Convidar tradutor adicional"
+                                aria-disabled={
+                                  stage.freelancer_id === null
+                                  || stage.status === 'done'
+                                  || updatingStageId !== null
+                                }
+                                disabled={
+                                  stage.freelancer_id === null
+                                  || stage.status === 'done'
+                                  || updatingStageId !== null
+                                }
+                                onPress={() => setPickingCollaborator(true)}
+                                style={[
+                                  styles.collaboratorAction,
+                                  (stage.freelancer_id === null
+                                    || stage.status === 'done'
+                                    || updatingStageId !== null) && styles.optionDisabled,
+                                ]}
+                              >
+                                <Ionicons name="person-add-outline" size={14} color="#087F8C" />
+                                <Text style={styles.collaboratorActionText}>
+                                  Convidar tradutor adicional
+                                </Text>
+                              </Pressable>
+                              {stage.freelancer_id === null || stage.status === 'done' ? (
+                                <Text style={styles.infoLine}>
+                                  {stage.status === 'done'
+                                    ? 'Etapa concluída.'
+                                    : 'Atribua um responsável antes de convidar.'}
+                                </Text>
+                              ) : null}
+                            </View>
+                          )}
+                        </View>
                         <View style={styles.assignHeader}>
-                          <Text style={styles.assignTitle}>Atribuir responsável</Text>
+                          <Text style={styles.assignTitle}>
+                            {pickingCollaborator ? 'Convidar tradutor adicional' : 'Atribuir responsável'}
+                          </Text>
                           {selectedProject?.quote_id != null ? (
                             <Pressable
                               accessibilityRole="switch"
@@ -461,38 +610,45 @@ export default function Projetos() {
                                   : 'Não há freelancers disponíveis para esta etapa.'}
                               </Text>
                             ) : null}
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel="Remover responsável da etapa"
-                              disabled={updatingStageId === stage.id}
-                              onPress={() => void assignResponsible(stage.id, null)}
-                              style={[
-                                styles.employeeOption,
-                                stage.freelancer_id === null && styles.employeeOptionSelected,
-                                updatingStageId === stage.id && styles.optionDisabled,
-                              ]}
-                            >
-                              <Text
+                            {pickingCollaborator ? null : (
+                              <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Remover responsável da etapa"
+                                disabled={updatingStageId === stage.id}
+                                onPress={() => void assignResponsible(stage.id, null)}
                                 style={[
-                                  styles.employeeText,
-                                  stage.freelancer_id === null && styles.employeeTextSelected,
+                                  styles.employeeOption,
+                                  stage.freelancer_id === null && styles.employeeOptionSelected,
+                                  updatingStageId === stage.id && styles.optionDisabled,
                                 ]}
                               >
-                                Sem responsável
-                              </Text>
-                            </Pressable>
+                                <Text
+                                  style={[
+                                    styles.employeeText,
+                                    stage.freelancer_id === null && styles.employeeTextSelected,
+                                  ]}
+                                >
+                                  Sem responsável
+                                </Text>
+                              </Pressable>
+                            )}
                             {freelancers.map((freelancer) => (
                               <Pressable
                                 key={freelancer.id}
                                 accessibilityRole="button"
                                 accessibilityLabel={
-                                  freelancer.language_match
-                                    ? `Atribuir ${freelancer.username} à etapa. ${languageBadges[freelancer.language_match].label}`
-                                    : `Atribuir ${freelancer.username} à etapa`
+                                  (pickingCollaborator
+                                    ? `Convidar ${freelancer.username} como tradutor adicional`
+                                    : `Atribuir ${freelancer.username} à etapa`)
+                                  + (freelancer.language_match
+                                    ? `. ${languageBadges[freelancer.language_match].label}`
+                                    : '')
                                 }
                                 disabled={updatingStageId === stage.id}
                                 onPress={() =>
-                                  void assignResponsible(stage.id, freelancer.id)
+                                  void (pickingCollaborator
+                                    ? inviteSecondFreelancer(stage.id, freelancer.id)
+                                    : assignResponsible(stage.id, freelancer.id))
                                 }
                                 style={[
                                   styles.employeeOption,
@@ -643,6 +799,31 @@ const styles = StyleSheet.create({
   employeeTextSelected: { color: '#087F8C', fontWeight: '700' },
   optionDisabled: { opacity: 0.55 },
   errorInline: { marginTop: 4, color: '#B42318', fontSize: 11, lineHeight: 16 },
+  collaboratorBox: {
+    marginTop: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DFE7EC',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  collaboratorTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
+  collaboratorRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 },
+  collaboratorName: { flexShrink: 1, color: '#172B3A', fontSize: 11 },
+  collaboratorBadge: { marginTop: 0, alignSelf: 'center' },
+  collaboratorAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#087F8C',
+    borderRadius: 16,
+  },
+  collaboratorActionText: { color: '#087F8C', fontSize: 10, fontWeight: '700' },
+  collaboratorRemove: { borderColor: '#B42318' },
+  collaboratorRemoveText: { color: '#B42318', fontSize: 10, fontWeight: '700' },
   files: { gap: 6, marginTop: 7 },
   fileLink: { minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 9, borderRadius: 7, backgroundColor: '#F5F8FA' },
   fileName: { flex: 1, color: '#087F8C', fontSize: 10, fontWeight: '600' },

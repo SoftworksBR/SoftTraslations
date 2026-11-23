@@ -1,6 +1,7 @@
 import { apiRequest } from './api';
 import { getPaths } from './paths';
 import type { TranslationPath } from './paths';
+import type { CollaborationStatus } from './stages';
 
 export type Path = TranslationPath;
 
@@ -31,6 +32,9 @@ export type ProjectStageDetails = {
     | 'done';
   freelancer_id: number | null;
   freelancer_name: string | null;
+  second_freelancer_id: number | null;
+  second_freelancer_name: string | null;
+  second_status: CollaborationStatus | null;
   files: ProjectStageFile[];
 };
 
