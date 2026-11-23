@@ -399,26 +399,41 @@ def test_late_accept_gets_409_offer_taken(
     assert stage.freelancer_id == first_id
 
 
+OFFER_FIELDS = (
+    'freelancer_id',
+    'status',
+    'started_at',
+    'second_freelancer_id',
+    'second_status',
+)
+
+
 def test_concurrent_accepts_only_one_wins(monkeypatch, events):
-    stage = invited_stage()
-    service = make_service(monkeypatch, stage)
+    # Cada pedido lê a sua cópia da linha, como duas sessões no banco.
+    row = invited_stage()
+    service = make_service(monkeypatch, row)
     row_lock = asyncio.Lock()
+
+    async def read_row():
+        await asyncio.sleep(0)
+        return make_stage(
+            **{field: getattr(row, field) for field in OFFER_FIELDS}
+        )
 
     # Simula o FOR UPDATE: a segunda leitura espera o commit da primeira.
     async def lock(self, stage_id):
         await row_lock.acquire()
-        await asyncio.sleep(0)
-        return stage
+        return await read_row()
 
     async def commit(self, updated_stage):
-        await asyncio.sleep(0)
-        row_lock.release()
+        for field in OFFER_FIELDS:
+            setattr(row, field, getattr(updated_stage, field))
+        if row_lock.locked():
+            row_lock.release()
         return updated_stage
 
-    # Leitura sem trava também cede a vez, para a corrida aparecer.
     async def unlocked_read(stage_id):
-        await asyncio.sleep(0)
-        return stage
+        return await read_row()
 
     monkeypatch.setattr(StageRepository, 'get_by_id_for_update', lock)
     monkeypatch.setattr(StageRepository, 'update', commit)
@@ -437,8 +452,7 @@ def test_concurrent_accepts_only_one_wins(monkeypatch, events):
     assert len(failures) == 1
     assert failures[0].status_code == HTTPStatus.CONFLICT
     assert failures[0].detail == stage_service.OFFER_TAKEN_DETAIL
-    assert stage.freelancer_id == MAIN_ID
-    assert_offer_won_by(stage, MAIN_ID, SECOND_ID, events)
+    assert_offer_won_by(row, MAIN_ID, SECOND_ID, events)
 
 
 def test_manager_moving_stage_out_of_offer_closes_it(monkeypatch, events):
