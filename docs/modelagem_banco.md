@@ -383,7 +383,7 @@ erDiagram
 | `paths` e `path_stages` | Trilhas de workflow: uma trilha é uma sequência ordenada de modelos de etapa. `sequence` define a ordem dentro da trilha. |
 | `projects` | Projeto criado a partir de um orçamento aprovado (um projeto por orçamento), com nome, situação e criador. |
 | `project_paths` | Trilhas aplicadas a um projeto, com a ordem em que são executadas. |
-| `project_stages` | Etapas reais do projeto. `freelancer_id` é o tradutor principal; `second_freelancer_id` e `second_status` guardam o tradutor adicional (no máximo um) e se ele apenas foi convidado ou já aceitou. `rejection_comment` guarda o motivo quando o gestor reprova a entrega. |
+| `project_stages` | Etapas reais do projeto. `freelancer_id` é o responsável (ou, enquanto a etapa aguarda aceite, o primeiro candidato da oferta); `second_freelancer_id` e `second_status` guardam o segundo candidato enquanto a oferta está aberta e ficam vazios depois do aceite. `rejection_comment` guarda o motivo quando o gestor reprova a entrega. |
 | `payment_invoices` | Fatura de pagamento a um tradutor, com número único, valor, data, envio por e-mail e, opcionalmente, o projeto e a etapa relacionados. |
 
 ### 4. Fila de eventos (outbox)
@@ -425,7 +425,7 @@ indisponibilidade do MongoDB não perde eventos nem impede a operação.
 | `quotes.status` | `in_review`, `approved`, `rejected` |
 | `projects.status` | `ready`, `in_progress`, `testing`, `done` |
 | `project_stages.status` | `no_freelancer`, `public`, `ready`, `in_progress`, `testing`, `done` |
-| `project_stages.second_status` | `invited`, `accepted` (vazio quando não há tradutor adicional) |
+| `project_stages.second_status` | `invited` (segundo candidato da oferta aberta), `accepted` (só em etapas do fluxo anterior); vazio fora da oferta |
 
 ## Regras de integridade
 
@@ -445,11 +445,13 @@ indisponibilidade do MongoDB não perde eventos nem impede a operação.
 - **Exclusão protegida (`RESTRICT`):** não é possível apagar o orçamento ou o
   funcionário que consta em uma fatura, nem o modelo de etapa ou a trilha em
   uso por um projeto.
-- **Exclusão com perda de vínculo (`SET NULL`):** se o tradutor principal ou o
-  adicional for apagado, a etapa permanece e o campo fica vazio; se quem enviou
+- **Exclusão com perda de vínculo (`SET NULL`):** se o responsável ou o
+  segundo candidato for apagado, a etapa permanece e o campo fica vazio; se quem enviou
   um arquivo for apagado, o arquivo permanece sem autor.
-- **Tradutor adicional:** a etapa aceita no máximo um tradutor adicional,
-  distinto do principal. Só o gestor convida e remove (regras aplicadas pela API, não pelo banco).
+- **Oferta para dois tradutores:** a etapa aguardando aceite tem no máximo um
+  segundo candidato, distinto do primeiro. Só o gestor convida e remove, e só
+  com a oferta aberta; o primeiro que aceitar fica com a etapa e o outro sai
+  da oferta (regras aplicadas pela API, não pelo banco).
 
 ## Banco de documentos (MongoDB)
 
@@ -481,7 +483,8 @@ Ações registradas hoje: `request.created`, `request.updated`, `request.deleted
 `project_stage.completed`, `project_stage.deleted`,
 `project_stage.file_added`, `project_stage.file_removed`,
 `project_stage.declined`, `project_stage.collaborator_invited`,
-`project_stage.collaborator_removed`, `stage_template.created`,
+`project_stage.collaborator_removed`, `project_stage.offer_closed`,
+`stage_template.created`,
 `path.created`, `company.created` e `person.created`.
 
 Índices: `event_id` (único); (`entity.type`, `entity.id`, `timestamp`);

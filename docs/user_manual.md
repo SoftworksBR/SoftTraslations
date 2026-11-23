@@ -31,9 +31,8 @@ trabalho interno da equipe. O fluxo principal é:
    aprovar ou recusar.
 4. Com um orçamento aprovado, o gestor cria um projeto e escolhe uma ou mais
    trilhas de trabalho.
-5. As etapas criadas para o projeto são atribuídas a tradutores, que podem
-   aceitar ou recusar a atribuição. Cada etapa pode ter também um tradutor
-   adicional.
+5. As etapas criadas para o projeto são oferecidas a até dois tradutores, que
+   podem aceitar ou recusar. O primeiro que aceitar fica com a etapa.
 6. O tradutor envia os documentos da etapa e a encaminha para revisão. O gestor
    aprova a entrega ou a reprova com um comentário.
 7. Ao aprovar o orçamento, o cliente recebe a fatura de venda por e-mail; o
@@ -278,24 +277,31 @@ originou o projeto:
 Em projetos criados sem orçamento, a lista aparece sem selos e sem a opção
 **Mostrar todos**. Tradutores que recusaram a etapa não aparecem.
 
-### Convidar um tradutor adicional
+### Oferecer a etapa a dois tradutores
 
-Cada etapa pode ter um tradutor adicional, que colabora com o responsável. Na
-etapa selecionada, o bloco **Tradutor adicional** mostra quem foi convidado e
-a situação do convite (**Convidado** ou **Aceito**).
+Enquanto a etapa aguarda aceite, ela pode ser oferecida a até dois tradutores.
+Os dois recebem a oferta ao mesmo tempo, e o primeiro que aceitar fica com a
+etapa. Na etapa selecionada, o bloco **Oferta da etapa** mostra os dois
+candidatos com a situação **Aguardando**.
 
-1. Selecione **Convidar tradutor adicional**. A opção só fica disponível
-   quando a etapa já tem um responsável e não está concluída.
-2. Escolha o tradutor na lista de candidatos. A lista é a mesma da atribuição,
-   com os selos de idioma e a opção **Mostrar todos**; o responsável atual não
-   aparece nela. Use **Cancelar** para desistir.
-3. Para retirar o tradutor adicional, selecione **Remover** e confirme. Os
-   arquivos que ele enviou passam a ser do tradutor principal, que pode
-   excluí-los. Se a etapa estiver sem responsável e o tradutor adicional já
-   tiver enviado arquivos, atribua um responsável antes de removê-lo.
+1. Escolha o primeiro tradutor da oferta na lista **Primeiro tradutor da
+   oferta**, como em uma atribuição comum.
+2. Selecione **Convidar segundo tradutor** e escolha o segundo na lista de
+   candidatos. Não é preciso esperar o aceite do primeiro. A lista é a mesma
+   da atribuição, com os selos de idioma e a opção **Mostrar todos**; quem já
+   está na oferta não aparece nela. Use **Cancelar** para desistir.
+3. Para retirar o segundo tradutor antes de alguém aceitar, selecione
+   **Remover** e confirme.
 
-O tradutor adicional pode enviar e remover os próprios documentos, mas não
-encaminha a etapa para revisão: isso continua com o responsável.
+Como a oferta funciona:
+
+- quem aceitar primeiro passa a ser o **responsável** e a etapa vai para **Em
+  andamento**; o outro tradutor sai da oferta e a etapa some da tela dele;
+- se um dos dois recusar, a oferta continua com o outro;
+- se os dois recusarem, a etapa volta a ficar **sem freelancer**, e quem recusou
+  não aparece mais entre os candidatos daquela etapa;
+- depois que alguém aceita, a oferta se encerra: não é possível convidar nem
+  remover o segundo tradutor, e o bloco **Oferta da etapa** deixa de aparecer.
 
 ### Aprovar ou reprovar entregas
 
@@ -353,10 +359,14 @@ perfil continuam apenas para consulta.
 
 Abra **Serviços**. A tela possui duas abas:
 
-- **Aguardando aceite** lista etapas atribuídas pelo gestor. Selecione
+- **Aguardando aceite** lista as etapas oferecidas a você. Selecione
   **Aceitar** para iniciar a etapa ou **Recusar** para devolvê-la ao gestor,
   que poderá atribuí-la a outra pessoa. Um freelancer que recusou a etapa deixa de aparecer entre as
-  opções de atribuição para aquela etapa.
+  opções de atribuição para aquela etapa. Se a etapa também foi oferecida a
+  outro tradutor, o cartão avisa que quem aceitar primeiro fica com ela; ao
+  recusar, a oferta continua com o outro tradutor. Se o outro tradutor já
+  tiver aceitado, a tela mostra **Outro tradutor já aceitou esta etapa.** e a
+  oferta sai da sua lista.
 - **Meus serviços** lista as etapas aceitas e permite consultar os documentos
   associados, anexar arquivos e encaminhar a etapa para revisão.
 
@@ -370,33 +380,13 @@ Na aba **Meus serviços**, em uma etapa em andamento:
 1. Escolha os arquivos e selecione **ENVIAR DOCUMENTOS**. Como responsável, o
    envio anexa os documentos e já encaminha a etapa para a revisão do gestor
    (**Em revisão**).
-2. Se os documentos já estiverem anexados (inclusive os enviados pelo tradutor
-   adicional), use **Encaminhar para revisão**, sem novo envio, e confirme.
+2. Se os documentos já estiverem anexados, use **Encaminhar para revisão**, sem
+   novo envio, e confirme.
 3. Para retirar um documento seu, use **REMOVER**. Não é possível remover
    documentos de etapas concluídas.
 
 Se o gestor **reprovar** a entrega, a etapa volta para **Em andamento** e mostra
 o **comentário da reprovação**. Corrija os arquivos e envie de novo.
-
-### Colaborar em uma etapa
-
-Quando o gestor convida você como tradutor adicional, a etapa aparece em
-**Aguardando aceite** como **Convite para colaborar**. Selecione **Aceitar**
-para participar ou **Recusar** para devolver o convite; quem recusa não é
-convidado de novo para a mesma etapa.
-
-Depois de aceitar, a etapa aparece em **Meus serviços** com o selo
-**Colaborador**. Como colaborador, você pode:
-
-- baixar os documentos da etapa;
-- enviar seus documentos e remover os que você enviou.
-
-Você não encaminha a etapa para revisão: o envio de documentos do colaborador
-não muda a situação da etapa, e o tradutor responsável segue cuidando do
-andamento. Enquanto o responsável não aceita a etapa, o envio fica bloqueado e
-a tela mostra **Aguarde o responsável aceitar a etapa para enviar
-documentos.** O responsável vê, na própria etapa, o
-nome do tradutor adicional e a situação do convite.
 
 ## Situações e regras do fluxo
 
@@ -408,7 +398,7 @@ nome do tradutor adicional e a situação do convite.
 | Etapa | Sem freelancer, Público, Pronto, Em andamento, Em revisão, Concluída | Etapas novas começam sem freelancer; uma atribuição aguarda aceite. “Público” está reservado para a funcionalidade de retirada pública. |
 | Freelancer | Pendente, Disponível, Ocupado | Situação do cadastro/disponibilidade apresentada à equipe. |
 | Entrega | Em revisão, Aprovada, Reprovada | Etapa enviada ao gestor, concluída pelo gestor ou devolvida ao tradutor com comentário. |
-| Convite de tradutor adicional | Convidado, Aceito | Aguardando resposta do tradutor ou colaboração ativa na etapa. |
+| Oferta da etapa | Aguardando | Até dois tradutores receberam a oferta e ainda não responderam; o primeiro que aceitar fica com a etapa. |
 
 As opções para editar ou excluir um registro dependem de sua situação e do
 perfil autenticado. Por exemplo, uma solicitação com orçamento não pode ser

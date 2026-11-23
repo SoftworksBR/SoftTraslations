@@ -63,7 +63,8 @@ com banco relacional e NoSQL acessados por ORM.
 - Criação de projeto a partir de orçamento aprovado e associação a trilhas de
   workflow; cadastro de etapas reutilizáveis e trilhas.
 - Designação de tradutores por etapa, com filtro por idiomas, aceite ou
-  recusa do tradutor e convite a um tradutor adicional.
+  recusa do tradutor e oferta da etapa a até dois tradutores (o primeiro que
+  aceitar fica com ela).
 - Entrega de arquivos pelo tradutor e aprovação ou reprovação da entrega pelo
   gestor.
 - Painel do administrador com indicadores, e gerenciamento de contas internas.
@@ -206,8 +207,8 @@ O backlog completo da Sprint, com origem, confiança e situação de cada histó
 4. **Acompanhamento (item 24):** painel do administrador com indicadores de
    requisições, orçamentos, projetos e financeiro.
 5. **Refinamentos da operação:** aprovação ou reprovação da entrega pelo gestor,
-   filtro de tradutores por idioma, edição do orçamento com anexos e convite a
-   um tradutor adicional por etapa.
+   filtro de tradutores por idioma, edição do orçamento com anexos e oferta da
+   etapa a até dois tradutores.
 
 Detalhes e situação de cada item: [Sprint 3](docs/sprints/sprint-3.md).
 
@@ -226,7 +227,7 @@ timeline
              : Entrega de arquivos e acesso por perfil
     Sprint 3 : Faturas, e-mail do orçamento e assistente virtual
              : Auditoria e painel do administrador
-             : Aprovação de entregas e tradutor adicional
+             : Aprovação de entregas e oferta a dois tradutores
 ```
 
 ## 🏃 <span id="sprints">Sprints</span>

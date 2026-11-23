@@ -80,7 +80,7 @@ const collaborationBadges: Record<
   CollaborationStatus,
   { label: string; color: string; background: string }
 > = {
-  invited: { label: 'Convidado', color: '#A46B12', background: '#FFF5E3' },
+  invited: { label: 'Aguardando', color: '#A46B12', background: '#FFF5E3' },
   accepted: { label: 'Aceito', color: '#20845A', background: '#E8F5EE' },
 };
 
@@ -105,7 +105,7 @@ export default function Projetos() {
   const [freelancersError, setFreelancersError] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<number | null>(null);
   const [updatingStageId, setUpdatingStageId] = useState<number | null>(null);
-  // A lista de candidatos convida o tradutor adicional em vez de atribuir.
+  // A lista de candidatos convida o segundo tradutor da oferta em vez de atribuir.
   const [pickingCollaborator, setPickingCollaborator] = useState(false);
   const { width } = useWindowDimensions();
   const wide = width >= 720;
@@ -250,20 +250,20 @@ export default function Projetos() {
         await inviteCollaborator(stageId, freelancerId);
         setPickingCollaborator(false);
       },
-      'Não foi possível convidar o tradutor adicional.',
+      'Não foi possível convidar o segundo tradutor da oferta.',
     );
   }
 
   function confirmRemoveSecondFreelancer(stageId: number, name: string) {
     confirmAction(
-      'Remover tradutor adicional',
-      `Remover ${name} desta etapa?`,
+      'Remover segundo tradutor da oferta',
+      `Remover ${name} da oferta desta etapa?`,
       'Remover',
       () =>
         void runStageAction(
           stageId,
           () => removeCollaborator(stageId),
-          'Não foi possível remover o tradutor adicional.',
+          'Não foi possível remover o segundo tradutor da oferta.',
         ),
     );
   }
@@ -458,6 +458,8 @@ export default function Projetos() {
                     }
 
                     const { stage, path } = selectedStage;
+                    // A oferta fica aberta enquanto ninguém aceitou a etapa.
+                    const offerOpen = stage.status === 'no_freelancer';
                     return (
                       <View style={styles.stageDetails}>
                         <Text style={styles.stageDetailsTitle}>
@@ -472,38 +474,70 @@ export default function Projetos() {
                             : stageStatusNames[stage.status]}
                         </Text>
                         <Text style={styles.infoLine}>
-                          Responsável atual: {stage.freelancer_name ?? 'Não atribuído'}
+                          Responsável atual:{' '}
+                          {offerOpen && stage.freelancer_id !== null
+                            ? 'ninguém aceitou ainda'
+                            : (stage.freelancer_name ?? 'Não atribuído')}
                         </Text>
-                        <View style={styles.collaboratorBox}>
-                          <Text style={styles.collaboratorTitle}>Tradutor adicional</Text>
-                          {stage.second_freelancer_id !== null && stage.second_status ? (
-                            <View style={styles.collaboratorRow}>
-                              <Text style={styles.collaboratorName}>
-                                {stage.second_freelancer_name ?? 'Tradutor'}
+                        {offerOpen ? (
+                          <View style={styles.collaboratorBox}>
+                            <Text style={styles.collaboratorTitle}>Oferta da etapa</Text>
+                            <Text style={styles.offerHint}>
+                              Quem aceitar primeiro fica com a etapa; a recusa de um não tira a oferta do outro.
+                            </Text>
+                            {stage.freelancer_id !== null ? (
+                              <View style={styles.collaboratorRow}>
+                                <Text style={styles.collaboratorName}>
+                                  {stage.freelancer_name ?? 'Tradutor'}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.languageBadge,
+                                    styles.collaboratorBadge,
+                                    {
+                                      color: collaborationBadges.invited.color,
+                                      backgroundColor: collaborationBadges.invited.background,
+                                    },
+                                  ]}
+                                >
+                                  {collaborationBadges.invited.label}
+                                </Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.infoLine}>
+                                Escolha o primeiro tradutor da oferta na lista abaixo.
                               </Text>
-                              <Text
-                                style={[
-                                  styles.languageBadge,
-                                  styles.collaboratorBadge,
-                                  {
-                                    color: collaborationBadges[stage.second_status].color,
-                                    backgroundColor:
-                                      collaborationBadges[stage.second_status].background,
-                                  },
-                                ]}
-                              >
-                                {collaborationBadges[stage.second_status].label}
-                              </Text>
-                              {stage.status !== 'done' ? (
+                            )}
+                            <Text style={[styles.collaboratorTitle, styles.offerSubtitle]}>
+                              Segundo tradutor da oferta
+                            </Text>
+                            {stage.second_freelancer_id !== null && stage.second_status ? (
+                              <View style={styles.collaboratorRow}>
+                                <Text style={styles.collaboratorName}>
+                                  {stage.second_freelancer_name ?? 'Tradutor'}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.languageBadge,
+                                    styles.collaboratorBadge,
+                                    {
+                                      color: collaborationBadges[stage.second_status].color,
+                                      backgroundColor:
+                                        collaborationBadges[stage.second_status].background,
+                                    },
+                                  ]}
+                                >
+                                  {collaborationBadges[stage.second_status].label}
+                                </Text>
                                 <Pressable
                                   accessibilityRole="button"
-                                  accessibilityLabel={`Remover ${stage.second_freelancer_name ?? 'tradutor adicional'} da etapa`}
+                                  accessibilityLabel={`Remover ${stage.second_freelancer_name ?? 'o segundo tradutor'} da oferta`}
                                   aria-disabled={updatingStageId !== null}
                                   disabled={updatingStageId !== null}
                                   onPress={() =>
                                     confirmRemoveSecondFreelancer(
                                       stage.id,
-                                      stage.second_freelancer_name ?? 'o tradutor adicional',
+                                      stage.second_freelancer_name ?? 'o segundo tradutor',
                                     )
                                   }
                                   style={[
@@ -514,63 +548,56 @@ export default function Projetos() {
                                 >
                                   <Text style={styles.collaboratorRemoveText}>Remover</Text>
                                 </Pressable>
-                              ) : null}
-                            </View>
-                          ) : pickingCollaborator ? (
-                            <View style={styles.collaboratorRow}>
-                              <Text style={styles.infoLine}>
-                                Escolha o tradutor adicional na lista abaixo.
-                              </Text>
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel="Cancelar convite de tradutor adicional"
-                                onPress={() => setPickingCollaborator(false)}
-                                style={styles.collaboratorAction}
-                              >
-                                <Text style={styles.collaboratorActionText}>Cancelar</Text>
-                              </Pressable>
-                            </View>
-                          ) : (
-                            <View style={styles.collaboratorRow}>
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel="Convidar tradutor adicional"
-                                aria-disabled={
-                                  stage.freelancer_id === null
-                                  || stage.status === 'done'
-                                  || updatingStageId !== null
-                                }
-                                disabled={
-                                  stage.freelancer_id === null
-                                  || stage.status === 'done'
-                                  || updatingStageId !== null
-                                }
-                                onPress={() => setPickingCollaborator(true)}
-                                style={[
-                                  styles.collaboratorAction,
-                                  (stage.freelancer_id === null
-                                    || stage.status === 'done'
-                                    || updatingStageId !== null) && styles.optionDisabled,
-                                ]}
-                              >
-                                <Ionicons name="person-add-outline" size={14} color="#087F8C" />
-                                <Text style={styles.collaboratorActionText}>
-                                  Convidar tradutor adicional
-                                </Text>
-                              </Pressable>
-                              {stage.freelancer_id === null || stage.status === 'done' ? (
+                              </View>
+                            ) : pickingCollaborator ? (
+                              <View style={styles.collaboratorRow}>
                                 <Text style={styles.infoLine}>
-                                  {stage.status === 'done'
-                                    ? 'Etapa concluída.'
-                                    : 'Atribua um responsável antes de convidar.'}
+                                  Escolha o segundo tradutor na lista abaixo.
                                 </Text>
-                              ) : null}
-                            </View>
-                          )}
-                        </View>
+                                <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Cancelar convite do segundo tradutor da oferta"
+                                  onPress={() => setPickingCollaborator(false)}
+                                  style={styles.collaboratorAction}
+                                >
+                                  <Text style={styles.collaboratorActionText}>Cancelar</Text>
+                                </Pressable>
+                              </View>
+                            ) : (
+                              <View style={styles.collaboratorRow}>
+                                <Pressable
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Convidar segundo tradutor da oferta"
+                                  aria-disabled={stage.freelancer_id === null || updatingStageId !== null}
+                                  disabled={stage.freelancer_id === null || updatingStageId !== null}
+                                  onPress={() => setPickingCollaborator(true)}
+                                  style={[
+                                    styles.collaboratorAction,
+                                    (stage.freelancer_id === null || updatingStageId !== null)
+                                      && styles.optionDisabled,
+                                  ]}
+                                >
+                                  <Ionicons name="person-add-outline" size={14} color="#087F8C" />
+                                  <Text style={styles.collaboratorActionText}>
+                                    Convidar segundo tradutor
+                                  </Text>
+                                </Pressable>
+                                {stage.freelancer_id === null ? (
+                                  <Text style={styles.infoLine}>
+                                    Escolha o primeiro tradutor antes de convidar o segundo.
+                                  </Text>
+                                ) : null}
+                              </View>
+                            )}
+                          </View>
+                        ) : null}
                         <View style={styles.assignHeader}>
                           <Text style={styles.assignTitle}>
-                            {pickingCollaborator ? 'Convidar tradutor adicional' : 'Atribuir responsável'}
+                            {pickingCollaborator
+                              ? 'Convidar segundo tradutor da oferta'
+                              : offerOpen
+                                ? 'Primeiro tradutor da oferta'
+                                : 'Atribuir responsável'}
                           </Text>
                           {selectedProject?.quote_id != null ? (
                             <Pressable
@@ -638,7 +665,7 @@ export default function Projetos() {
                                 accessibilityRole="button"
                                 accessibilityLabel={
                                   (pickingCollaborator
-                                    ? `Convidar ${freelancer.username} como tradutor adicional`
+                                    ? `Convidar ${freelancer.username} como segundo tradutor da oferta`
                                     : `Atribuir ${freelancer.username} à etapa`)
                                   + (freelancer.language_match
                                     ? `. ${languageBadges[freelancer.language_match].label}`
@@ -808,6 +835,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   collaboratorTitle: { color: '#172B3A', fontSize: 11, fontWeight: '700' },
+  offerSubtitle: { marginTop: 10 },
+  offerHint: { marginTop: 4, color: '#627485', fontSize: 11, lineHeight: 16 },
   collaboratorRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 },
   collaboratorName: { flexShrink: 1, color: '#172B3A', fontSize: 11 },
   collaboratorBadge: { marginTop: 0, alignSelf: 'center' },

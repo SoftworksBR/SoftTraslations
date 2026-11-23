@@ -466,52 +466,64 @@ há filtro nem reordenação e `language_match` é `null`. A exclusão de quem
 recusou a etapa continua valendo em qualquer modo e depende do MongoDB: sem
 ele, a rota responde `503`.
 
-## Tradutor adicional da etapa
+## Oferta da etapa para dois tradutores
 
-Cada etapa pode ter, além do tradutor principal (`freelancer_id`), **um**
-tradutor adicional (`second_freelancer_id`), com a situação `second_status`
-(`invited` ou `accepted`). As colunas foram criadas pela migração
-`d8e2f4a6b1c3`; sem tradutor adicional, as duas ficam nulas. As respostas de
-etapa e os detalhes do projeto trazem `second_freelancer_id`,
+Enquanto a etapa aguarda aceite (`no_freelancer`), ela pode ser oferecida a
+até dois tradutores: o primeiro candidato fica em `freelancer_id` e o segundo
+em `second_freelancer_id`, com `second_status = "invited"`. O primeiro que
+aceitar fica com a etapa; depois do aceite, `freelancer_id` é o responsável e
+as colunas do segundo ficam nulas. As colunas vêm da migração `d8e2f4a6b1c3`;
+o valor `accepted` de `second_status` só aparece em etapas do fluxo anterior.
+As respostas de etapa e os detalhes do projeto trazem `second_freelancer_id`,
 `second_freelancer_name` e `second_status`.
 
 ### Endpoints
 
 | Método | Rota | Perfis | Descrição |
 |---|---|---|---|
-| POST | `/stages/{stage_id}/collaborator` | `projetos` | Convida o tradutor do corpo `{"freelancer_id": …}`. |
-| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Remove o tradutor adicional. Os arquivos que ele enviou passam a ser do tradutor principal, que pode excluí-los. Sem principal, só remove quem ainda não enviou arquivos na etapa. |
-| POST | `/stages/{stage_id}/collaborator/accept` | o tradutor convidado | Aceita o convite. |
-| POST | `/stages/{stage_id}/collaborator/decline` | o tradutor convidado | Recusa o convite. |
+| POST | `/stages/{stage_id}/collaborator` | `projetos` | Convida o segundo candidato do corpo `{"freelancer_id": …}`. |
+| DELETE | `/stages/{stage_id}/collaborator` | `projetos` | Retira o segundo candidato da oferta. |
+| POST | `/stages/{stage_id}/accept` e `/stages/{stage_id}/collaborator/accept` | candidatos da oferta | Aceita a etapa; as duas rotas valem para qualquer um dos dois candidatos. |
+| POST | `/stages/{stage_id}/decline` e `/stages/{stage_id}/collaborator/decline` | candidatos da oferta | Recusa a etapa; as duas rotas valem para qualquer um dos dois candidatos. |
 
 ### Regras de negócio
 
-- O convite exige uma etapa com tradutor principal e não concluída; o
-  convidado não pode ser o principal, não pode ter recusado a etapa e precisa
+- O gestor escolhe o primeiro candidato pela atribuição (`PUT /stages/{id}`) e
+  o segundo pelo convite, sem esperar o aceite do primeiro. O convite exige a
+  oferta aberta (`no_freelancer`), um primeiro candidato e nenhum segundo; o
+  convidado não pode ser o primeiro, não pode ter recusado a etapa e precisa
   ser um freelancer ativo com perfil completo.
-- Recusar o convite registra o mesmo evento `project_stage.declined` da recusa
-  do principal, com `details.role = "collaborator"`; por isso o tradutor deixa
-  de aparecer em `GET /stages/{stage_id}/available-freelancers`, que também não
-  lista o principal nem o tradutor adicional atuais.
-- O tradutor adicional **aceito** vê a etapa em `GET /stages/`, baixa os
-  arquivos, envia entregas e remove as que ele mesmo enviou. Envio e remoção
-  seguem as regras do principal: não há envio com a etapa aguardando aceite e
-  não há remoção em etapa concluída. Quem foi apenas convidado vê a etapa na
-  lista, mas não acessa os arquivos.
-- Só o tradutor principal e o gestor alteram a etapa (`PUT /stages/{id}`); o
-  tradutor adicional recebe `403` ao tentar avançar a situação.
-- Um tradutor que já é o adicional não pode ser atribuído como principal da
-  mesma etapa.
+- Aceite, recusa, convite e remoção travam a linha da etapa
+  (`SELECT … FOR UPDATE`) antes de validar. Com dois aceites simultâneos, o
+  segundo espera o primeiro terminar e recebe `409` com a mensagem
+  `Outro tradutor já aceitou esta etapa.`.
+- Quem aceita vira o responsável (`freelancer_id`), a etapa vai para
+  `in_progress` e o outro candidato sai da oferta, com o evento
+  `project_stage.offer_closed` (`details.freelancer_id` = quem saiu,
+  `details.kept_freelancer_id` = quem ficou). O mesmo evento é registrado se o
+  gestor tirar a etapa de `no_freelancer` com a oferta aberta.
+- A recusa registra `project_stage.declined`, que alimenta o filtro de
+  recusas: o tradutor deixa de aparecer em
+  `GET /stages/{stage_id}/available-freelancers`. Se o primeiro recusa, o
+  segundo passa a ser o único candidato (`details.promoted_freelancer_id`); se
+  o segundo recusa, o primeiro continua com a oferta
+  (`details.role = "collaborator"`). Se os dois recusarem, a etapa volta a
+  ficar sem freelancer.
+- Só o responsável acessa os arquivos e altera a etapa. Quem está apenas na
+  vaga do segundo candidato vê a etapa em `GET /stages/`, sem arquivos.
+- Um tradutor que já é o segundo candidato não pode ser atribuído como
+  primeiro da mesma etapa.
 - Eventos registrados: `project_stage.collaborator_invited`,
-  `project_stage.collaborator_removed` e `project_stage.declined`.
+  `project_stage.collaborator_removed`, `project_stage.offer_closed` e
+  `project_stage.declined`.
 
 ### Tratamento de erros
 
 | Status | Quando |
 |---|---|
-| `403` | Convidar ou remover sem perfil `projetos`; aceitar ou recusar sem ser o tradutor convidado. |
+| `403` | Convidar ou remover sem perfil `projetos`; aceitar ou recusar sem ser candidato da oferta aberta. |
 | `404` | Etapa inexistente. |
-| `409` | Etapa sem tradutor principal ou concluída; etapa que já tem tradutor adicional (ou não tem, ao remover); convidado igual ao principal ou que já recusou; resposta a convite que não está pendente; atribuir como principal quem já é o adicional; remover, em etapa sem principal, um tradutor adicional que já enviou arquivos. |
+| `409` | Oferta já encerrada (`A oferta desta etapa já foi encerrada.`) ao convidar ou remover; outro candidato já aceitou (`Outro tradutor já aceitou esta etapa.`) ao aceitar ou recusar; etapa sem primeiro candidato; etapa que já tem segundo candidato (ou não tem, ao remover); convidado igual ao primeiro ou que já recusou; atribuir como primeiro quem já é o segundo. |
 | `422` | Convidado que não é freelancer ativo com perfil completo. |
 
 ## Resumo de projetos (dashboard)

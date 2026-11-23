@@ -9,7 +9,7 @@ export type StageStatus =
   | 'testing'
   | 'done';
 
-// Situação do tradutor adicional (segundo tradutor) da etapa.
+// Situação do segundo candidato da oferta ('accepted' só em etapas antigas).
 export type CollaborationStatus = 'invited' | 'accepted';
 
 export type StageFile = {
@@ -81,20 +81,6 @@ export function removeCollaborator(stageId: number) {
   return apiRequest<TranslationStage>(`/stages/${stageId}/collaborator`, {
     method: 'DELETE',
   });
-}
-
-export function acceptCollaboration(stageId: number) {
-  return apiRequest<TranslationStage>(
-    `/stages/${stageId}/collaborator/accept`,
-    { method: 'POST' },
-  );
-}
-
-export function declineCollaboration(stageId: number) {
-  return apiRequest<TranslationStage>(
-    `/stages/${stageId}/collaborator/decline`,
-    { method: 'POST' },
-  );
 }
 
 export function updateStage(

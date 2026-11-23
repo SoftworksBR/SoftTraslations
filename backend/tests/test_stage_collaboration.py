@@ -78,6 +78,11 @@ def make_stage(**overrides):
     return stage
 
 
+def open_stage(**overrides):
+    # Etapa aguardando aceite: a oferta ainda aceita o segundo candidato.
+    return make_stage(status=StageStatus.NO_FREELANCER, **overrides)
+
+
 def freelancer(employee_id):
     return SimpleNamespace(id=employee_id, role=Roles.FREELANCER)
 
@@ -92,14 +97,14 @@ def events(monkeypatch):
     return recorded
 
 
-def make_service(monkeypatch, stage, declined=(), files=()):
+def make_service(monkeypatch, stage, declined=()):
     expired = []
     session = SimpleNamespace(
         expire=lambda instance, attributes: expired.append(attributes)
     )
     service = StageService(session)
     service.expired = expired
-    # Ordem das chamadas: trava, validações, transferência e gravação.
+    # Ordem das chamadas: trava, validações e gravação.
     calls = service.calls = []
     monkeypatch.setattr(service, 'get_by_id', AsyncMock(return_value=stage))
 
@@ -122,31 +127,7 @@ def make_service(monkeypatch, stage, declined=(), files=()):
         calls.append('save')
         return updated_stage
 
-    # Simula o UPDATE de autoria sobre os arquivos da etapa.
-    service.files = list(files)
-    service.reassign_calls = []
-
-    async def count_stage_files_by(self, stage_id, employee_id):
-        calls.append('count')
-        return len([
-            f for f in service.files if f.uploaded_by_id == employee_id
-        ])
-
-    async def reassign_stage_files(self, stage_id, from_id, to_id):
-        calls.append('reassign')
-        service.reassign_calls.append((stage_id, from_id, to_id))
-        moved = [f for f in service.files if f.uploaded_by_id == from_id]
-        for file in moved:
-            file.uploaded_by_id = to_id
-        return len(moved)
-
     monkeypatch.setattr(StageRepository, 'update', update)
-    monkeypatch.setattr(
-        StageRepository, 'reassign_stage_files', reassign_stage_files
-    )
-    monkeypatch.setattr(
-        StageRepository, 'count_stage_files_by', count_stage_files_by
-    )
     return service
 
 
@@ -160,7 +141,7 @@ def expect_error(call):
 
 
 def test_manager_invites_second_freelancer(monkeypatch, events):
-    stage = make_stage()
+    stage = open_stage()
     service = make_service(monkeypatch, stage)
 
     result = asyncio.run(
@@ -215,6 +196,7 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
     [
         ({'freelancer_id': None}, SECOND_ID, ()),
         ({'status': StageStatus.DONE}, SECOND_ID, ()),
+        ({'status': StageStatus.IN_PROGRESS}, SECOND_ID, ()),
         (
             {
                 'second_freelancer_id': OTHER_ID,
@@ -229,6 +211,7 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
     ids=[
         'sem-principal',
         'etapa-concluida',
+        'oferta-ja-aceita',
         'ja-tem-segundo',
         'escolhido-e-o-principal',
         'escolhido-ja-recusou',
@@ -237,7 +220,10 @@ def test_only_manager_invites_or_removes(monkeypatch, role):
 def test_invite_conflicts_return_409(
     monkeypatch, events, stage_values, chosen, declined
 ):
-    service = make_service(monkeypatch, make_stage(**stage_values), declined)
+    stage = open_stage()
+    for field, value in stage_values.items():
+        setattr(stage, field, value)
+    service = make_service(monkeypatch, stage, declined)
 
     status = expect_error(
         service.invite_collaborator(STAGE_ID, chosen, MANAGER)
@@ -248,7 +234,7 @@ def test_invite_conflicts_return_409(
 
 
 def test_invite_inactive_freelancer_returns_422(monkeypatch, events):
-    service = make_service(monkeypatch, make_stage())
+    service = make_service(monkeypatch, open_stage())
     monkeypatch.setattr(
         service,
         '_validate_freelancer',
@@ -271,9 +257,9 @@ def test_invite_inactive_freelancer_returns_422(monkeypatch, events):
 
 
 def test_manager_removes_second_freelancer(monkeypatch, events):
-    stage = make_stage(
+    stage = open_stage(
         second_freelancer_id=SECOND_ID,
-        second_status=StageCollaborationStatus.ACCEPTED,
+        second_status=StageCollaborationStatus.INVITED,
     )
     service = make_service(monkeypatch, stage)
 
@@ -284,10 +270,7 @@ def test_manager_removes_second_freelancer(monkeypatch, events):
     assert service.expired == [['second_freelancer']]
     (event,) = events
     assert event['event_type'] == 'project_stage.collaborator_removed'
-    assert event['payload']['details'] == {
-        'freelancer_id': SECOND_ID,
-        'files_reassigned': 0,
-    }
+    assert event['payload']['details'] == {'freelancer_id': SECOND_ID}
 
 
 @pytest.mark.parametrize(
@@ -298,9 +281,14 @@ def test_manager_removes_second_freelancer(monkeypatch, events):
             'second_freelancer_id': SECOND_ID,
             'second_status': StageCollaborationStatus.ACCEPTED,
         },
-        {},
+        {
+            'status': StageStatus.IN_PROGRESS,
+            'second_freelancer_id': SECOND_ID,
+            'second_status': StageCollaborationStatus.INVITED,
+        },
+        {'status': StageStatus.NO_FREELANCER},
     ],
-    ids=['etapa-concluida', 'sem-segundo'],
+    ids=['etapa-concluida', 'oferta-ja-aceita', 'sem-segundo'],
 )
 def test_remove_conflicts_return_409(monkeypatch, events, stage_values):
     service = make_service(monkeypatch, make_stage(**stage_values))
@@ -311,25 +299,193 @@ def test_remove_conflicts_return_409(monkeypatch, events, stage_values):
     assert events == []
 
 
+@pytest.mark.parametrize('action', ['invite', 'remove'])
+def test_invite_or_remove_after_accept_returns_409(
+    monkeypatch, events, action
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(SECOND_ID)))
+    events.clear()
+    calls = {
+        'invite': lambda: service.invite_collaborator(
+            STAGE_ID, OTHER_ID, MANAGER
+        ),
+        'remove': lambda: service.remove_collaborator(STAGE_ID, MANAGER),
+    }
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(calls[action]())
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_CLOSED_DETAIL
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
+    assert events == []
+
+
 # --- aceitar e recusar --------------------------------------------------
 
 
 def invited_stage():
+    # Oferta aberta: o principal e o segundo ainda não responderam.
     return make_stage(
+        status=StageStatus.NO_FREELANCER,
         second_freelancer_id=SECOND_ID,
         second_status=StageCollaborationStatus.INVITED,
     )
 
 
-def test_second_freelancer_accepts_invite(monkeypatch):
-    service = make_service(monkeypatch, invited_stage())
+def assert_offer_won_by(stage, winner_id, leaving_id, events):
+    assert stage.freelancer_id == winner_id
+    assert stage.status == StageStatus.IN_PROGRESS
+    assert stage.started_at is not None
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    (event,) = [
+        e for e in events if e['event_type'] == 'project_stage.offer_closed'
+    ]
+    assert event['payload']['details'] == {
+        'freelancer_id': leaving_id,
+        'kept_freelancer_id': winner_id,
+    }
+    assert event['payload']['actor']['employee_id'] == winner_id
 
-    result = asyncio.run(
-        service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID))
+
+def test_second_accepts_first_and_main_leaves_offer(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+
+    assert_offer_won_by(stage, SECOND_ID, MAIN_ID, events)
+
+
+def test_main_accepts_first_and_second_leaves_offer(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    assert_offer_won_by(stage, MAIN_ID, SECOND_ID, events)
+
+
+@pytest.mark.parametrize('route', ['accept', 'accept_collaboration'])
+@pytest.mark.parametrize(
+    ('winner_id', 'leaving_id'),
+    [(MAIN_ID, SECOND_ID), (SECOND_ID, MAIN_ID)],
+    ids=['principal', 'segundo'],
+)
+def test_both_accept_routes_serve_either_candidate(
+    monkeypatch, events, route, winner_id, leaving_id
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(getattr(service, route)(STAGE_ID, freelancer(winner_id)))
+
+    assert_offer_won_by(stage, winner_id, leaving_id, events)
+
+
+@pytest.mark.parametrize(
+    ('first_id', 'late_id', 'late_route'),
+    [
+        (SECOND_ID, MAIN_ID, 'accept'),
+        (MAIN_ID, SECOND_ID, 'accept_collaboration'),
+    ],
+    ids=['principal-chega-depois', 'segundo-chega-depois'],
+)
+def test_late_accept_gets_409_offer_taken(
+    monkeypatch, events, first_id, late_id, late_route
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(first_id)))
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            getattr(service, late_route)(STAGE_ID, freelancer(late_id))
+        )
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_TAKEN_DETAIL
+    assert stage.freelancer_id == first_id
+
+
+OFFER_FIELDS = (
+    'freelancer_id',
+    'status',
+    'started_at',
+    'second_freelancer_id',
+    'second_status',
+)
+
+
+def test_concurrent_accepts_only_one_wins(monkeypatch, events):
+    # Cada pedido lê a sua cópia da linha, como duas sessões no banco.
+    row = invited_stage()
+    service = make_service(monkeypatch, row)
+    row_lock = asyncio.Lock()
+
+    async def read_row():
+        snapshot = make_stage(
+            **{field: getattr(row, field) for field in OFFER_FIELDS}
+        )
+        await asyncio.sleep(0)
+        return snapshot
+
+    # Simula o FOR UPDATE: a segunda leitura espera o commit da primeira.
+    async def lock(self, stage_id):
+        await row_lock.acquire()
+        return await read_row()
+
+    async def commit(self, updated_stage):
+        for field in OFFER_FIELDS:
+            setattr(row, field, getattr(updated_stage, field))
+        if row_lock.locked():
+            row_lock.release()
+        return updated_stage
+
+    async def unlocked_read(stage_id):
+        return await read_row()
+
+    monkeypatch.setattr(StageRepository, 'get_by_id_for_update', lock)
+    monkeypatch.setattr(StageRepository, 'update', commit)
+    monkeypatch.setattr(service, 'get_by_id', unlocked_read)
+
+    async def both():
+        return await asyncio.gather(
+            service.accept(STAGE_ID, freelancer(MAIN_ID)),
+            service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)),
+            return_exceptions=True,
+        )
+
+    results = asyncio.run(both())
+
+    failures = [r for r in results if isinstance(r, HTTPException)]
+    assert len(failures) == 1
+    assert failures[0].status_code == HTTPStatus.CONFLICT
+    assert failures[0].detail == stage_service.OFFER_TAKEN_DETAIL
+    assert_offer_won_by(row, MAIN_ID, SECOND_ID, events)
+
+
+def test_manager_moving_stage_out_of_offer_closes_it(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(
+        service.update(
+            STAGE_ID, StageUpdate(status=StageStatus.IN_PROGRESS), MANAGER
+        )
     )
 
-    assert result.second_status == StageCollaborationStatus.ACCEPTED
-    assert result.second_freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    (closed,) = [
+        e for e in events if e['event_type'] == 'project_stage.offer_closed'
+    ]
+    assert closed['payload']['details']['freelancer_id'] == SECOND_ID
+    assert closed['payload']['actor']['employee_id'] == MANAGER.id
 
 
 def test_second_freelancer_declines_invite(monkeypatch, events):
@@ -348,11 +504,101 @@ def test_second_freelancer_declines_invite(monkeypatch, events):
     assert event['payload']['details']['role'] == 'collaborator'
 
 
+def declined_events(events):
+    return [
+        e['payload']['details']
+        for e in events
+        if e['event_type'] == 'project_stage.declined'
+    ]
+
+
+def test_second_declines_then_main_accepts(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.decline_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+    assert stage.freelancer_id == MAIN_ID
+    assert stage.status == StageStatus.NO_FREELANCER
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    assert stage.freelancer_id == MAIN_ID
+    assert stage.status == StageStatus.IN_PROGRESS
+    # O segundo já tinha saído: não há oferta a encerrar.
+    assert [e['event_type'] for e in events] == ['project_stage.declined']
+
+
+def test_main_declines_then_promoted_second_accepts(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+
+    asyncio.run(service.decline(STAGE_ID, freelancer(MAIN_ID)))
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    assert stage.status == StageStatus.NO_FREELANCER
+    assert declined_events(events) == [
+        {
+            'freelancer_id': MAIN_ID,
+            'status': 'no_freelancer',
+            'promoted_freelancer_id': SECOND_ID,
+        }
+    ]
+    # A tela do segundo pode ainda usar a rota de colaborador.
+    asyncio.run(service.accept_collaboration(STAGE_ID, freelancer(SECOND_ID)))
+
+    assert stage.freelancer_id == SECOND_ID
+    assert stage.status == StageStatus.IN_PROGRESS
+    assert stage.started_at is not None
+
+
+@pytest.mark.parametrize(
+    'order',
+    [(MAIN_ID, SECOND_ID), (SECOND_ID, MAIN_ID)],
+    ids=['principal-recusa-primeiro', 'segundo-recusa-primeiro'],
+)
+def test_both_decline_and_stage_returns_to_no_freelancer(
+    monkeypatch, events, order
+):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    routes = {
+        MAIN_ID: service.decline,
+        SECOND_ID: service.decline_collaboration,
+    }
+
+    for employee_id in order:
+        asyncio.run(routes[employee_id](STAGE_ID, freelancer(employee_id)))
+
+    assert stage.freelancer_id is None
+    assert stage.second_freelancer_id is None
+    assert stage.second_status is None
+    assert stage.status == StageStatus.NO_FREELANCER
+    # Os dois entram no filtro de recusas da etapa.
+    assert [d['freelancer_id'] for d in declined_events(events)] == list(
+        order
+    )
+
+
+def test_late_decline_gets_409_offer_taken(monkeypatch, events):
+    stage = invited_stage()
+    service = make_service(monkeypatch, stage)
+    asyncio.run(service.accept(STAGE_ID, freelancer(MAIN_ID)))
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(
+            service.decline_collaboration(STAGE_ID, freelancer(SECOND_ID))
+        )
+
+    assert error.value.status_code == HTTPStatus.CONFLICT
+    assert error.value.detail == stage_service.OFFER_TAKEN_DETAIL
+    assert declined_events(events) == []
+
+
 @pytest.mark.parametrize('action', ['accept', 'decline'])
 @pytest.mark.parametrize(
     'employee',
-    [freelancer(MAIN_ID), freelancer(OTHER_ID), MANAGER],
-    ids=['principal', 'outro-tradutor', 'gestor'],
+    [freelancer(OTHER_ID), MANAGER],
+    ids=['outro-tradutor', 'gestor'],
 )
 def test_only_invited_freelancer_answers(monkeypatch, action, employee):
     service = make_service(monkeypatch, invited_stage())
@@ -565,71 +811,21 @@ def pdf_upload():
     return UploadFile(file=io.BytesIO(b'%PDF-1.4 entrega'), filename='a.pdf')
 
 
-def test_accepted_second_freelancer_uploads_file(
-    monkeypatch, tmp_path, events
-):
-    monkeypatch.setattr(stage_service.settings, 'UPLOAD_DIR', str(tmp_path))
-    service, _ = file_service(monkeypatch, accepted_stage())
-
-    saved = asyncio.run(
-        service.upload_file(STAGE_ID, pdf_upload(), freelancer(SECOND_ID))
-    )
-
-    assert saved.uploaded_by_id == SECOND_ID
-    assert saved.project_stage_id == STAGE_ID
-    assert events[0]['event_type'] == 'project_stage.file_added'
-
-
-def test_accepted_second_freelancer_downloads_file(monkeypatch, tmp_path):
-    path = tmp_path / 'entrega.pdf'
-    path.write_text('entrega')
-    file = make_file(path, uploaded_by_id=MAIN_ID)
-    service, _ = file_service(monkeypatch, accepted_stage(), file)
-
-    result = asyncio.run(
-        service.get_file(STAGE_ID, file.id, freelancer(SECOND_ID))
-    )
-
-    assert result is file
-
-
-def test_accepted_second_freelancer_removes_own_file(
-    monkeypatch, tmp_path, events
-):
-    path = tmp_path / 'entrega.pdf'
-    path.write_text('entrega')
-    stage = accepted_stage(status=StageStatus.TESTING)
-    service, session = file_service(monkeypatch, stage, make_file(path))
-
-    asyncio.run(service.delete_file(STAGE_ID, 12, freelancer(SECOND_ID)))
-
-    session.delete.assert_awaited_once()
-    assert not path.exists()
-    assert stage.status == StageStatus.IN_PROGRESS
-
-
-def test_second_freelancer_cannot_remove_others_file(monkeypatch, tmp_path):
-    path = tmp_path / 'entrega.pdf'
-    path.write_text('entrega')
-    file = make_file(path, uploaded_by_id=MAIN_ID)
-    service, _ = file_service(monkeypatch, accepted_stage(), file)
-
-    status = expect_error(
-        service.delete_file(STAGE_ID, file.id, freelancer(SECOND_ID))
-    )
-
-    assert status == HTTPStatus.FORBIDDEN
-
-
+@pytest.mark.parametrize(
+    'second_status',
+    [StageCollaborationStatus.INVITED, StageCollaborationStatus.ACCEPTED],
+    ids=['convidado', 'aceito-no-fluxo-antigo'],
+)
 @pytest.mark.parametrize('action', ['upload', 'download', 'delete'])
-def test_invited_second_freelancer_has_no_file_access(
-    monkeypatch, tmp_path, action
+def test_second_slot_has_no_file_access(
+    monkeypatch, tmp_path, action, second_status
 ):
+    # Só o responsável trabalha na etapa; a vaga do segundo é só da oferta.
+    monkeypatch.setattr(stage_service.settings, 'UPLOAD_DIR', str(tmp_path))
     path = tmp_path / 'entrega.pdf'
     path.write_text('entrega')
     stage = make_stage(
-        second_freelancer_id=SECOND_ID,
-        second_status=StageCollaborationStatus.INVITED,
+        second_freelancer_id=SECOND_ID, second_status=second_status
     )
     service, _ = file_service(monkeypatch, stage, make_file(path))
     calls = {
@@ -645,6 +841,29 @@ def test_invited_second_freelancer_has_no_file_access(
     }
 
     assert expect_error(calls[action]()) == HTTPStatus.FORBIDDEN
+    assert path.exists()
+
+
+def test_responsible_handles_stage_files(monkeypatch, tmp_path, events):
+    monkeypatch.setattr(stage_service.settings, 'UPLOAD_DIR', str(tmp_path))
+    path = tmp_path / 'entrega.pdf'
+    path.write_text('entrega')
+    file = make_file(path, uploaded_by_id=MAIN_ID)
+    stage = accepted_stage()
+    service, session = file_service(monkeypatch, stage, file)
+
+    saved = asyncio.run(
+        service.upload_file(STAGE_ID, pdf_upload(), freelancer(MAIN_ID))
+    )
+    downloaded = asyncio.run(
+        service.get_file(STAGE_ID, file.id, freelancer(MAIN_ID))
+    )
+    asyncio.run(service.delete_file(STAGE_ID, file.id, freelancer(MAIN_ID)))
+
+    assert saved.uploaded_by_id == MAIN_ID
+    assert downloaded is file
+    session.delete.assert_awaited_once()
+    assert not path.exists()
 
 
 @pytest.mark.parametrize('new_status', [StageStatus.TESTING, StageStatus.DONE])
@@ -662,12 +881,9 @@ def test_accepted_second_freelancer_cannot_advance_stage(
     assert status == HTTPStatus.FORBIDDEN
 
 
-def test_second_cannot_upload_after_main_freelancer_declines(
-    monkeypatch, events
-):
-    stage = accepted_stage()
+def test_promoted_candidate_uploads_only_after_accepting(monkeypatch, events):
+    stage = invited_stage()
     service = make_service(monkeypatch, stage)
-    stage.status = StageStatus.NO_FREELANCER
     asyncio.run(service.decline(STAGE_ID, freelancer(MAIN_ID)))
     upload_service, _ = file_service(monkeypatch, stage)
 
@@ -677,7 +893,7 @@ def test_second_cannot_upload_after_main_freelancer_declines(
         )
     )
 
-    assert stage.freelancer_id is None
+    assert stage.freelancer_id == SECOND_ID
     assert status == HTTPStatus.CONFLICT
 
 
@@ -753,131 +969,25 @@ def test_candidates_exclude_current_main_and_second(monkeypatch):
     assert [item.id for item in available] == [OTHER_ID]
 
 
-# --- arquivos do tradutor adicional removido ------------------------------
+# --- remoção do segundo candidato não mexe nos arquivos --------------------
 
 
-def stage_file(file_id, uploaded_by_id, path=None):
-    return SimpleNamespace(
-        id=file_id,
-        file_path=str(path) if path else f'/tmp/{file_id}.pdf',
-        original_name=f'arquivo-{file_id}.pdf',
-        uploaded_by_id=uploaded_by_id,
+def test_removal_does_not_touch_stage_files(monkeypatch, events):
+    stage = stage_with_files(
+        status=StageStatus.NO_FREELANCER,
+        second_freelancer_id=SECOND_ID,
+        second_status=StageCollaborationStatus.INVITED,
     )
-
-
-def test_removal_reassigns_collaborator_files_to_main(monkeypatch, events):
-    files = [
-        stage_file(1, SECOND_ID),
-        stage_file(2, SECOND_ID),
-        stage_file(3, MAIN_ID),
-        stage_file(4, MANAGER.id),
-    ]
-    service = make_service(monkeypatch, accepted_stage(), files=files)
+    service = make_service(monkeypatch, stage)
 
     asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
 
-    assert [f.uploaded_by_id for f in files] == [
-        MAIN_ID,
-        MAIN_ID,
-        MAIN_ID,
-        MANAGER.id,
+    assert [(f.id, f.uploaded_by_id) for f in stage.files] == [
+        (1, MAIN_ID),
+        (2, SECOND_ID),
     ]
-    assert service.reassign_calls == [(STAGE_ID, SECOND_ID, MAIN_ID)]
-    assert events[0]['payload']['details'] == {
-        'freelancer_id': SECOND_ID,
-        'files_reassigned': 2,
-    }
-
-
-def test_main_freelancer_deletes_reassigned_file(
-    monkeypatch, tmp_path, events
-):
-    path = tmp_path / 'do-colaborador.pdf'
-    path.write_text('entrega')
-    file = stage_file(1, SECOND_ID, path)
-    asyncio.run(
-        make_service(
-            monkeypatch, accepted_stage(), files=[file]
-        ).remove_collaborator(STAGE_ID, MANAGER)
-    )
-    stage = make_stage()
-    service, session = file_service(monkeypatch, stage, file)
-
-    asyncio.run(service.delete_file(STAGE_ID, file.id, freelancer(MAIN_ID)))
-
-    session.delete.assert_awaited_once()
-    assert not path.exists()
-
-
-def test_removal_without_collaborator_files_reports_zero(monkeypatch, events):
-    files = [stage_file(3, MAIN_ID)]
-    service = make_service(monkeypatch, accepted_stage(), files=files)
-
-    asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
-
-    assert files[0].uploaded_by_id == MAIN_ID
-    assert events[0]['payload']['details']['files_reassigned'] == 0
-
-
-def test_removal_without_main_blocks_when_collaborator_has_files(
-    monkeypatch, events
-):
-    files = [stage_file(1, SECOND_ID)]
-    stage = accepted_stage(
-        freelancer_id=None, status=StageStatus.NO_FREELANCER
-    )
-    service = make_service(monkeypatch, stage, files=files)
-
-    status = expect_error(service.remove_collaborator(STAGE_ID, MANAGER))
-
-    assert status == HTTPStatus.CONFLICT
-    assert stage.second_freelancer_id == SECOND_ID
-    assert files[0].uploaded_by_id == SECOND_ID
-    assert service.reassign_calls == []
-    assert events == []
-
-
-def test_removal_without_main_allowed_without_collaborator_files(
-    monkeypatch, events
-):
-    files = [stage_file(3, OTHER_ID)]
-    stage = accepted_stage(
-        freelancer_id=None, status=StageStatus.NO_FREELANCER
-    )
-    service = make_service(monkeypatch, stage, files=files)
-
-    result = asyncio.run(service.remove_collaborator(STAGE_ID, MANAGER))
-
-    assert result.second_freelancer_id is None
-    assert files[0].uploaded_by_id == OTHER_ID
-    assert service.reassign_calls == []
-    assert events[0]['payload']['details']['files_reassigned'] == 0
-
-
-def test_reassign_query_moves_only_removed_freelancer_stage_files():
-    session = SimpleNamespace(
-        execute=AsyncMock(return_value=SimpleNamespace(rowcount=2))
-    )
-
-    moved = asyncio.run(
-        StageRepository(session).reassign_stage_files(
-            STAGE_ID, SECOND_ID, MAIN_ID
-        )
-    )
-
-    compiled = session.execute.await_args.args[0].compile(
-        dialect=postgresql.dialect()
-    )
-    query = ' '.join(str(compiled).lower().split())
-    assert moved == 2  # noqa: PLR2004
-    assert query.startswith('update files set uploaded_by_id=')
-    assert 'files.project_stage_id = %(project_stage_id_1)s' in query
-    assert 'files.uploaded_by_id = %(uploaded_by_id_1)s' in query
-    assert compiled.params == {
-        'uploaded_by_id': MAIN_ID,
-        'project_stage_id_1': STAGE_ID,
-        'uploaded_by_id_1': SECOND_ID,
-    }
+    assert service.calls == ['lock', 'save']
+    assert events[0]['payload']['details'] == {'freelancer_id': SECOND_ID}
 
 
 # --- nome do responsável na resposta da etapa ------------------------------
@@ -986,8 +1096,9 @@ def test_stage_lock_query_locks_only_project_stages():
     ('action', 'expected'),
     [
         ('invite', ['lock', 'declined', 'validate', 'save']),
-        ('remove', ['lock', 'reassign', 'save']),
+        ('remove', ['lock', 'save']),
         ('accept', ['lock', 'save']),
+        ('accept-main', ['lock', 'save']),
         ('decline', ['lock', 'save']),
     ],
 )
@@ -995,9 +1106,10 @@ def test_collaboration_actions_lock_stage_first(
     monkeypatch, events, action, expected
 ):
     stages = {
-        'invite': make_stage,
-        'remove': accepted_stage,
+        'invite': open_stage,
+        'remove': invited_stage,
         'accept': invited_stage,
+        'accept-main': invited_stage,
         'decline': invited_stage,
     }
     service = make_service(monkeypatch, stages[action]())
@@ -1009,6 +1121,7 @@ def test_collaboration_actions_lock_stage_first(
         'accept': lambda: service.accept_collaboration(
             STAGE_ID, freelancer(SECOND_ID)
         ),
+        'accept-main': lambda: service.accept(STAGE_ID, freelancer(MAIN_ID)),
         'decline': lambda: service.decline_collaboration(
             STAGE_ID, freelancer(SECOND_ID)
         ),
@@ -1057,10 +1170,14 @@ def listed_files(monkeypatch, stage, employee):
     return StageResponse.model_validate(item).files
 
 
-def test_invited_freelancer_lists_stage_without_files(monkeypatch):
+@pytest.mark.parametrize(
+    'second_status',
+    [StageCollaborationStatus.INVITED, StageCollaborationStatus.ACCEPTED],
+    ids=['convidado', 'aceito-no-fluxo-antigo'],
+)
+def test_second_slot_lists_stage_without_files(monkeypatch, second_status):
     stage = stage_with_files(
-        second_freelancer_id=SECOND_ID,
-        second_status=StageCollaborationStatus.INVITED,
+        second_freelancer_id=SECOND_ID, second_status=second_status
     )
 
     files = listed_files(monkeypatch, stage, freelancer(SECOND_ID))
@@ -1071,10 +1188,10 @@ def test_invited_freelancer_lists_stage_without_files(monkeypatch):
 
 @pytest.mark.parametrize(
     'employee',
-    [freelancer(MAIN_ID), MANAGER, freelancer(SECOND_ID)],
-    ids=['principal', 'gestor', 'colaborador-aceito'],
+    [freelancer(MAIN_ID), MANAGER],
+    ids=['principal', 'gestor'],
 )
-def test_members_and_manager_list_all_stage_files(monkeypatch, employee):
+def test_responsible_and_manager_list_all_stage_files(monkeypatch, employee):
     stage = stage_with_files(
         second_freelancer_id=SECOND_ID,
         second_status=StageCollaborationStatus.ACCEPTED,
@@ -1087,6 +1204,7 @@ def test_members_and_manager_list_all_stage_files(monkeypatch, employee):
 
 def test_decline_response_has_no_files(monkeypatch, events):
     stage = stage_with_files(
+        status=StageStatus.NO_FREELANCER,
         second_freelancer_id=SECOND_ID,
         second_status=StageCollaborationStatus.INVITED,
     )
@@ -1099,22 +1217,3 @@ def test_decline_response_has_no_files(monkeypatch, events):
     assert response.files == []
     assert response.second_freelancer_id is None
     assert [file.id for file in stage.files] == [1, 2]
-
-
-def test_count_query_counts_collaborator_files_in_stage():
-    session = SimpleNamespace(scalar=AsyncMock(return_value=2))
-
-    total = asyncio.run(
-        StageRepository(session).count_stage_files_by(STAGE_ID, SECOND_ID)
-    )
-
-    compiled = session.scalar.await_args.args[0].compile(
-        dialect=postgresql.dialect()
-    )
-    query = ' '.join(str(compiled).lower().split())
-    assert total == 2  # noqa: PLR2004
-    assert query.startswith('select count(files.id)')
-    assert compiled.params == {
-        'project_stage_id_1': STAGE_ID,
-        'uploaded_by_id_1': SECOND_ID,
-    }

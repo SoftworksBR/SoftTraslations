@@ -46,6 +46,8 @@ LANGUAGE_MATCH_ORDER = (
 )
 # Incompatíveis só aparecem com include_all.
 VISIBLE_MATCHES = LANGUAGE_MATCH_ORDER[:2]
+OFFER_TAKEN_DETAIL = 'Outro tradutor já aceitou esta etapa.'
+OFFER_CLOSED_DETAIL = 'A oferta desta etapa já foi encerrada.'
 ALLOWED_FILE_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.odt', '.txt', '.rtf', '.xls', '.xlsx',
     '.png', '.jpg', '.jpeg',
@@ -245,10 +247,10 @@ class StageService:
                 freelancer_id=current_employee.id,
                 filters=filters,
             )
+            # Quem está só na vaga do segundo candidato não vê os arquivos.
             return [
                 self._without_files(stage)
-                if stage.second_freelancer_id == current_employee.id
-                and stage.second_status == StageCollaborationStatus.INVITED
+                if stage.freelancer_id != current_employee.id
                 else stage
                 for stage in stages
             ]
@@ -258,45 +260,94 @@ class StageService:
     async def accept(
         self, stage_id: int, current_employee: Employee
     ) -> ProjectStage:
-        if current_employee.role != Roles.FREELANCER:
-            self._raise_stage_access_denied()
-
-        stage = await self.get_by_id(stage_id)
-        if stage.freelancer_id != current_employee.id:
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail='Freelancers can only accept their own stages',
-            )
-        if stage.status != StageStatus.NO_FREELANCER:
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail='This stage is not waiting for acceptance',
-            )
-
+        # Os dois candidatos da oferta aceitam por esta rota ou pela do
+        # segundo tradutor; quem chegar primeiro fica com a etapa.
+        stage = await self._get_open_offer(stage_id, current_employee)
+        leaving_id = (
+            stage.second_freelancer_id
+            if current_employee.id == stage.freelancer_id
+            else stage.freelancer_id
+        )
+        stage.freelancer_id = current_employee.id
         stage.status = StageStatus.IN_PROGRESS
         if stage.started_at is None:
             stage.started_at = datetime.now(UTC)
+        self._close_offer(stage, leaving_id, current_employee)
         return await self.repository.update(stage)
 
-    async def decline(
+    async def _get_open_offer(
         self, stage_id: int, current_employee: Employee
     ) -> ProjectStage:
         if current_employee.role != Roles.FREELANCER:
             self._raise_stage_access_denied()
 
-        stage = await self.get_by_id(stage_id)
-        if stage.freelancer_id != current_employee.id:
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail='Freelancers can only decline their own stages',
-            )
+        # A trava faz o segundo aceite esperar o primeiro e ler a etapa já
+        # com o vencedor.
+        stage = await self._get_for_update(stage_id)
         if stage.status != StageStatus.NO_FREELANCER:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
-                detail='This stage is not waiting for acceptance',
+                detail=(
+                    'This stage is not waiting for acceptance'
+                    if current_employee.id == stage.freelancer_id
+                    else OFFER_TAKEN_DETAIL
+                ),
+            )
+        if not self._is_offer_candidate(stage, current_employee):
+            raise HTTPException(
+                status_code=HTTPStatus.FORBIDDEN,
+                detail='Only the freelancers in the offer can answer it',
+            )
+        return stage
+
+    @staticmethod
+    def _is_offer_candidate(stage: ProjectStage, employee: Employee) -> bool:
+        return employee.id == stage.freelancer_id or (
+            employee.id == stage.second_freelancer_id
+            and stage.second_status == StageCollaborationStatus.INVITED
+        )
+
+    def _close_offer(
+        self,
+        stage: ProjectStage,
+        leaving_id: int | None,
+        current_employee: Employee,
+    ) -> None:
+        # O outro candidato sai da oferta; a etapa fica só com o responsável.
+        stage.second_freelancer_id = None
+        stage.second_status = None
+        if leaving_id is not None:
+            self._collaborator_event(
+                stage,
+                'project_stage.offer_closed',
+                leaving_id,
+                current_employee,
+                kept_freelancer_id=stage.freelancer_id,
             )
 
-        declined_freelancer_id = stage.freelancer_id
+    async def decline(
+        self, stage_id: int, current_employee: Employee
+    ) -> ProjectStage | StageResponse:
+        # Os dois candidatos recusam por esta rota ou pela do segundo
+        # tradutor; a recusa de um não tira a oferta do outro.
+        stage = await self._get_open_offer(stage_id, current_employee)
+        details = {
+            'freelancer_id': current_employee.id,
+            'status': stage.status.value,
+        }
+        declined_as_second = current_employee.id == stage.second_freelancer_id
+        if declined_as_second:
+            details['role'] = 'collaborator'
+        else:
+            # O segundo candidato, se houver, fica sozinho com a oferta.
+            stage.freelancer_id = stage.second_freelancer_id
+            if stage.freelancer_id is not None:
+                details['promoted_freelancer_id'] = stage.freelancer_id
+        stage.second_freelancer_id = None
+        stage.second_status = None
+
+        # Mesmo evento nas duas vagas: o filtro de recusas passa a excluir
+        # este tradutor dos candidatos da etapa.
         enqueue_event(
             self.repository.session,
             event_type='project_stage.declined',
@@ -304,15 +355,13 @@ class StageService:
             aggregate_id=stage.id,
             payload={
                 'actor': self._actor(current_employee),
-                'details': {
-                    'freelancer_id': declined_freelancer_id,
-                    'status': stage.status.value,
-                },
+                'details': details,
                 'source': 'api',
             },
         )
-        stage.freelancer_id = None
-        return await self.repository.update(stage)
+        updated = await self.repository.update(stage)
+        # Quem recusou como segundo nunca recebeu os arquivos.
+        return self._without_files(updated) if declined_as_second else updated
 
     async def invite_collaborator(
         self,
@@ -322,12 +371,14 @@ class StageService:
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
         stage = await self._get_for_update(stage_id)
+        # O gestor escolhe o primeiro candidato pela atribuição e o segundo
+        # aqui, sem esperar o aceite do primeiro.
+        self._require_open_offer(stage)
         if stage.freelancer_id is None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='The stage needs a main freelancer first',
             )
-        self._require_stage_not_done(stage)
         if stage.second_freelancer_id is not None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
@@ -360,40 +411,18 @@ class StageService:
     ) -> ProjectStage:
         self._require_projects_role(current_employee)
         stage = await self._get_for_update(stage_id)
-        self._require_stage_not_done(stage)
+        self._require_open_offer(stage)
         if stage.second_freelancer_id is None:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='This stage has no second freelancer',
             )
 
-        # Sem principal, os arquivos do removido ficariam sem dono.
-        if (
-            stage.freelancer_id is None
-            and await self.repository.count_stage_files_by(
-                stage.id, stage.second_freelancer_id
-            )
-        ):
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail=(
-                    'Atribua um responsável antes de remover um tradutor '
-                    'adicional que já enviou arquivos'
-                ),
-            )
-        # Os arquivos do removido passam ao principal, que pode excluí-los;
-        # o UPDATE entra no mesmo commit da remoção.
-        files_reassigned = 0
-        if stage.freelancer_id is not None:
-            files_reassigned = await self.repository.reassign_stage_files(
-                stage.id, stage.second_freelancer_id, stage.freelancer_id
-            )
         self._collaborator_event(
             stage,
             'project_stage.collaborator_removed',
             stage.second_freelancer_id,
             current_employee,
-            files_reassigned=files_reassigned,
         )
         stage.second_freelancer_id = None
         stage.second_status = None
@@ -402,39 +431,12 @@ class StageService:
     async def accept_collaboration(
         self, stage_id: int, current_employee: Employee
     ) -> ProjectStage:
-        stage = await self._get_invited_collaboration(
-            stage_id, current_employee
-        )
-        stage.second_status = StageCollaborationStatus.ACCEPTED
-        return await self.repository.update(stage)
+        return await self.accept(stage_id, current_employee)
 
     async def decline_collaboration(
         self, stage_id: int, current_employee: Employee
-    ) -> ProjectStage:
-        stage = await self._get_invited_collaboration(
-            stage_id, current_employee
-        )
-        # Mesmo evento da recusa do principal: o filtro de recusas passa a
-        # excluir este tradutor dos candidatos da etapa.
-        enqueue_event(
-            self.repository.session,
-            event_type='project_stage.declined',
-            aggregate_type='project_stage',
-            aggregate_id=stage.id,
-            payload={
-                'actor': self._actor(current_employee),
-                'details': {
-                    'freelancer_id': current_employee.id,
-                    'role': 'collaborator',
-                    'status': stage.status.value,
-                },
-                'source': 'api',
-            },
-        )
-        stage.second_freelancer_id = None
-        stage.second_status = None
-        # Quem recusou deixa de ser membro e não recebe os arquivos.
-        return self._without_files(await self._save_collaboration(stage))
+    ) -> ProjectStage | StageResponse:
+        return await self.decline(stage_id, current_employee)
 
     @staticmethod
     def _without_files(stage: ProjectStage) -> StageResponse:
@@ -442,25 +444,6 @@ class StageService:
         return StageResponse.model_validate(stage).model_copy(
             update={'files': []}
         )
-
-    async def _get_invited_collaboration(
-        self, stage_id: int, current_employee: Employee
-    ) -> ProjectStage:
-        if current_employee.role != Roles.FREELANCER:
-            self._raise_stage_access_denied()
-
-        stage = await self._get_for_update(stage_id)
-        if stage.second_freelancer_id != current_employee.id:
-            raise HTTPException(
-                status_code=HTTPStatus.FORBIDDEN,
-                detail='Only the invited freelancer can answer this invite',
-            )
-        if stage.second_status != StageCollaborationStatus.INVITED:
-            raise HTTPException(
-                status_code=HTTPStatus.CONFLICT,
-                detail='This invite is not waiting for an answer',
-            )
-        return stage
 
     async def _save_collaboration(self, stage: ProjectStage) -> ProjectStage:
         # O id mudou; a relação já carregada precisa ser relida no get_by_id.
@@ -489,18 +472,17 @@ class StageService:
 
     @staticmethod
     def _is_stage_member(stage: ProjectStage, employee: Employee) -> bool:
-        # Principal ou segundo tradutor que já aceitou o convite.
-        return employee.id == stage.freelancer_id or (
-            employee.id == stage.second_freelancer_id
-            and stage.second_status == StageCollaborationStatus.ACCEPTED
-        )
+        # Só o responsável trabalha na etapa; o segundo candidato da oferta
+        # sai dela quando alguém aceita.
+        return employee.id == stage.freelancer_id
 
     @staticmethod
-    def _require_stage_not_done(stage: ProjectStage) -> None:
-        if stage.status == StageStatus.DONE:
+    def _require_open_offer(stage: ProjectStage) -> None:
+        # Depois do aceite a etapa tem um único tradutor.
+        if stage.status != StageStatus.NO_FREELANCER:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
-                detail='Completed stages cannot change collaborators',
+                detail=OFFER_CLOSED_DETAIL,
             )
 
     async def get_available_freelancers(
@@ -825,6 +807,10 @@ class StageService:
                     stage.started_at = now
                 stage.completed_at = now
 
+        self._close_offer_when_stage_leaves_it(
+            stage, previous_status, current_employee
+        )
+
         if (
             stage.status != previous_status
             or assignment_changed
@@ -854,6 +840,22 @@ class StageService:
             )
 
         return await self.repository.update(stage)
+
+    def _close_offer_when_stage_leaves_it(
+        self,
+        stage: ProjectStage,
+        previous_status: StageStatus,
+        current_employee: Employee,
+    ) -> None:
+        # Etapa que deixa de aguardar aceite encerra a oferta do segundo.
+        if (
+            previous_status == StageStatus.NO_FREELANCER
+            and stage.status != StageStatus.NO_FREELANCER
+            and stage.second_freelancer_id is not None
+        ):
+            self._close_offer(
+                stage, stage.second_freelancer_id, current_employee
+            )
 
     @staticmethod
     def _update_rejection_comment(

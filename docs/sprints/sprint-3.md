@@ -94,6 +94,7 @@ Itens pedidos durante a Sprint a partir do uso do sistema e das revisões da equ
 | Filtro de tradutores por idioma na designação de etapas | #70 |
 | Atendente altera o orçamento e anexa documentos depois de criado | #71 |
 | Gestor convida um tradutor adicional por etapa (colaborador com aceite) | #72 |
+| Etapa oferecida a até dois tradutores: o primeiro que aceitar fica com ela e a recusa de um não tira a oferta do outro | #77 |
 
 ## DoR da Sprint 3 — critérios de aceitação por User Story
 
